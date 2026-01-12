@@ -12,6 +12,7 @@ class RedisClient {
 
     this.client.on("error", (error) => {
       console.error(">>> Redis Client Error:", error);
+      process.exit(1);
     });
 
     this.client.on("connect", () => {

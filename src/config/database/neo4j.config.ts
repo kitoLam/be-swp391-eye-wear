@@ -18,10 +18,11 @@ class Neo4jClient {
     this.driver
       .verifyConnectivity()
       .then(() => {
-        console.log("✅ Neo4j connected successfully");
+        console.log(">>> Neo4j connected successfully");
       })
       .catch((error) => {
         console.error("❌ Neo4j connection failed:", error);
+        process.exit(1);
       });
   }
 
