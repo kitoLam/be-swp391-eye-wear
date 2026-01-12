@@ -4,8 +4,8 @@ import {
     TokenExpiredError,
     TokenInvalidError,
     RefreshTokenInvalidError,
-} from '../errors/jwt/JwtError';
-import { JwtPayload } from '../types/jwt/Jwt';
+} from '../errors/jwt/jwt-error';
+import { JwtPayload } from '../types/jwt/jwt';
 
 // generated access token
 export const generateAccessToken = (userId: string, email?: string): string => {
@@ -48,17 +48,19 @@ export const verifyAccessToken = (token: string): JwtPayload => {
         const decoded = jwt.verify(token, config.jwt.secret) as JwtPayload;
         return decoded;
     } catch (error: any) {
+        const jwtError = error as jwt.JsonWebTokenError;
         // Phân loại lỗi cụ thể
-        if (error.name === 'TokenExpiredError') {
+        if (jwtError.name === 'TokenExpiredError') {
+            const tokenExpiredError = jwtError as jwt.TokenExpiredError;
             throw new TokenExpiredError(
                 `Access token expired at ${new Date(
-                    error.expiredAt
-                ).toISOString()}`
+                    tokenExpiredError.expiredAt,
+                ).toISOString()}`,
             );
         }
-        if (error.name === 'JsonWebTokenError') {
+        if (jwtError.name === 'JsonWebTokenError') {
             throw new TokenInvalidError(
-                `Invalid access token: ${error.message}`
+                `Invalid access token: ${jwtError.message}`,
             );
         }
         // Lỗi khác
@@ -79,16 +81,19 @@ export const verifyRefreshToken = (token: string): JwtPayload => {
         ) as JwtPayload;
         return decoded;
     } catch (error: any) {
-        if (error.name === 'TokenExpiredError') {
+        const jwtError = error as jwt.JsonWebTokenError;
+        if (jwtError.name === 'TokenExpiredError') {
+            const tokenExpiredError = jwtError as jwt.TokenExpiredError;
             throw new RefreshTokenInvalidError(
                 `Refresh token expired at ${new Date(
-                    error.expiredAt
+                    tokenExpiredError.expiredAt
                 ).toISOString()}`
             );
         }
-        if (error.name === 'JsonWebTokenError') {
+        if (jwtError.name === 'JsonWebTokenError') {
+            const jsonWebTokenError = error as jwt.JsonWebTokenError;
             throw new RefreshTokenInvalidError(
-                `Invalid refresh token: ${error.message}`
+                `Invalid refresh token: ${jsonWebTokenError.message}`
             );
         }
         throw new RefreshTokenInvalidError('Failed to verify refresh token');
