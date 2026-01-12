@@ -14,7 +14,9 @@ pnpm-lock.yaml
 .env.development
 
 # Build outputs
-
+dist/
+build/
+*.tsbuildinfo
 
 # Logs
 logs/
