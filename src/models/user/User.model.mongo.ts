@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { FullUser } from '../../types/user/User';
+import { FullUser } from '../../types/user/user';
 
 export type IUserDocument = FullUser & Document;
 

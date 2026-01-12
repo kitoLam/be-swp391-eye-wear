@@ -7,23 +7,19 @@ class RedisClient {
 
   private constructor() {
     this.client = createClient({
-      socket: {
-        host: config.redis.host,
-        port: config.redis.port,
-      },
-      password: config.redis.password,
+      url: config.redis.url,
     });
 
     this.client.on("error", (error) => {
-      console.error("❌ Redis Client Error:", error);
+      console.error(">>> Redis Client Error:", error);
     });
 
     this.client.on("connect", () => {
-      console.log("✅ Redis connected successfully");
+      console.log(">>> Redis connected successfully");
     });
 
     this.client.on("disconnect", () => {
-      console.warn("⚠️ Redis disconnected");
+      console.warn(">>> Redis disconnected");
     });
   }
 
