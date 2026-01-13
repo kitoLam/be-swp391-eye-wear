@@ -12,6 +12,7 @@ pnpm-lock.yaml
 .env.production.local
 .env.*.local
 .env.development
+SWP_EyeWear_DB.categories.json
 
 # Build outputs
 dist/
@@ -45,6 +46,7 @@ temp/
 # Testing
 coverage/
 .nyc_output/
+src/seeds/
 
 # Misc
 *.pem

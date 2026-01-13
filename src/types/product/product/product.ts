@@ -15,7 +15,7 @@ export const ProductSchema = z.discriminatedUnion('type', [
         categories: z
             .array(z.string())
             .min(1, 'At least one category is required'),
-        spec: FrameSpecSchema.nullable(),
+        spec: FrameSpecSchema,
         variants: z.array(VariantSchema),
         updatedAt: z.date().optional(),
         createdAt: z.date().optional(),

@@ -7,6 +7,7 @@ import { Types } from 'mongoose';
 export const CategorySchema = z.object({
     _id: z.instanceof(Types.ObjectId),
     name: z.string().min(1, 'Category name is required'),
+    type: z.enum(['frame', 'lens']),
     parentCate: z.instanceof(Types.ObjectId).nullable(),
     createdAt: z.date(),
     updatedAt: z.date(),
@@ -18,6 +19,7 @@ export const CategorySchema = z.object({
  */
 export const CreateCategorySchema = z.object({
     name: z.string().min(1, 'Category name is required'),
+    type: z.enum(['frame', 'lens']),
     parentCate: z
         .string()
         .regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId format')
@@ -29,6 +31,7 @@ export const CreateCategorySchema = z.object({
  */
 export const UpdateCategorySchema = z.object({
     name: z.string().min(1, 'Category name is required'),
+    type: z.enum(['frame', 'lens']),
     parentCate: z
         .string()
         .regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId format')
