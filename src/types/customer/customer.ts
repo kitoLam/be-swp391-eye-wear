@@ -1,0 +1,50 @@
+import z from 'zod';
+import { AddressSchema } from './address';
+import { LinkedAccountSchema } from './linked-account';
+
+// Customer Schema
+export const CustomerSchema = z.object({
+    _id: z.string().min(1, 'Customer ID is required'),
+    name: z.string().min(1, 'Name is required'),
+    email: z.string().email('Invalid email format'),
+    hashedPassword: z.string().min(1, 'Password is required'),
+    phone: z.string().min(1, 'Phone number is required'),
+    gender: z.enum(['F', 'M', 'N']),
+    address: z.array(AddressSchema).default([]),
+    hobbies: z.array(z.string()).default([]),
+    isVerified: z.boolean().default(false),
+    linkedAccounts: z.array(LinkedAccountSchema).default([]),
+    createdAt: z.date().optional(),
+    updatedAt: z.date().optional(),
+    deletedAt: z.date().nullable().optional(),
+});
+
+// Create Customer Schema (for registration/creation)
+export const CreateCustomerSchema = z.object({
+    name: z.string().min(1, 'Name is required'),
+    email: z.string().email('Invalid email format'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    phone: z.string().min(1, 'Phone number is required'),
+    gender: z.enum(['F', 'M', 'N']),
+    address: z.array(AddressSchema).optional().default([]),
+    hobbies: z.array(z.string()).optional().default([]),
+});
+
+// Update Customer Schema (for updating existing customer)
+export const UpdateCustomerSchema = z.object({
+    name: z.string().min(1, 'Name is required').optional(),
+    email: z.string().email('Invalid email format').optional(),
+    password: z
+        .string()
+        .min(8, 'Password must be at least 8 characters')
+        .optional(),
+    phone: z.string().min(1, 'Phone number is required').optional(),
+    gender: z.enum(['F', 'M', 'N']).optional(),
+    address: z.array(AddressSchema).optional(),
+    hobbies: z.array(z.string()).optional(),
+    isVerified: z.boolean().optional(),
+});
+
+export type Customer = z.infer<typeof CustomerSchema>;
+export type CreateCustomer = z.infer<typeof CreateCustomerSchema>;
+export type UpdateCustomer = z.infer<typeof UpdateCustomerSchema>;
