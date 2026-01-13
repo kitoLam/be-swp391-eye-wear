@@ -8,10 +8,9 @@ import {
 import { JwtPayload } from '../types/jwt/jwt';
 
 // generated access token
-export const generateAccessToken = (userId: string, email?: string): string => {
+export const generateAccessToken = (userId: string): string => {
     const payload: JwtPayload = {
-        userId,
-        email,
+        userId
         // JWT tự động thêm iat và exp khi sign
     };
 
@@ -26,12 +25,10 @@ export const generateAccessToken = (userId: string, email?: string): string => {
  * Tạo refresh token với expiration time dài hơn
  */
 export const generateRefreshToken = (
-    userId: string,
-    email?: string
+    userId: string
 ): string => {
     const payload: JwtPayload = {
-        userId,
-        email,
+        userId
     };
     return jwt.sign(payload, config.jwt.refreshSecret, {
         expiresIn: config.jwt.refreshExpiresIn, // VD: '30d'
