@@ -2,9 +2,6 @@ import { z } from 'zod';
 import { Types } from 'mongoose';
 import { RoleType } from '../../config/enums/admin-account';
 
-/**
- * Zod schema for Categories validation
- */
 export const AdminAccount = z.object({
     _id: z.instanceof(Types.ObjectId),
     citizenId: z.string(),
@@ -28,7 +25,7 @@ export const AdminAccountCreateSchema = z
         citizenId: z
             .string()
             .nonempty('CCCD is required')
-            .regex(/^\d{12}$/, 'CCCD phải gồm đúng 12 chữ số'),
+            .regex(/^\d{12}$/, 'CitizenId is need to be at least 12 digits'),
         phone: z.string().nonempty('Phone number is required').regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/g),
         email: z.string().nonempty('Email is required').email('Email is invalid'),
         password: z.string().nonempty('Password is required'),

@@ -5,11 +5,12 @@ import morgan from 'morgan';
 import { Server } from 'socket.io';
 import { createServer } from 'http';
 import { config } from './config/env.config';
-import { errorMiddleware } from './middlewares/error.middleware';
+import { errorMiddleware } from './middlewares/share/error.middleware';
 import adminRouter from './routes/admin/index.route';
-import { corsHandler } from './middlewares/cors.middleware';
+import { corsHandler } from './middlewares/share/cors.middleware';
 import { systemConstant } from './config/constants/system.constant';
 import clientRouter from './routes/client/index.route';
+import cookieParser from 'cookie-parser';
 // Tạo Express application
 const app: Application = express();
 // Tạo HTTP server từ Express app (cần cho Socket.IO)
@@ -51,15 +52,16 @@ app.use(compression());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'My API is running 1' });
 });
 app.use(
-    `/api/${config.apiVersion}${systemConstant.prefixPathAdmin}`,
+    `/api/${config.apiVersion}/${systemConstant.prefixPathAdmin}`,
     adminRouter
 );
 app.use(
-    `/api//${config.apiVersion}${systemConstant.prefixPathClient}`,
+    `/api//${config.apiVersion}/${systemConstant.prefixPathClient}`,
     clientRouter
 );
 app.use((req, res) => {
