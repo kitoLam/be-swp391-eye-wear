@@ -32,5 +32,23 @@ class AuthController {
         res.clearCookie('refreshToken');
         res.json(ApiResponse.success('Logout successfully', null));
     };
+    refreshAccessToken = async (req: Request, res: Response): Promise<void> => {
+        // lấy deviceId (đã kiểm tra ở middleware)
+        const deviceId = req.headers['x-device-id'] as string;
+        // lấy refreshToken (đã kiểm tra ở middleware)
+        const refreshToken = req.cookies.refreshToken as string;
+        const userId = req.adminAccount!.id;
+        const token = await authService.refreshAccessToken(
+            userId,
+            deviceId,
+            refreshToken
+        );
+        const dataFinal = {
+            accessToken: token,
+        };
+        res.json(
+            ApiResponse.success('Get new refresh token successfully', dataFinal)
+        );
+    };
 }
 export default new AuthController();

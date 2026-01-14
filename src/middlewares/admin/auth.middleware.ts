@@ -22,31 +22,30 @@ const authenticateMiddleware = async (
         next(error);
     }
 };
-// const verifyRefreshTokenMiddleware = async (
-//     req: Request,
-//     res: Response,
-//     next: NextFunction
-// ) => {
-//     try {
-//         // check deviceId 
-//         const deviceId = req.headers['x-device-id'];
-//         if (!deviceId || typeof deviceId != 'string') {
-//             throw new UnauthorizedRequestError('Invalid deviceId');
-//         }
-//         // check token and device id in headers
-//         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-//         const refreshToken = req.cookies.refreshToken;
-//         if (!refreshToken) {
-//             throw new UnauthorizedRequestError('Invalid refresh token');
-//         }
-//         // get payload
-//         const { userId } = await authService.verifyRefreshToken(refreshToken);
-//         req.user = {
-//             id: userId,
-//         };
-//         next();
-//     } catch (error) {
-//         next(error);
-//     }
-// };
-export { authenticateMiddleware };
+const verifyRefreshTokenMiddleware = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        // check deviceId 
+        const deviceId = req.headers['x-device-id'];
+        if (!deviceId || typeof deviceId != 'string') {
+            throw new UnauthorizedRequestError('Invalid deviceId');
+        }
+        // check token and device id in headers
+        const refreshToken = req.cookies.refreshToken;
+        if (!refreshToken) {
+            throw new UnauthorizedRequestError('Invalid refresh token');
+        }
+        // get payload
+        const { userId } = await authService.verifyUserByRefreshToken(refreshToken);
+        req.adminAccount = {
+            id: userId,
+        };
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+export { authenticateMiddleware, verifyRefreshTokenMiddleware };
