@@ -20,7 +20,7 @@ class TokenService {
         await redisService.setDataWithExpiredTime(
             `${redisPrefix.refreshToken}:${payload.userId}:${refreshToken}`,
             deviceId,
-            config.jwt.expiresInSecond
+            config.jwt.refreshExpiresInSecond
         );
         return refreshToken;
     };

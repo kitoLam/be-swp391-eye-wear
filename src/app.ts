@@ -55,11 +55,11 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'My API is running 1' });
 });
 app.use(
-    `/api/${config.apiVersion}${systemConstant.prefixPathAdmin}`,
+    `/api/${config.apiVersion}/${systemConstant.prefixPathAdmin}`,
     adminRouter
 );
 app.use(
-    `/api//${config.apiVersion}${systemConstant.prefixPathClient}`,
+    `/api//${config.apiVersion}/${systemConstant.prefixPathClient}`,
     clientRouter
 );
 app.use((req, res) => {

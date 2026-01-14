@@ -1,5 +1,5 @@
 import cors from 'cors';
-import { config } from '../config/env.config';
+import { config } from '../../config/env.config';
 
 export const corsHandler = () => {
     return cors({

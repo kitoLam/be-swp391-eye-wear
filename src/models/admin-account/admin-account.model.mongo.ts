@@ -42,7 +42,10 @@ const AdminAccountSchema = new Schema<IAdminAccountDocument>(
           required: [true, 'role is required'],
           enum: RoleType,
         },
-        deletedAt: Date,
+        deletedAt: {
+          type: Date,
+          default: null,
+        },
     },
     {
         timestamps: true,
