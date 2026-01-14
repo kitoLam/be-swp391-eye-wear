@@ -1,10 +1,10 @@
-import { Model, Document, FilterQuery } from 'mongoose';
+import { Model, Document, FilterQuery, SortOrder } from 'mongoose';
 
 export interface PaginationOptions {
     page?: number;
     limit?: number;
     sortBy?: string;
-    sortOrder?: 'asc' | 'desc';
+    sortOrder?: SortOrder;
 }
 
 export interface PaginatedResult<T> {
@@ -29,12 +29,11 @@ export class BaseRepository<T extends Document> {
             page = 1,
             limit = 10,
             sortBy = 'createdAt',
-            sortOrder: order = 'desc',
+            sortOrder = 'desc',
         } = options;
 
         const skip = (page - 1) * limit;
-        const sortValue = order === 'asc' ? 1 : -1;
-        const sortObj: any = { [sortBy]: sortValue };
+        const sortObj = { [sortBy]: sortOrder };
 
         // Add deletedAt filter by default
         const finalFilter = { ...filter, deletedAt: null } as FilterQuery<T>;
@@ -115,7 +114,7 @@ export class BaseRepository<T extends Document> {
     async delete(id: string): Promise<T | null> {
         return await this.model.findByIdAndUpdate(
             id,
-            { deletedAt: new Date() } as any,
+            { deletedAt: new Date() },
             { new: true }
         );
     }

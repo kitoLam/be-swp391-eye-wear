@@ -3,7 +3,7 @@ import { AdminAccount } from '../../types/admin-account/admin-account';
 import { RoleType } from '../../config/enums/admin-account';
 export type IAdminAccountDocument = AdminAccount & Document;
 // Tạo Mongoose Schema
-const AttributeSchema = new Schema<IAdminAccountDocument>(
+const AdminAccountSchema = new Schema<IAdminAccountDocument>(
     {
         name: {
             type: String,
@@ -49,7 +49,8 @@ const AttributeSchema = new Schema<IAdminAccountDocument>(
     }
 );
 
-export const AttributeModel = mongoose.model<IAdminAccountDocument>(
-    'Attribute',
-    AttributeSchema
+export const AdminAccountModel = mongoose.model<IAdminAccountDocument>(
+    'AdminAccount',
+    AdminAccountSchema,
+    'admin-accounts'
 );

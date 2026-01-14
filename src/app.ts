@@ -5,9 +5,9 @@ import morgan from 'morgan';
 import { Server } from 'socket.io';
 import { createServer } from 'http';
 import { config } from './config/env.config';
-import { errorMiddleware } from './middlewares/error.middleware';
+import { errorMiddleware } from './middlewares/share/error.middleware';
 import adminRouter from './routes/admin/index.route';
-import { corsHandler } from './middlewares/cors.middleware';
+import { corsHandler } from './middlewares/share/cors.middleware';
 import { systemConstant } from './config/constants/system.constant';
 import clientRouter from './routes/client/index.route';
 // Tạo Express application
