@@ -23,11 +23,10 @@ export const CategorySchema = z.object({
 export const CreateCategorySchema = z.object({
     name: z.string().min(1, 'Category name is required'),
     type: z.enum(['frame', 'lens']),
-    parentCate: z
+    parentId: z
         .string()
-        .regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId format')
+        .refine(value => Types.ObjectId.isValid(value), "parentId is not valid")
         .nullable(),
-    thumbnail: z.string().nullable()
 });
 
 /**
@@ -36,9 +35,9 @@ export const CreateCategorySchema = z.object({
 export const UpdateCategorySchema = z.object({
     name: z.string().min(1, 'Category name is required'),
     type: z.enum(['frame', 'lens']),
-    parentCate: z
+    parentId: z
         .string()
-        .regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId format')
+        .refine(value => Types.ObjectId.isValid(value), "parentId is not valid")
         .nullable(),
     thumbnail: z.string().nullable()
 });
