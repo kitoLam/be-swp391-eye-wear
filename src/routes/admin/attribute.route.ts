@@ -8,6 +8,7 @@ import { AttributeListQuerySchema } from "../../types/attribute/attribute.query"
 
 const router = Router();
 router.get('/', validateQuery(AttributeListQuerySchema), authenticateMiddleware, attributeController.getAttributeList);
+router.post('/', validateBody(AttributeCreateSchema), authenticateMiddleware, attributeController.createAttribute);
 router.get('/:id', validateParams(ObjectIdSchema), authenticateMiddleware, attributeController.getAttributeDetail);
 router.patch('/:id', validateParams(ObjectIdSchema), validateBody(AttributeCreateSchema), authenticateMiddleware, attributeController.updateAttribute);
 router.delete('/:id', validateParams(ObjectIdSchema), validateBody(AttributeCreateSchema), authenticateMiddleware, attributeController.deleteAttribute);
