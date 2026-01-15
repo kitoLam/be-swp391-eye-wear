@@ -11,11 +11,6 @@ const CategorySchema = new Schema<ICategoryDocument>(
             required: [true, 'Category name is required'],
             trim: true,
         },
-        type: {
-            type: String,
-            enum: ['frame', 'lens'],
-            required: [true, 'Category type is required'],
-        },
         parentCate: {
             type: Schema.Types.ObjectId,
             ref: 'Category',

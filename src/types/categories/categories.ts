@@ -7,7 +7,6 @@ import { Types } from 'mongoose';
 export const CategorySchema = z.object({
     _id: z.instanceof(Types.ObjectId),
     name: z.string().min(1, 'Category name is required'),
-    type: z.enum(['frame', 'lens']),
     parentCate: z.instanceof(Types.ObjectId).nullable(),
     createdAt: z.date(),
     updatedAt: z.date(),
@@ -22,25 +21,23 @@ export const CategorySchema = z.object({
  */
 export const CreateCategorySchema = z.object({
     name: z.string().min(1, 'Category name is required'),
-    type: z.enum(['frame', 'lens']),
     parentId: z
         .string()
         .refine(value => Types.ObjectId.isValid(value), "parentId is not valid")
         .nullable(),
-});
+}).strict();
 
 /**
  * Zod schema for updating a category
  */
 export const UpdateCategorySchema = z.object({
     name: z.string().min(1, 'Category name is required'),
-    type: z.enum(['frame', 'lens']),
     parentId: z
         .string()
         .refine(value => Types.ObjectId.isValid(value), "parentId is not valid")
         .nullable(),
-    thumbnail: z.string().nullable()
-});
+    // thumbnail: z.string().nullable()
+}).strict();
 
 export type Category = z.infer<typeof CategorySchema>;
 export type CreateCategoryDTO = z.infer<typeof CreateCategorySchema>;
