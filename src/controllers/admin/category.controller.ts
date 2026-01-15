@@ -12,6 +12,10 @@ class CategoryController {
     await categoryService.updateCategory(req.params.id as string, req.body as UpdateCategoryDTO);
     res.json(ApiResponse.success('Update category successfully', {}));
   }
+  deleteCategory = async (req: Request, res: Response) => {
+    await categoryService.deleteCategory(req.params.id as string, req.adminAccount!);
+    res.json(ApiResponse.success('Delete category successfully', {}));
+  }
 }
 
 export default new CategoryController();

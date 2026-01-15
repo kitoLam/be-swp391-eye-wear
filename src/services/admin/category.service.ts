@@ -44,7 +44,7 @@ class CategoryService {
         }
     };
     /**
-     *
+     * Cập nhật danh mục sản phẩm
      * @param id
      * @param payload
      */
@@ -58,14 +58,16 @@ class CategoryService {
             throw new NotFoundRequestError('Not found category');
         }
         // chỉ đổi parent category hiện tại không có con
-        if(payload.parentId != foundCategory.parentCate){
-          const existChildren = await categoryRepository.exists({
-              parentCate: foundCategory._id,
-              deletedAt: null,
-          });
-          if(existChildren){
-            throw new ConflictRequestError("You need to ensure current category has no sub category");
-          }
+        if (payload.parentId != foundCategory.parentCate) {
+            const existChildren = await categoryRepository.exists({
+                parentCate: foundCategory._id,
+                deletedAt: null,
+            });
+            if (existChildren) {
+                throw new ConflictRequestError(
+                    'You need to ensure current category has no sub category'
+                );
+            }
         }
         if (payload.parentId != null) {
             // tìm cha tồn tại và khác chính nó
@@ -92,6 +94,31 @@ class CategoryService {
                 parentCate: null,
             });
         }
+    };
+
+    deleteCategory = async (id: string, context: AuthAdminContext) => {
+        // check category exist
+        const foundCategory = await categoryRepository.findOne({
+            _id: id,
+            deletedAt: null,
+        });
+        if (!foundCategory) {
+            throw new NotFoundRequestError('Not found category');
+        }
+        // chỉ xóa nếu hết con
+        const existChildren = await categoryRepository.exists({
+            parentCate: foundCategory._id,
+            deletedAt: null,
+        });
+        if (existChildren) {
+            throw new ConflictRequestError(
+                'Current category still has sub cate'
+            );
+        }
+        await categoryRepository.update(id, {
+            deletedAt: new Date(),
+            deletedBy: context.id,
+        });
     };
 }
 export default new CategoryService();

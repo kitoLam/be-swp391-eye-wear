@@ -8,4 +8,5 @@ const router = Router();
 
 router.post('/', validateBody(CreateCategorySchema), authenticateMiddleware, categoryController.createCategory);
 router.patch('/:id', validateParams(ObjectIdSchema), validateBody(UpdateCategorySchema), authenticateMiddleware, categoryController.updateCategory);
+router.delete('/:id', validateParams(ObjectIdSchema), authenticateMiddleware, categoryController.deleteCategory);
 export default router;
