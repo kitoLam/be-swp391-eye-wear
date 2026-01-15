@@ -62,10 +62,13 @@ class AuthService {
         // decode token
         const payload = jwtUtil.verifyAccessToken(token);
         const userId = payload.userId;
-        // check user in payload
-        // check userId nonempty và có trong hệ thống không
-        if ((await adminAccountRepository.findById(userId)) == null){
-            throw new NotFoundRequestError('Not found admin account');
+        // check user exist in the system
+        const foundAdmin = await adminAccountRepository.findOne({
+          _id: userId,
+          deletedAt: null,
+        });
+        if (!foundAdmin) {
+            throw new NotFoundRequestError('Not found user');
         }
         return { userId: payload.userId };
     };
@@ -79,8 +82,12 @@ class AuthService {
         // check token có trong db ko
         const payload = jwtUtil.verifyRefreshToken(token);
         const userId = payload.userId;
-        // check userId nonempty và có trong hệ thống không
-        if ((await adminAccountRepository.findById(userId)) == null) {
+        // check user exist in the system
+        const foundAdmin = await adminAccountRepository.findOne({
+          _id: userId,
+          deletedAt: null,
+        });
+        if (!foundAdmin) {
             throw new NotFoundRequestError('Not found user');
         }
         return { userId: payload.userId };
