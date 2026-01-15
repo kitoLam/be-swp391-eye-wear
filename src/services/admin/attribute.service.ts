@@ -3,7 +3,8 @@ import { AttributeRepository, attributeRepository } from "../../repositories/att
 import { AttributeCreateDTO, AttributeUpdateDTO } from "../../types/attribute/attribute";
 import { AuthAdminContext } from "../../types/context/context";
 import { NotFoundRequestError } from "../../errors/apiError/api-error";
-
+import * as attributeConverter from '../../converters/admin/attribute.converter';
+import { AttributeListQuery } from "../../types/attribute/attribute.query";
 class AttributeService {
   /**
    * Tạo mới thuộc tính sản phẩm
@@ -48,14 +49,31 @@ class AttributeService {
     });
   }
 
-  getAttributeById = async (id: string, payload: AttributeUpdateDTO) => {
+  getAttributeDetail = async (id: string) => {
     const foundAttribute = await attributeRepository.findOne({
       _id: id,
     });
-    if(!foundAttribute) throw new NotFoundRequestError('Attribute not found');
-    await attributeRepository.update( id,{
-      ...payload
+    if(!foundAttribute) {
+      throw new NotFoundRequestError('Attribute not found');
+    }
+    console.log(foundAttribute)
+    return attributeConverter.toAttributeCreateDTO(foundAttribute);
+  }
+  getAttributeList = async (query: AttributeListQuery) => {
+    const paginationResult = await attributeRepository.findAll({
+      page: query.page, limit: query.limit,
     });
+    const attributeList = paginationResult.data;
+    const pagination = {
+      page: paginationResult.page,
+      limit: paginationResult.limit,
+      total: paginationResult.total,
+      totalPages: paginationResult.totalPages,
+    }
+    return {
+      attributeList: attributeList.map(item => attributeConverter.toStandardAttribute(item)),
+      pagination,
+    };
   }
 }
 
