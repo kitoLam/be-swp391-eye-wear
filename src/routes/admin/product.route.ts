@@ -5,7 +5,7 @@ import {
 } from '../../middlewares/share/validator.middleware';
 import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware';
 import productController from '../../controllers/admin/product.controller';
-import { ObjectIdSchema } from '../common/objectId';
+import { ObjectIdSchema } from '../../types/common/objectId';
 import { ProductListQuerySchema } from '../../types/product/product/product.query';
 
 const router = Router();
