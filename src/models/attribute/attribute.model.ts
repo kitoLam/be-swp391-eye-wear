@@ -18,6 +18,16 @@ const AttributeSchema = new Schema<IAttributeDocument>(
             type: Date,
             default: null,
         },
+        createdBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'AdminAccount',
+            required: true,
+        },
+        deletedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'AdminAccount',
+            default: null,
+        }
     },
     {
         timestamps: true,
