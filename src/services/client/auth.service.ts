@@ -1,16 +1,40 @@
-import { LoginBodyDTO } from '../../types/auth/admin/auth';
 import {
     BadRequestError,
+    ConflictRequestError,
+    ForbiddenRequestError,
     NotFoundRequestError,
     UnauthorizedRequestError,
 } from '../../errors/apiError/api-error';
-import { comparePassword } from '../../utils/bcrypt.util';
+import { customerRepository } from '../../repositories/customer/customer.repository';
+import {
+    LoginCustomerDTO,
+    RegisterCustomerDTO,
+} from '../../types/auth/client/auth';
+import { comparePassword, hashPassword } from '../../utils/bcrypt.util';
 import tokenService from '../token.service';
 import * as jwtUtil from '../../utils/jwt.util';
-import { adminAccountRepository } from '../../repositories/admin-account/admin-account.repository';
 class AuthService {
+    registerCustomer = async (payload: RegisterCustomerDTO) => {
+        // check email exist
+        const foundUser = await customerRepository.findOne({
+            email: payload.email,
+            deletedAt: null,
+        });
+        if (foundUser) {
+            throw new ConflictRequestError(
+                'Another user has already registered by this email!'
+            );
+        }
+        // hash password
+        const hashedPassword = hashPassword(payload.password);
+        // create customer
+        await customerRepository.create({
+            ...payload,
+            hashedPassword: hashedPassword,
+        });
+    };
     login = async (
-        user: LoginBodyDTO,
+        payload: LoginCustomerDTO,
         deviceId: string | string[] | undefined
     ) => {
         // check deviceId
@@ -18,19 +42,26 @@ class AuthService {
             throw new BadRequestError('DeviceId is invalid');
         }
         // check email exist
-        const foundUser = await adminAccountRepository.findOne({
-          email: user.email,
-          deletedAt: null
+        const foundUser = await customerRepository.findOne({
+            email: payload.email,
+            deletedAt: null,
         });
         if (!foundUser) {
-            throw new UnauthorizedRequestError('Email is wrong');
+            throw new UnauthorizedRequestError(
+                'Account is not exist in the system'
+            );
         }
         const isPasswordEqual = comparePassword(
-            user.password,
+            payload.password,
             foundUser.hashedPassword
         );
         if (!isPasswordEqual) {
-            throw new UnauthorizedRequestError('Password is not match');
+            throw new UnauthorizedRequestError(
+                'Wrong password, please try again'
+            );
+        }
+        if (!foundUser.isVerified) {
+            throw new ForbiddenRequestError('Account is not verified');
         }
         // generate accessToken and RefreshToken
         const userId = foundUser._id.toString();
@@ -38,7 +69,7 @@ class AuthService {
         const refreshToken = await tokenService.getNewRefreshToken(
             { userId },
             deviceId,
-            'admin'
+            'client'
         );
         // Return accessToken and refreshToken (refreshToken for cookie, not response)
         const dataFinal = {
@@ -52,7 +83,9 @@ class AuthService {
      * @param token
      * @returns
      */
-    verifyUserByAccessToken = async (token: string): Promise<{ userId: string }> => {
+    verifyUserByAccessToken = async (
+        token: string
+    ): Promise<{ userId: string }> => {
         // check in blacklist
         if (await tokenService.isInBlackList(token)) {
             throw new UnauthorizedRequestError(
@@ -62,13 +95,16 @@ class AuthService {
         // decode token
         const payload = jwtUtil.verifyAccessToken(token);
         const userId = payload.userId;
-        // check user exist in the system
-        const foundAdmin = await adminAccountRepository.findOne({
+        // check user is exist in the system and is verify
+        const foundCustomer = await customerRepository.findOne({
           _id: userId,
           deletedAt: null,
         });
-        if (!foundAdmin) {
-            throw new NotFoundRequestError('Not found user');
+        if (!foundCustomer) {
+            throw new NotFoundRequestError('Not found customer');
+        }
+        if(foundCustomer.isVerified == false){
+          throw new ForbiddenRequestError("Please verify your account first");
         }
         return { userId: payload.userId };
     };
@@ -78,17 +114,22 @@ class AuthService {
      * @param deviceId
      * @returns
      */
-    verifyUserByRefreshToken = async (token: string): Promise<{ userId: string }> => {
+    verifyUserByRefreshToken = async (
+        token: string
+    ): Promise<{ userId: string }> => {
         // check token có trong db ko
         const payload = jwtUtil.verifyRefreshToken(token);
         const userId = payload.userId;
-        // check user exist in the system
-        const foundAdmin = await adminAccountRepository.findOne({
+        // check user is exist in the system and is verify
+        const foundCustomer = await customerRepository.findOne({
           _id: userId,
           deletedAt: null,
         });
-        if (!foundAdmin) {
-            throw new NotFoundRequestError('Not found user');
+        if (!foundCustomer) {
+            throw new NotFoundRequestError('Not found customer');
+        }
+        if(foundCustomer.isVerified == false){
+          throw new ForbiddenRequestError("Please verify your account first");
         }
         return { userId: payload.userId };
     };
@@ -108,7 +149,7 @@ class AuthService {
             await tokenService.getDeviceIdByRefreshTokenAndUserId(
                 userId,
                 refreshToken,
-                'admin'
+                'client'
             );
         if (!currentDeviceId) {
             throw new UnauthorizedRequestError(
@@ -118,7 +159,11 @@ class AuthService {
         // RefreshToken lúc này được dùng ở 2 device chứng tỏ bị lộ
         if (deviceId != currentDeviceId) {
             // gọi service để xóa refreshToken trong hệ thống để không ai sài refreshToken này refresh lại được
-            await tokenService.deleteRefreshToken(userId, refreshToken, 'admin');
+            await tokenService.deleteRefreshToken(
+                userId,
+                refreshToken,
+                'client'
+            );
             throw new UnauthorizedRequestError(
                 'You are not allowed to get resources'
             );
@@ -133,7 +178,7 @@ class AuthService {
         // lưu accessToken vào blackList
         await tokenService.addAccessTokenToBlackList(accessToken);
         // xóa refreshToken hiện tại
-        await tokenService.deleteRefreshToken(userId, refreshToken, 'admin');
+        await tokenService.deleteRefreshToken(userId, refreshToken, 'client');
     };
 }
 export default new AuthService();
