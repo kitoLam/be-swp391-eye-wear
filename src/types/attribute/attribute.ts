@@ -11,12 +11,14 @@ export const AttributeSchema = z.object({
     createdAt: z.date(),
     updatedAt: z.date(),
     deletedAt: z.date().nullable(),
+    createdBy: z.instanceof(Types.ObjectId),
+    deletedBy: z.instanceof(Types.ObjectId).nullable()
 });
 
 export const AttributeCreateSchema = z.object({
     name: z.string().min(1, 'Attribute name is required').max(255, 'Attribute name is max 255 character'),
     showType: z.enum(['color', 'text'])
-});
+}).strict();
 
 export const AttributeUpdateSchema = z.object({
     name: z.string().min(1, 'Attribute name is required').max(255, 'Attribute name is max 255 character'),

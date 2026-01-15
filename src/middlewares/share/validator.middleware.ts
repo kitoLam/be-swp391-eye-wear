@@ -18,8 +18,7 @@ const validateQuery = (schema: z.ZodObject<any, any>) => {
     return (req: Request, res: Response, next: NextFunction) => {
         try {
             const query: any = schema.parse(req.query);
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            req.query = query;
+            req.validatedQuery = query;
             next();
         } catch (error) {
             if (error instanceof ZodError) {

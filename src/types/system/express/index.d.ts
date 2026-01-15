@@ -1,13 +1,11 @@
 import 'express';
+import { AuthAdminContext, AuthCustomerContext } from '../../context/context';
 
 declare module 'express' {
   interface Request {
-    adminAccount?: {
-      id: string;
-    },
-    customer?: {
-      id: string;
-    }
+    adminAccount?: AuthAdminContext,
+    customer?: AuthCustomerContext,
+    validatedQuery?: Record<string, any>
   }
 }
 export {};
