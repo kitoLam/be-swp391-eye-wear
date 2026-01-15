@@ -25,6 +25,20 @@ const CategorySchema = new Schema<ICategoryDocument>(
             type: Date,
             default: null,
         },
+        createdBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'AdminAccount',
+            required: true,
+        },
+        deletedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'AdminAccount',
+            default: null,
+        },
+        thumbnail: {
+            type: String,
+            default: null,
+        }
     },
     {
         timestamps: true,

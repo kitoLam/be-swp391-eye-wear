@@ -12,6 +12,9 @@ export const CategorySchema = z.object({
     createdAt: z.date(),
     updatedAt: z.date(),
     deletedAt: z.date().nullable(),
+    deletedBy: z.string().or(z.instanceof(Types.ObjectId)).nullable(),
+    createdBy: z.string().or(z.instanceof(Types.ObjectId)).nullable(),
+    thumbnail: z.string().nullable(),
 });
 
 /**
@@ -24,6 +27,7 @@ export const CreateCategorySchema = z.object({
         .string()
         .regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId format')
         .nullable(),
+    thumbnail: z.string().nullable()
 });
 
 /**
@@ -36,8 +40,9 @@ export const UpdateCategorySchema = z.object({
         .string()
         .regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId format')
         .nullable(),
+    thumbnail: z.string().nullable()
 });
 
 export type Category = z.infer<typeof CategorySchema>;
-export type CreateCategory = z.infer<typeof CreateCategorySchema>;
-export type UpdateCategory = z.infer<typeof UpdateCategorySchema>;
+export type CreateCategoryDTO = z.infer<typeof CreateCategorySchema>;
+export type UpdateCategoryDTO = z.infer<typeof UpdateCategorySchema>;
