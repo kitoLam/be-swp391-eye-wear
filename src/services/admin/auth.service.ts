@@ -37,7 +37,8 @@ class AuthService {
         const accessToken = tokenService.getNewAccessToken(userId);
         const refreshToken = await tokenService.getNewRefreshToken(
             { userId },
-            deviceId
+            deviceId,
+            'admin'
         );
         // Return accessToken and refreshToken (refreshToken for cookie, not response)
         const dataFinal = {
@@ -99,7 +100,8 @@ class AuthService {
         const currentDeviceId =
             await tokenService.getDeviceIdByRefreshTokenAndUserId(
                 userId,
-                refreshToken
+                refreshToken,
+                'admin'
             );
         if (!currentDeviceId) {
             throw new UnauthorizedRequestError(
@@ -109,7 +111,7 @@ class AuthService {
         // RefreshToken lúc này được dùng ở 2 device chứng tỏ bị lộ
         if (deviceId != currentDeviceId) {
             // gọi service để xóa refreshToken trong hệ thống để không ai sài refreshToken này refresh lại được
-            await tokenService.deleteRefreshToken(userId, refreshToken);
+            await tokenService.deleteRefreshToken(userId, refreshToken, 'admin');
             throw new UnauthorizedRequestError(
                 'You are not allowed to get resources'
             );
@@ -124,7 +126,7 @@ class AuthService {
         // lưu accessToken vào blackList
         await tokenService.addAccessTokenToBlackList(accessToken);
         // xóa refreshToken hiện tại
-        await tokenService.deleteRefreshToken(userId, refreshToken);
+        await tokenService.deleteRefreshToken(userId, refreshToken, 'admin');
     };
 }
 export default new AuthService();

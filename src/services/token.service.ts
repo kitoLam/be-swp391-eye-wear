@@ -9,8 +9,9 @@ class TokenService {
         return accessToken;
     };
     getNewRefreshToken = async (
-        payload: { userId: string; email?: string },
-        deviceId: string
+        payload: { userId: string; },
+        deviceId: string,
+        side: 'admin' | 'client'
     ) => {
         // generate refreshToken from jwtUtil
         const refreshToken = jwtUtil.generateRefreshToken(
@@ -18,7 +19,7 @@ class TokenService {
         );
         // store refreshToken in redis
         await redisService.setDataWithExpiredTime(
-            `${redisPrefix.refreshToken}:${payload.userId}:${refreshToken}`,
+            `${redisPrefix.refreshToken}:${side}:${payload.userId}:${refreshToken}`,
             deviceId,
             config.jwt.refreshExpiresInSecond
         );
@@ -43,16 +44,17 @@ class TokenService {
     };
     getDeviceIdByRefreshTokenAndUserId = async (
         userId: string,
-        token: string
+        token: string,
+        side: 'admin' | 'client'
     ): Promise<string | null> => {
         const deviceId = await redisService.getDataByKey<string>(
-            `${redisPrefix.refreshToken}:${userId}:${token}`
+            `${redisPrefix.refreshToken}:${side}:${userId}:${token}`
         );
         return deviceId;
     };
-    deleteRefreshToken = async (userId: string, token: string) => {
+    deleteRefreshToken = async (userId: string, token: string, side: 'admin' | 'client') => {
         await redisService.deleteDataByKey(
-            `${redisPrefix.refreshToken}:${userId}:${token}`
+            `${redisPrefix.refreshToken}:${side}:${userId}:${token}`
         );
     };
 }
