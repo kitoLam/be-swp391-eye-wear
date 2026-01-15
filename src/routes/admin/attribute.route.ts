@@ -3,7 +3,7 @@ import { validateBody, validateParams, validateQuery } from "../../middlewares/s
 import { authenticateMiddleware, verifyRefreshTokenMiddleware } from "../../middlewares/admin/auth.middleware";
 import { AttributeCreateSchema } from "../../types/attribute/attribute";
 import attributeController from "../../controllers/admin/attribute.controller";
-import { ObjectIdSchema } from "../common/objectId";
+import { ObjectIdSchema } from "../../types/common/objectId";
 import { AttributeListQuerySchema } from "../../types/attribute/attribute.query";
 
 const router = Router();

@@ -38,13 +38,12 @@ const CustomerSchema = new Schema<ICustomerDocument>(
                 message:
                     'Gender must be F (Female), M (Male), or N (Not specified)',
             },
-            required: [true, 'Gender is required'],
         },
         address: [
             {
-                no: {
+                street: {
                     type: String,
-                    required: [true, 'Address number is required'],
+                    required: [true, 'Address street is required'],
                     trim: true,
                 },
                 ward: {
@@ -110,6 +109,11 @@ const CustomerSchema = new Schema<ICustomerDocument>(
             type: Date,
             default: null,
         },
+        deletedBy: {
+            type: Schema.Types.ObjectId,
+            ref: 'AdminAccount',
+            default: null,
+        }
     },
     {
         timestamps: true,

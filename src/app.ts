@@ -61,7 +61,7 @@ app.use(
     adminRouter
 );
 app.use(
-    `/api//${config.apiVersion}/${systemConstant.prefixPathClient}`,
+    `/api/${config.apiVersion}/${systemConstant.prefixPathClient}`,
     clientRouter
 );
 app.use((req, res) => {
