@@ -7,11 +7,13 @@ import { Types } from 'mongoose';
 export const CategorySchema = z.object({
     _id: z.instanceof(Types.ObjectId),
     name: z.string().min(1, 'Category name is required'),
-    type: z.enum(['frame', 'lens']),
     parentCate: z.instanceof(Types.ObjectId).nullable(),
     createdAt: z.date(),
     updatedAt: z.date(),
     deletedAt: z.date().nullable(),
+    deletedBy: z.string().or(z.instanceof(Types.ObjectId)).nullable(),
+    createdBy: z.string().or(z.instanceof(Types.ObjectId)).nullable(),
+    thumbnail: z.string().nullable(),
 });
 
 /**
@@ -19,25 +21,24 @@ export const CategorySchema = z.object({
  */
 export const CreateCategorySchema = z.object({
     name: z.string().min(1, 'Category name is required'),
-    type: z.enum(['frame', 'lens']),
-    parentCate: z
+    parentId: z
         .string()
-        .regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId format')
+        .refine(value => Types.ObjectId.isValid(value), "parentId is not valid")
         .nullable(),
-});
+}).strict();
 
 /**
  * Zod schema for updating a category
  */
 export const UpdateCategorySchema = z.object({
     name: z.string().min(1, 'Category name is required'),
-    type: z.enum(['frame', 'lens']),
-    parentCate: z
+    parentId: z
         .string()
-        .regex(/^[0-9a-fA-F]{24}$/, 'Invalid ObjectId format')
+        .refine(value => Types.ObjectId.isValid(value), "parentId is not valid")
         .nullable(),
-});
+    // thumbnail: z.string().nullable()
+}).strict();
 
 export type Category = z.infer<typeof CategorySchema>;
-export type CreateCategory = z.infer<typeof CreateCategorySchema>;
-export type UpdateCategory = z.infer<typeof UpdateCategorySchema>;
+export type CreateCategoryDTO = z.infer<typeof CreateCategorySchema>;
+export type UpdateCategoryDTO = z.infer<typeof UpdateCategorySchema>;
