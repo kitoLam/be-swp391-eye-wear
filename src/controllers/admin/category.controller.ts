@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import categoryService from "../../services/admin/category.service";
 import { ApiResponse } from "../../utils/api-response";
-import { CreateCategoryDTO, UpdateCategoryDTO } from "../../types/categories/categories";
+import { CreateCategoryDTO, UpdateCategoryDTO } from "../../types/category/category.dto";
 
 class CategoryController {
   createCategory = async (req: Request, res: Response) => {

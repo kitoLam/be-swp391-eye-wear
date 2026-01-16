@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Category } from '../../types/categories/categories';
+import { Category } from '../../types/category/category';
 
 export type ICategoryDocument = Category & Document;
 

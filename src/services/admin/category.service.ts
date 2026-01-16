@@ -7,7 +7,7 @@ import { categoryRepository } from '../../repositories/categories/categories.rep
 import {
     CreateCategoryDTO,
     UpdateCategoryDTO,
-} from '../../types/categories/categories';
+} from '../../types/category/category.dto';
 import { AuthAdminContext } from '../../types/context/context';
 
 class CategoryService {
