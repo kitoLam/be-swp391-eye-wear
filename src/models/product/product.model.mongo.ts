@@ -23,7 +23,7 @@ const ProductSchema = new Schema<IProductDocument>(
         },
         type: {
             type: String,
-            enum: ['frame', 'lens'],
+            enum: ['frame', 'lens', 'sunglass'],
             required: [true, 'Product type is required'],
         },
         brand: {
@@ -129,14 +129,14 @@ const ProductSchema = new Schema<IProductDocument>(
 // Custom validation for spec based on type
 ProductSchema.pre('save', function (next) {
     if (this.spec !== null) {
-        if (this.type === 'frame') {
+        if (this.type === 'frame' || this.type === 'sunglass') {
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const frameSpec = this.spec as any;
             // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             if (!frameSpec.material || !frameSpec.shape || !frameSpec.gender) {
                 return next(
                     new Error(
-                        'Frame spec must include material, shape, and gender'
+                        'Frame/Sunglass spec must include material, shape, and gender'
                     )
                 );
             }

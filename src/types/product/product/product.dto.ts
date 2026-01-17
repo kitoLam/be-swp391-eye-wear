@@ -9,9 +9,27 @@ import { VariantSchema } from '../variant/variant';
 export const ProductCreateFrameSchema = z
     .object({
         nameBase: z.string().min(1, 'Product nameBase is required'),
-        slugBase: z.string().min(1, 'Product slugBase is required'),
-        skuBase: z.string().min(1, 'Product skuBase is required'),
+        slugBase: z.string().min(1, 'Product slugBase is required').optional(),
+        skuBase: z.string().min(1, 'Product skuBase is required').optional(),
         type: z.literal('frame'),
+        brand: z.string().min(1, 'Brand is required').nullable(),
+        categories: z
+            .array(z.string())
+            .min(1, 'At least one category is required'),
+        spec: FrameSpecSchema,
+        variants: z.array(VariantSchema),
+    })
+    .strict();
+
+/**
+ * Schema cho việc tạo mới Product (Sunglass)
+ */
+export const ProductCreateSunglassSchema = z
+    .object({
+        nameBase: z.string().min(1, 'Product nameBase is required'),
+        slugBase: z.string().min(1, 'Product slugBase is required').optional(),
+        skuBase: z.string().min(1, 'Product skuBase is required').optional(),
+        type: z.literal('sunglass'),
         brand: z.string().min(1, 'Brand is required').nullable(),
         categories: z
             .array(z.string())
@@ -27,8 +45,8 @@ export const ProductCreateFrameSchema = z
 export const ProductCreateLensSchema = z
     .object({
         nameBase: z.string().min(1, 'Product nameBase is required'),
-        slugBase: z.string().min(1, 'Product slugBase is required'),
-        skuBase: z.string().min(1, 'Product skuBase is required'),
+        slugBase: z.string().min(1, 'Product slugBase is required').optional(),
+        skuBase: z.string().min(1, 'Product skuBase is required').optional(),
         type: z.literal('lens'),
         brand: z.string().min(1, 'Brand is required').nullable(),
         categories: z
@@ -44,6 +62,7 @@ export const ProductCreateLensSchema = z
  */
 export const ProductCreateSchema = z.discriminatedUnion('type', [
     ProductCreateFrameSchema,
+    ProductCreateSunglassSchema,
     ProductCreateLensSchema,
 ]);
 
@@ -55,6 +74,23 @@ export const ProductUpdateFrameSchema = z.object({
     slugBase: z.string().min(1, 'Product slugBase is required').optional(),
     skuBase: z.string().min(1, 'Product skuBase is required').optional(),
     type: z.literal('frame').optional(),
+    brand: z.string().min(1, 'Brand is required').nullable().optional(),
+    categories: z
+        .array(z.string())
+        .min(1, 'At least one category is required')
+        .optional(),
+    spec: FrameSpecSchema.optional(),
+    variants: z.array(VariantSchema).optional(),
+});
+
+/**
+ * Schema cho việc cập nhật Product (Sunglass)
+ */
+export const ProductUpdateSunglassSchema = z.object({
+    nameBase: z.string().min(1, 'Product nameBase is required').optional(),
+    slugBase: z.string().min(1, 'Product slugBase is required').optional(),
+    skuBase: z.string().min(1, 'Product skuBase is required').optional(),
+    type: z.literal('sunglass').optional(),
     brand: z.string().min(1, 'Brand is required').nullable().optional(),
     categories: z
         .array(z.string())
@@ -86,6 +122,7 @@ export const ProductUpdateLensSchema = z.object({
  */
 export const ProductUpdateSchema = z.union([
     ProductUpdateFrameSchema,
+    ProductUpdateSunglassSchema,
     ProductUpdateLensSchema,
 ]);
 

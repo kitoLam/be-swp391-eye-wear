@@ -2,9 +2,9 @@ import z from 'zod';
 
 export const VariantSchema = z
     .object({
-        sku: z.string().min(1, 'SKU is required'),
-        name: z.string().min(1, 'Name is required'),
-        slug: z.string().min(1, 'Slug is required'),
+        sku: z.string().min(1, 'SKU is required').optional(),
+        name: z.string().min(1, 'Name is required').optional(),
+        slug: z.string().min(1, 'Slug is required').optional(),
         options: z.array(
             z.object({
                 attributeId: z.string().min(1, 'Attribute ID is required'),

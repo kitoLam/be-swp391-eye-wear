@@ -36,10 +36,10 @@ export const toProductCreateDTO = (
         })),
     };
 
-    if (data.type === 'frame') {
+    if (data.type === 'frame' || data.type === 'sunglass') {
         return {
             ...baseProduct,
-            type: 'frame' as const,
+            type: data.type as 'frame' | 'sunglass',
             spec: data.spec,
         };
     } else {
