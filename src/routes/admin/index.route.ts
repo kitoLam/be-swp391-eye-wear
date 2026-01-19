@@ -3,6 +3,7 @@ import authRouter from './auth.route';
 import attributeRouter from './attribute.route';
 import categoryRouter from './category.route';
 import productRouter from './product.route';
+import voucherRouter from './voucher.route';
 
 const router = Router();
 
@@ -10,5 +11,6 @@ router.use('/auth', authRouter);
 router.use('/attributes', attributeRouter);
 router.use('/categories', categoryRouter);
 router.use('/products', productRouter);
+router.use('/vouchers', voucherRouter);
 
 export default router;

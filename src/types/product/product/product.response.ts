@@ -8,7 +8,7 @@ export const StandardProductSchema = z.object({
     nameBase: z.string(),
     slugBase: z.string(),
     skuBase: z.string(),
-    type: z.enum(['frame', 'lens']),
+    type: z.enum(['frame', 'lens', 'sunglass']),
     brand: z.string().nullable(),
     categories: z.array(z.string()),
     defaultVariantPrice: z.number().optional(),

@@ -10,6 +10,7 @@ import adminRouter from './routes/admin/index.route';
 import { corsHandler } from './middlewares/share/cors.middleware';
 import { systemConstant } from './config/constants/system.constant';
 import clientRouter from './routes/client/index.route';
+import commonRouter from './routes/common/index.route';
 import cookieParser from 'cookie-parser';
 // Tạo Express application
 const app: Application = express();
@@ -56,10 +57,14 @@ app.use(cookieParser());
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'My API is running 1' });
 });
+// Common/Public routes (no auth required)
+app.use(`/api/${config.apiVersion}`, commonRouter);
+// Admin routes (auth required)
 app.use(
     `/api/${config.apiVersion}/${systemConstant.prefixPathAdmin}`,
     adminRouter
 );
+// Client routes
 app.use(
     `/api/${config.apiVersion}/${systemConstant.prefixPathClient}`,
     clientRouter

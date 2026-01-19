@@ -9,66 +9,107 @@ const OrderSchema = new Schema<IOrderDocument>(
         type: {
             type: String,
             enum: {
-                values: ['NORMAL', 'PRE-ORDER', 'CUSTOM'],
-                message: 'Order type must be NORMAL or PRE-ORDER',
+                values: ['NORMAL', 'PRE-ORDER', 'MANUFACTURING'],
+                message:
+                    'Order type must be NORMAL, PRE-ORDER, or MANUFACTURING',
             },
             required: [true, 'Order type is required'],
         },
         products: [
             {
-                frames: {
+                // Updated: renamed 'frames' to 'product_id' and added quantity
+                product_id: {
                     type: String,
-                    required: [true, 'Frame ID is required'],
+                    required: [true, 'Product ID is required'],
                     trim: true,
                 },
-                lens: {
-                    lens_id: {
-                        type: String,
-                        required: [true, 'Lens ID is required'],
-                        trim: true,
-                    },
-                    parameters: {
-                        left: {
-                            SPH: {
-                                type: Number,
-                                required: [true, 'Left SPH is required'],
-                            },
-                            CYL: {
-                                type: Number,
-                                required: [true, 'Left CYL is required'],
-                            },
-                            AXIS: {
-                                type: Number,
-                                required: [true, 'Left AXIS is required'],
-                            },
-                        },
-                        right: {
-                            SPH: {
-                                type: Number,
-                                required: [true, 'Right SPH is required'],
-                            },
-                            CYL: {
-                                type: Number,
-                                required: [true, 'Right CYL is required'],
-                            },
-                            AXIS: {
-                                type: Number,
-                                required: [true, 'Right AXIS is required'],
-                            },
-                        },
-                        PD: {
-                            type: Number,
-                            required: [true, 'PD is required'],
-                        },
-                    },
-                    quantity: {
-                        type: Number,
-                        required: [true, 'Lens quantity is required'],
-                        min: [1, 'Quantity must be at least 1'],
-                    },
+                quantity: {
+                    type: Number,
+                    required: [true, 'Product quantity is required'],
+                    min: [1, 'Quantity must be at least 1'],
+                    default: 1,
                 },
+                lens: {
+                    // Lens object is now optional, so type fields are not strictly required unless lens is present.
+                    // However, in Mongoose, if 'lens' is present, we enforce validation via schema structure or logic.
+                    // Defining it as a sub-schema with required=false allows it to be optional.
+                    type: new Schema(
+                        {
+                            lens_id: {
+                                type: String,
+                                required: [true, 'Lens ID is required'],
+                                trim: true,
+                            },
+                            parameters: {
+                                left: {
+                                    SPH: { type: Number, required: true },
+                                    CYL: { type: Number, required: true },
+                                    AXIS: { type: Number, required: true },
+                                },
+                                right: {
+                                    SPH: { type: Number, required: true },
+                                    CYL: { type: Number, required: true },
+                                    AXIS: { type: Number, required: true },
+                                },
+                                PD: { type: Number, required: true },
+                            },
+                            quantity: {
+                                type: Number,
+                                required: [true, 'Lens quantity is required'],
+                                min: [1, 'Quantity must be at least 1'],
+                                default: 1,
+                            },
+                        },
+                        { _id: false }
+                    ), // No separate _id for lens sub-doc if desired, or keep it. Often sub-docs get _ids.
+                    required: false, // Lens is optional
+                },
+                // Backward compatibility mapping can be handled in code if needed, but for now we follow new structure.
             },
         ],
+        isVerified: {
+            status: {
+                type: String,
+                enum: {
+                    values: ['PENDING', 'APPROVE', 'REJECT'],
+                    message:
+                        'Verification status must be PENDING, APPROVE, or REJECT',
+                },
+                default: 'PENDING',
+            },
+            staffVerified: {
+                type: String,
+                trim: true,
+            },
+        },
+        assignment: {
+            staffId: {
+                type: String,
+                trim: true,
+            },
+            assignStaff: {
+                type: String,
+                trim: true,
+            },
+            assignedAt: {
+                type: Date,
+            },
+            startedAt: {
+                type: Date,
+            },
+            completedAt: {
+                type: Date,
+            },
+            status: {
+                type: String,
+                enum: {
+                    values: ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'],
+                    message:
+                        'Assignment status must be PENDING, ASSIGNED, IN_PROGRESS, or COMPLETED',
+                },
+                default: 'PENDING',
+            },
+        },
         price: {
             type: Number,
             required: [true, 'Price is required'],
@@ -92,6 +133,15 @@ OrderSchema.index({ type: 1, deletedAt: 1 });
 
 // Index for price range queries
 OrderSchema.index({ price: 1 });
+
+// Index for verification status
+OrderSchema.index({ 'isVerified.status': 1 });
+
+// Index for assignment status
+OrderSchema.index({ 'assignment.status': 1 });
+
+// Index for staff assignment
+OrderSchema.index({ 'assignment.staffId': 1 });
 
 // Custom validation to ensure at least one product
 OrderSchema.pre('save', function (next) {

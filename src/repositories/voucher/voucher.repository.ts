@@ -56,6 +56,27 @@ export class VoucherRepository extends BaseRepository<IVoucherDocument> {
 
         return { valid: true, voucher };
     }
+
+    // Get voucher statistics
+    async getStatistics(): Promise<{
+        total: number;
+        byStatus: { status: string; count: number }[];
+        byType: { type: string; count: number }[];
+    }> {
+        const total = await this.count();
+        const byStatus = await VoucherModel.aggregate([
+            { $match: { deletedAt: null } },
+            { $group: { _id: '$status', count: { $sum: 1 } } },
+            { $project: { status: '$_id', count: 1, _id: 0 } },
+        ]);
+        const byType = await VoucherModel.aggregate([
+            { $match: { deletedAt: null } },
+            { $group: { _id: '$typeDiscount', count: { $sum: 1 } } },
+            { $project: { type: '$_id', count: 1, _id: 0 } },
+        ]);
+
+        return { total, byStatus, byType };
+    }
 }
 
 export const voucherRepository = new VoucherRepository();

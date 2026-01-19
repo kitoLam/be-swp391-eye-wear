@@ -16,6 +16,11 @@ const PaymentSchema = new Schema<IPaymentDocument>(
             required: [true, 'Invoice ID is required'],
             index: true,
         },
+        payForOrder: {
+            type: String,
+            required: [true, 'Order ID is required'],
+            index: true,
+        },
         payment_method: {
             type: String,
             enum: {
@@ -41,7 +46,7 @@ const PaymentSchema = new Schema<IPaymentDocument>(
         price: {
             type: Number,
             required: [true, 'Price is required'],
-            min: [0, 'Price must be non-negative'],
+            // Removed min validation to allow negative values for refunds
         },
         deletedAt: {
             type: Date,
@@ -59,6 +64,9 @@ PaymentSchema.index({ owner_id: 1 });
 // Index for invoice lookup
 PaymentSchema.index({ invoice_id: 1 });
 
+// Index for order lookup
+PaymentSchema.index({ payForOrder: 1 });
+
 // Index for status queries
 PaymentSchema.index({ status: 1, deletedAt: 1 });
 
@@ -67,6 +75,9 @@ PaymentSchema.index({ payment_method: 1 });
 
 // Compound index for owner and status
 PaymentSchema.index({ owner_id: 1, status: 1 });
+
+// Compound index for order and status
+PaymentSchema.index({ payForOrder: 1, status: 1 });
 
 // Method to check if payment is completed
 PaymentSchema.methods.isPaid = function (): boolean {
@@ -83,6 +94,11 @@ PaymentSchema.methods.markAsPaid = async function (): Promise<void> {
 PaymentSchema.methods.markAsUnpaid = async function (): Promise<void> {
     this.status = 'UNPAID';
     await this.save();
+};
+
+// Method to check if it's a refund
+PaymentSchema.methods.isRefund = function (): boolean {
+    return this.price < 0;
 };
 
 export const PaymentModel = mongoose.model<IPaymentDocument>(

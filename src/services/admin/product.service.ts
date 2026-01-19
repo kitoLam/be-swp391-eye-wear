@@ -11,6 +11,8 @@ import { AuthAdminContext } from '../../types/context/context';
 import { NotFoundRequestError } from '../../errors/apiError/api-error';
 import * as productConverter from '../../converters/admin/product.converter';
 import { ProductListQuery } from '../../types/product/product/product.query';
+import { slugify, generateUniqueSlug } from '../../utils/slug.util';
+import { generateSkuBase, generateVariantSku } from '../../utils/sku.util';
 
 class ProductService {
     /**
@@ -23,8 +25,39 @@ class ProductService {
         payload: ProductCreateDTO,
         context: AuthAdminContext
     ) => {
+        // 1. Generate slugBase with UUID
+        const baseSlug = slugify(payload.nameBase);
+        const uniqueSlug = generateUniqueSlug(baseSlug);
+
+        // 2. Generate skuBase
+        const skuBase = generateSkuBase(
+            payload.type,
+            payload.nameBase,
+            uniqueSlug
+        );
+
+        // 3. Generate variant SKUs, names, and slugs
+        const variantsWithGenerated = payload.variants.map(variant => {
+            const variantSku = generateVariantSku(skuBase, variant.options);
+            const variantName =
+                variant.name ||
+                `${payload.nameBase} - ${variant.options.map(o => o.label).join(' - ')}`;
+            const variantSlug = variant.slug || slugify(variantName);
+
+            return {
+                ...variant,
+                sku: variantSku,
+                name: variantName,
+                slug: variantSlug,
+            };
+        });
+
+        // 4. Create product with generated values
         await productRepository.create({
             ...payload,
+            slugBase: uniqueSlug,
+            skuBase: skuBase,
+            variants: variantsWithGenerated,
             createdBy: new Types.ObjectId(context.id),
         } as any);
     };

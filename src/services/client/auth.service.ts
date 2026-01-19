@@ -13,25 +13,41 @@ import {
 import { comparePassword, hashPassword } from '../../utils/bcrypt.util';
 import tokenService from '../token.service';
 import * as jwtUtil from '../../utils/jwt.util';
+import neo4jVoucherService from '../neo4j/voucher.neo4j.service';
+
 class AuthService {
     registerCustomer = async (payload: RegisterCustomerDTO) => {
-        // check email exist
+        // 1. Check if email already exists
         const foundUser = await customerRepository.findOne({
             email: payload.email,
             deletedAt: null,
         });
+
         if (foundUser) {
             throw new ConflictRequestError(
                 'Another user has already registered by this email!'
             );
         }
-        // hash password
+
+        // 2. Hash password
         const hashedPassword = hashPassword(payload.password);
-        // create customer
-        await customerRepository.create({
+
+        // 3. Create customer in MongoDB
+        const customer = await customerRepository.create({
             ...payload,
             hashedPassword: hashedPassword,
         });
+
+        // 4. Create user node in Neo4j
+        try {
+            await neo4jVoucherService.createUserNode(
+                customer._id.toString(),
+                customer.email
+            );
+        } catch (error) {
+            console.error('Failed to create Neo4j user node:', error);
+            // Log error but don't fail registration
+        }
     };
     login = async (
         payload: LoginCustomerDTO,
@@ -97,14 +113,14 @@ class AuthService {
         const userId = payload.userId;
         // check user is exist in the system and is verify
         const foundCustomer = await customerRepository.findOne({
-          _id: userId,
-          deletedAt: null,
+            _id: userId,
+            deletedAt: null,
         });
         if (!foundCustomer) {
             throw new NotFoundRequestError('Not found customer');
         }
-        if(foundCustomer.isVerified == false){
-          throw new ForbiddenRequestError("Please verify your account first");
+        if (foundCustomer.isVerified == false) {
+            throw new ForbiddenRequestError('Please verify your account first');
         }
         return { userId: payload.userId };
     };
@@ -122,14 +138,14 @@ class AuthService {
         const userId = payload.userId;
         // check user is exist in the system and is verify
         const foundCustomer = await customerRepository.findOne({
-          _id: userId,
-          deletedAt: null,
+            _id: userId,
+            deletedAt: null,
         });
         if (!foundCustomer) {
             throw new NotFoundRequestError('Not found customer');
         }
-        if(foundCustomer.isVerified == false){
-          throw new ForbiddenRequestError("Please verify your account first");
+        if (foundCustomer.isVerified == false) {
+            throw new ForbiddenRequestError('Please verify your account first');
         }
         return { userId: payload.userId };
     };
