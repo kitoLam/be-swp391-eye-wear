@@ -1,5 +1,5 @@
 import { voucherRepository } from '../../repositories/voucher/voucher.repository';
-import neo4jVoucherService from '../neo4j/voucher.neo4j.service';
+import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 import { CreateVoucher, UpdateVoucher } from '../../types/voucher/voucher';
 import {
     NotFoundRequestError,
@@ -16,7 +16,7 @@ class VoucherAdminService {
             const voucher = await voucherRepository.create(payload as any);
 
             // 2. Create node in Neo4j
-            await neo4jVoucherService.createVoucherNode(
+            await neo4jVoucherRepository.createVoucherNode(
                 voucher._id.toString(),
                 voucher.code
             );
@@ -84,7 +84,8 @@ class VoucherAdminService {
         }
 
         // Get Neo4j statistics
-        const stats = await neo4jVoucherService.getVoucherStatistics(voucherId);
+        const stats =
+            await neo4jVoucherRepository.getVoucherStatistics(voucherId);
 
         return {
             ...voucher.toObject(),
@@ -120,7 +121,7 @@ class VoucherAdminService {
         await voucherRepository.delete(voucherId);
 
         // 2. Delete node and relationships in Neo4j
-        await neo4jVoucherService.deleteVoucherNode(voucherId);
+        await neo4jVoucherRepository.deleteVoucherNode(voucherId);
 
         return { message: 'Voucher deleted successfully' };
     };
@@ -140,7 +141,7 @@ class VoucherAdminService {
         }
 
         // 2. Grant in Neo4j
-        const count = await neo4jVoucherService.grantVoucherToUsers(
+        const count = await neo4jVoucherRepository.grantVoucherToUsers(
             userIds,
             voucherId,
             grantedBy
@@ -163,7 +164,7 @@ class VoucherAdminService {
         }
 
         // 2. Revoke in Neo4j
-        const count = await neo4jVoucherService.revokeVoucherFromUsers(
+        const count = await neo4jVoucherRepository.revokeVoucherFromUsers(
             userIds,
             voucherId
         );
@@ -185,7 +186,7 @@ class VoucherAdminService {
         }
 
         // 2. Get users from Neo4j
-        const users = await neo4jVoucherService.getVoucherUsers(voucherId);
+        const users = await neo4jVoucherRepository.getVoucherUsers(voucherId);
 
         return {
             voucher: {
@@ -201,7 +202,7 @@ class VoucherAdminService {
      */
     getUserVouchers = async (userId: string) => {
         // Get voucher IDs from Neo4j
-        const voucherIds = await neo4jVoucherService.getUserVouchers(userId);
+        const voucherIds = await neo4jVoucherRepository.getUserVouchers(userId);
 
         if (voucherIds.length === 0) {
             return { vouchers: [] };

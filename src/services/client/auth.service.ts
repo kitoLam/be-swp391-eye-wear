@@ -13,7 +13,7 @@ import {
 import { comparePassword, hashPassword } from '../../utils/bcrypt.util';
 import tokenService from '../token.service';
 import * as jwtUtil from '../../utils/jwt.util';
-import neo4jVoucherService from '../neo4j/voucher.neo4j.service';
+import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 
 class AuthService {
     registerCustomer = async (payload: RegisterCustomerDTO) => {
@@ -40,7 +40,7 @@ class AuthService {
 
         // 4. Create user node in Neo4j
         try {
-            await neo4jVoucherService.createUserNode(
+            await neo4jVoucherRepository.createUserNode(
                 customer._id.toString(),
                 customer.email
             );

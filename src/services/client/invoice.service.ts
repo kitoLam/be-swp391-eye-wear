@@ -1,7 +1,7 @@
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { orderRepository } from '../../repositories/order/order.repository';
 import { voucherRepository } from '../../repositories/voucher/voucher.repository';
-import neo4jVoucherService from '../neo4j/voucher.neo4j.service';
+import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 import { CreateInvoice, UpdateInvoice } from '../../types/invoice/invoice';
 import {
     NotFoundRequestError,
@@ -47,7 +47,7 @@ class InvoiceClientService {
 
             // Check if user has access (for SPECIFIC vouchers)
             if (voucher.applyScope === 'SPECIFIC') {
-                const hasAccess = await neo4jVoucherService.userHasVoucher(
+                const hasAccess = await neo4jVoucherRepository.userHasVoucher(
                     customerId,
                     voucher._id.toString()
                 );
@@ -93,7 +93,7 @@ class InvoiceClientService {
 
             // Mark voucher as used in Neo4j (if SPECIFIC)
             if (voucher.applyScope === 'SPECIFIC') {
-                await neo4jVoucherService.markVoucherAsUsed(
+                await neo4jVoucherRepository.markVoucherAsUsed(
                     customerId,
                     voucher._id.toString()
                 );

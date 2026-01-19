@@ -1,4 +1,5 @@
 import neo4j, { Driver, Session } from 'neo4j-driver';
+import { config } from '../../config/env.config';
 
 interface UserVoucherRelation {
     userId: string;
@@ -9,16 +10,17 @@ interface UserVoucherRelation {
     usedAt: Date | null;
 }
 
-class Neo4jVoucherService {
+class Neo4jVoucherRepository {
     private driver: Driver;
 
     constructor() {
         this.driver = neo4j.driver(
-            process.env.NEO4J_URI || 'bolt://localhost:7687',
-            neo4j.auth.basic(
-                process.env.NEO4J_USER || 'neo4j',
-                process.env.NEO4J_PASSWORD || 'password'
-            )
+            config.neo4j.uri,
+            neo4j.auth.basic(config.neo4j.user, config.neo4j.password),
+            {
+                maxConnectionPoolSize: 50,
+                connectionAcquisitionTimeout: 2 * 60 * 1000,
+            }
         );
     }
 
@@ -282,5 +284,5 @@ class Neo4jVoucherService {
     }
 }
 
-export default new Neo4jVoucherService();
+export const neo4jVoucherRepository = new Neo4jVoucherRepository();
 export { UserVoucherRelation };

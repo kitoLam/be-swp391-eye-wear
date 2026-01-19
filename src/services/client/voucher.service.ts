@@ -1,5 +1,5 @@
 import { voucherRepository } from '../../repositories/voucher/voucher.repository';
-import neo4jVoucherService from '../neo4j/voucher.neo4j.service';
+import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 import {
     NotFoundRequestError,
     BadRequestError,
@@ -17,7 +17,7 @@ class VoucherClientService {
     getMyVouchers = async (customerId: string) => {
         // 1. Get unused voucher IDs from Neo4j
         const voucherIds =
-            await neo4jVoucherService.getUserUnusedVouchers(customerId);
+            await neo4jVoucherRepository.getUserUnusedVouchers(customerId);
 
         if (voucherIds.length === 0) {
             return { vouchers: [] };
@@ -82,7 +82,7 @@ class VoucherClientService {
 
         // 5. Check if user has access (for SPECIFIC vouchers)
         if (voucher.applyScope === 'SPECIFIC') {
-            const hasAccess = await neo4jVoucherService.userHasVoucher(
+            const hasAccess = await neo4jVoucherRepository.userHasVoucher(
                 customerId,
                 voucher._id.toString()
             );
