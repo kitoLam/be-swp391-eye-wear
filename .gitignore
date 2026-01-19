@@ -33,7 +33,7 @@ Thumbs.db
 *.swp
 *.swo
 *~
-
+/postman
 # IDE
 .vscode/
 .idea/
