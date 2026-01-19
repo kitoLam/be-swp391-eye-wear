@@ -9,29 +9,48 @@ import { customerRepository } from '../../repositories/customer/customer.reposit
 import {
     LoginCustomerDTO,
     RegisterCustomerDTO,
-} from '../../types/auth/client/auth';
-import { comparePassword, hashPassword } from '../../utils/bcrypt.util';
+} from '../../types/customer/customer.dto';
+import { comparePassword, hashPassword } from '../../utils/hash.util';
 import tokenService from '../token.service';
 import * as jwtUtil from '../../utils/jwt.util';
-class AuthService {
+import neo4jVoucherService from '../neo4j/voucher.neo4j.service';
+
+class AuthClientService {
+    /**
+     * Register new customer
+     */
     registerCustomer = async (payload: RegisterCustomerDTO) => {
-        // check email exist
-        const foundUser = await customerRepository.findOne({
+        // 1. Check if email already exists
+        const existingCustomer = await customerRepository.findOne({
             email: payload.email,
             deletedAt: null,
         });
-        if (foundUser) {
+
+        if (existingCustomer) {
             throw new ConflictRequestError(
                 'Another user has already registered by this email!'
             );
         }
-        // hash password
-        const hashedPassword = hashPassword(payload.password);
-        // create customer
-        await customerRepository.create({
+
+        // 2. Hash password
+        const hashedPassword = await hashPassword(payload.password);
+
+        // 3. Create customer in MongoDB
+        const customer = await customerRepository.create({
             ...payload,
             hashedPassword: hashedPassword,
         });
+
+        // 4. Create user node in Neo4j
+        try {
+            await neo4jVoucherService.createUserNode(
+                customer._id.toString(),
+                customer.email
+            );
+        } catch (error) {
+            console.error('Failed to create Neo4j user node:', error);
+            // Log error but don't fail registration
+        }
     };
     login = async (
         payload: LoginCustomerDTO,
@@ -97,14 +116,14 @@ class AuthService {
         const userId = payload.userId;
         // check user is exist in the system and is verify
         const foundCustomer = await customerRepository.findOne({
-          _id: userId,
-          deletedAt: null,
+            _id: userId,
+            deletedAt: null,
         });
         if (!foundCustomer) {
             throw new NotFoundRequestError('Not found customer');
         }
-        if(foundCustomer.isVerified == false){
-          throw new ForbiddenRequestError("Please verify your account first");
+        if (foundCustomer.isVerified == false) {
+            throw new ForbiddenRequestError('Please verify your account first');
         }
         return { userId: payload.userId };
     };
@@ -122,14 +141,14 @@ class AuthService {
         const userId = payload.userId;
         // check user is exist in the system and is verify
         const foundCustomer = await customerRepository.findOne({
-          _id: userId,
-          deletedAt: null,
+            _id: userId,
+            deletedAt: null,
         });
         if (!foundCustomer) {
             throw new NotFoundRequestError('Not found customer');
         }
-        if(foundCustomer.isVerified == false){
-          throw new ForbiddenRequestError("Please verify your account first");
+        if (foundCustomer.isVerified == false) {
+            throw new ForbiddenRequestError('Please verify your account first');
         }
         return { userId: payload.userId };
     };

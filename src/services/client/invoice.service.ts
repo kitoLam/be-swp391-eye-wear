@@ -1,5 +1,7 @@
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { orderRepository } from '../../repositories/order/order.repository';
+import { voucherRepository } from '../../repositories/voucher/voucher.repository';
+import neo4jVoucherService from '../neo4j/voucher.neo4j.service';
 import { CreateInvoice, UpdateInvoice } from '../../types/invoice/invoice';
 import {
     NotFoundRequestError,
@@ -27,9 +29,79 @@ class InvoiceClientService {
             0
         );
 
-        // 3. Apply voucher discount (simplified - actual logic may involve voucher validation)
-        // For now, we'll use the discount from payload or calculate it
-        const totalDiscount = payload.totalDiscount || 0;
+        // 3. Apply voucher discount (if provided)
+        let totalDiscount = payload.totalDiscount || 0;
+
+        if (payload.voucher && payload.voucher.length > 0) {
+            const voucherCode = payload.voucher[0]; // Support single voucher for now
+
+            // Get voucher from DB
+            const voucher = await voucherRepository.findOne({
+                code: voucherCode.toUpperCase(),
+                deletedAt: null,
+            });
+
+            if (!voucher) {
+                throw new NotFoundRequestError('Voucher không tồn tại');
+            }
+
+            // Check if user has access (for SPECIFIC vouchers)
+            if (voucher.applyScope === 'SPECIFIC') {
+                const hasAccess = await neo4jVoucherService.userHasVoucher(
+                    customerId,
+                    voucher._id.toString()
+                );
+                if (!hasAccess) {
+                    throw new BadRequestError(
+                        'Bạn không có quyền sử dụng voucher này'
+                    );
+                }
+            }
+
+            // Validate voucher
+            const now = new Date();
+            if (voucher.status !== 'ACTIVE') {
+                throw new BadRequestError('Voucher chưa được kích hoạt');
+            }
+            if (now < voucher.startedDate || now > voucher.endedDate) {
+                throw new BadRequestError(
+                    'Voucher không trong thời gian sử dụng'
+                );
+            }
+            if (voucher.usageCount >= voucher.usageLimit) {
+                throw new BadRequestError('Voucher đã hết lượt sử dụng');
+            }
+            if (totalPrice < voucher.minOrderValue) {
+                throw new BadRequestError(
+                    `Giá trị đơn hàng tối thiểu là ${voucher.minOrderValue.toLocaleString()}đ`
+                );
+            }
+
+            // Calculate discount
+            let discount = 0;
+            if (voucher.typeDiscount === 'FIXED') {
+                discount = voucher.value;
+            } else if (voucher.typeDiscount === 'PERCENTAGE') {
+                discount = (totalPrice * voucher.value) / 100;
+            }
+
+            // Apply max discount limit
+            discount = Math.min(discount, voucher.maxDiscountValue);
+            discount = Math.min(discount, totalPrice);
+
+            totalDiscount = discount;
+
+            // Mark voucher as used in Neo4j (if SPECIFIC)
+            if (voucher.applyScope === 'SPECIFIC') {
+                await neo4jVoucherService.markVoucherAsUsed(
+                    customerId,
+                    voucher._id.toString()
+                );
+            }
+
+            // Increment usage count in MongoDB
+            await voucherRepository.incrementUsage(voucher._id.toString());
+        }
 
         // 4. Validate discount
         if (totalDiscount > totalPrice) {
