@@ -57,10 +57,9 @@ class VoucherAdminService {
 
         const skip = (page - 1) * limit;
         const items = await voucherRepository.find(filter, {
-            skip,
             limit,
             sort: { createdAt: -1 },
-        });
+        } as any);
         const total = await voucherRepository.count(filter);
 
         return {
@@ -210,9 +209,9 @@ class VoucherAdminService {
 
         // Get voucher details from MongoDB
         const vouchers = await voucherRepository.find({
-            _id: { $in: voucherIds },
+            _id: { $in: voucherIds } as any,
             deletedAt: null,
-        });
+        } as any);
 
         return { vouchers };
     };

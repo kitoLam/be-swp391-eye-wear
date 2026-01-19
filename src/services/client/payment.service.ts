@@ -2,7 +2,7 @@ import { paymentRepository } from '../../repositories/payment/payment.repository
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { CreatePayment } from '../../types/payment/payment';
 import {
-    NotFoundError,
+    NotFoundRequestError,
     BadRequestError,
 } from '../../errors/apiError/api-error';
 
@@ -77,10 +77,9 @@ class PaymentClientService {
 
         const skip = (page - 1) * limit;
         const items = await paymentRepository.find(filter, {
-            skip,
             limit,
             sort: { createdAt: -1 },
-        });
+        } as any);
         const total = await paymentRepository.count(filter);
 
         const result = {
@@ -103,12 +102,12 @@ class PaymentClientService {
         const payment = await paymentRepository.findById(paymentId);
 
         if (!payment) {
-            throw new NotFoundError('Payment not found');
+            throw new NotFoundRequestError('Payment not found');
         }
 
         // Verify ownership
         if (payment.owner_id !== customerId) {
-            throw new NotFoundError('Payment not found');
+            throw new NotFoundRequestError('Payment not found');
         }
 
         return payment;
@@ -121,7 +120,7 @@ class PaymentClientService {
         const payment = await paymentRepository.findById(paymentId);
 
         if (!payment) {
-            throw new NotFoundError('Payment not found');
+            throw new NotFoundRequestError('Payment not found');
         }
 
         // Update payment status

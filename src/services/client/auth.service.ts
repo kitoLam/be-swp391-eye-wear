@@ -9,31 +9,28 @@ import { customerRepository } from '../../repositories/customer/customer.reposit
 import {
     LoginCustomerDTO,
     RegisterCustomerDTO,
-} from '../../types/customer/customer.dto';
-import { comparePassword, hashPassword } from '../../utils/hash.util';
+} from '../../types/auth/client/auth';
+import { comparePassword, hashPassword } from '../../utils/bcrypt.util';
 import tokenService from '../token.service';
 import * as jwtUtil from '../../utils/jwt.util';
 import neo4jVoucherService from '../neo4j/voucher.neo4j.service';
 
-class AuthClientService {
-    /**
-     * Register new customer
-     */
+class AuthService {
     registerCustomer = async (payload: RegisterCustomerDTO) => {
         // 1. Check if email already exists
-        const existingCustomer = await customerRepository.findOne({
+        const foundUser = await customerRepository.findOne({
             email: payload.email,
             deletedAt: null,
         });
 
-        if (existingCustomer) {
+        if (foundUser) {
             throw new ConflictRequestError(
                 'Another user has already registered by this email!'
             );
         }
 
         // 2. Hash password
-        const hashedPassword = await hashPassword(payload.password);
+        const hashedPassword = hashPassword(payload.password);
 
         // 3. Create customer in MongoDB
         const customer = await customerRepository.create({

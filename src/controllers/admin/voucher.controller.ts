@@ -65,7 +65,7 @@ class VoucherAdminController {
     deleteVoucher = async (req: Request, res: Response) => {
         const voucherId = req.params.id as string;
         const result = await voucherAdminService.deleteVoucher(voucherId);
-        res.json(ApiResponse.success(result.message));
+        res.json(ApiResponse.success(result.message, {}));
     };
 
     /**
@@ -74,7 +74,7 @@ class VoucherAdminController {
     grantVoucher = async (req: Request, res: Response) => {
         const voucherId = req.params.id as string;
         const { userIds } = req.body;
-        const grantedBy = req.admin!.id; // Admin ID from auth
+        const grantedBy = (req as any).staff?.id || 'admin'; // Admin ID from auth
 
         const result = await voucherAdminService.grantVoucherToUsers(
             voucherId,

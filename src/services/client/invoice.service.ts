@@ -142,10 +142,9 @@ class InvoiceClientService {
 
         const skip = (page - 1) * limit;
         const items = await invoiceRepository.find(filter, {
-            skip,
             limit,
             sort: { createdAt: -1 },
-        });
+        } as any);
         const total = await invoiceRepository.count(filter);
 
         const result = {
