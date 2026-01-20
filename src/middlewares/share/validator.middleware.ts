@@ -4,7 +4,7 @@ import { BadRequestError } from '../../errors/apiError/api-error';
 const validateBody = (schema: z.ZodObject<any, any>) => {
     return (req: Request, res: Response, next: NextFunction) => {
         try {
-            schema.parse(req.body);
+            req.validatedBody = schema.parse(req.body);
             next();
         } catch (error) {
             if (error instanceof ZodError) {

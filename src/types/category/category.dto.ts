@@ -9,7 +9,10 @@ export const CreateCategorySchema = z.object({
     parentId: z
         .string()
         .refine(value => Types.ObjectId.isValid(value), "parentId is not valid")
+        .or(z.literal('null'))
+        .transform(value => value == 'null' ? null : value)
         .nullable(),
+    thumbnail: z.string().url().or(z.literal('')).optional()
 }).strict();
 
 /**
@@ -20,8 +23,10 @@ export const UpdateCategorySchema = z.object({
     parentId: z
         .string()
         .refine(value => Types.ObjectId.isValid(value), "parentId is not valid")
+        .or(z.literal('null'))
+        .transform(value => value == 'null' ? null : value)
         .nullable(),
-    // thumbnail: z.string().nullable()
+    thumbnail: z.string().url().or(z.literal('')).optional()
 }).strict();
 
 export type CreateCategoryDTO = z.infer<typeof CreateCategorySchema>;
