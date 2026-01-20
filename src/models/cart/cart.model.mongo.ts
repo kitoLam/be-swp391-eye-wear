@@ -9,7 +9,6 @@ const CartSchema = new Schema<ICartDocument>(
         owner: {
             type: String,
             required: [true, 'Owner ID is required'],
-            index: true,
         },
         products: [
             {
@@ -46,11 +45,8 @@ const CartSchema = new Schema<ICartDocument>(
     }
 );
 
-// Index for owner lookup
-CartSchema.index({ owner: 1 });
-
 // Index for finding active carts (not deleted)
-CartSchema.index({ owner: 1, deletedAt: 1 });
+// CartSchema.index({ owner: 1, deletedAt: 1 });
 
 // Pre-save hook to calculate totalProduct
 CartSchema.pre('save', function (next) {

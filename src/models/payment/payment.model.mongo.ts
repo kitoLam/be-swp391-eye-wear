@@ -9,17 +9,14 @@ const PaymentSchema = new Schema<IPaymentDocument>(
         owner_id: {
             type: String,
             required: [true, 'Owner ID is required'],
-            index: true,
         },
         invoice_id: {
             type: String,
             required: [true, 'Invoice ID is required'],
-            index: true,
         },
         payForOrder: {
             type: String,
             required: [true, 'Order ID is required'],
-            index: true,
         },
         payment_method: {
             type: String,
@@ -58,26 +55,14 @@ const PaymentSchema = new Schema<IPaymentDocument>(
     }
 );
 
-// Index for owner lookup
-PaymentSchema.index({ owner_id: 1 });
-
-// Index for invoice lookup
-PaymentSchema.index({ invoice_id: 1 });
-
-// Index for order lookup
-PaymentSchema.index({ payForOrder: 1 });
-
 // Index for status queries
-PaymentSchema.index({ status: 1, deletedAt: 1 });
-
-// Index for payment method analytics
-PaymentSchema.index({ payment_method: 1 });
+// PaymentSchema.index({ status: 1, deletedAt: 1 });
 
 // Compound index for owner and status
-PaymentSchema.index({ owner_id: 1, status: 1 });
+// PaymentSchema.index({ owner_id: 1, status: 1 });
 
 // Compound index for order and status
-PaymentSchema.index({ payForOrder: 1, status: 1 });
+// PaymentSchema.index({ payForOrder: 1, status: 1 });
 
 // Method to check if payment is completed
 PaymentSchema.methods.isPaid = function (): boolean {

@@ -125,24 +125,6 @@ const OrderSchema = new Schema<IOrderDocument>(
     }
 );
 
-// Index for order type
-OrderSchema.index({ type: 1 });
-
-// Index for finding active orders (not deleted)
-OrderSchema.index({ type: 1, deletedAt: 1 });
-
-// Index for price range queries
-OrderSchema.index({ price: 1 });
-
-// Index for verification status
-OrderSchema.index({ 'isVerified.status': 1 });
-
-// Index for assignment status
-OrderSchema.index({ 'assignment.status': 1 });
-
-// Index for staff assignment
-OrderSchema.index({ 'assignment.staffId': 1 });
-
 // Custom validation to ensure at least one product
 OrderSchema.pre('save', function (next) {
     if (!this.products || this.products.length === 0) {

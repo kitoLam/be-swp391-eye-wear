@@ -29,6 +29,7 @@ const CustomerSchema = new Schema<ICustomerDocument>(
         phone: {
             type: String,
             required: [true, 'Phone number is required'],
+            unique: true,
             trim: true,
         },
         gender: {
@@ -119,12 +120,6 @@ const CustomerSchema = new Schema<ICustomerDocument>(
         timestamps: true,
     }
 );
-
-// Index for email lookup
-CustomerSchema.index({ email: 1 });
-
-// Index for phone lookup
-CustomerSchema.index({ phone: 1 });
 
 // Custom validation to ensure unique provider per customer
 CustomerSchema.pre('save', function (next) {

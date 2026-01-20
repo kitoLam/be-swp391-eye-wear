@@ -15,7 +15,6 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
         owner: {
             type: String,
             required: [true, 'Owner ID is required'],
-            index: true,
         },
         totalPrice: {
             type: Number,
@@ -79,17 +78,8 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
     }
 );
 
-// Index for owner lookup
-InvoiceSchema.index({ owner: 1 });
-
 // Index for status queries
-InvoiceSchema.index({ status: 1, deletedAt: 1 });
-
-// Index for finding invoices by order
-InvoiceSchema.index({ orders: 1 });
-
-// Index for date range queries
-InvoiceSchema.index({ createdAt: 1 });
+// InvoiceSchema.index({ status: 1, deletedAt: 1 });
 
 // Custom validation to ensure at least one order
 InvoiceSchema.pre('save', function (next) {

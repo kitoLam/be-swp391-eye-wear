@@ -22,7 +22,6 @@ const VoucherSchema = new Schema<IVoucherDocument>(
             unique: true,
             uppercase: true,
             trim: true,
-            index: true,
         },
         typeDiscount: {
             type: String,
@@ -95,7 +94,7 @@ const VoucherSchema = new Schema<IVoucherDocument>(
 );
 
 // Index for code lookup (unique)
-VoucherSchema.index({ code: 1 }, { unique: true });
+// VoucherSchema.index({ code: 1 }, { unique: true });
 
 // Index for status and active vouchers
 VoucherSchema.index({ status: 1, deletedAt: 1 });
