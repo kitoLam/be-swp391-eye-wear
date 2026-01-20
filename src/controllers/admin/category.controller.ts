@@ -5,11 +5,11 @@ import { CreateCategoryDTO, UpdateCategoryDTO } from "../../types/category/categ
 
 class CategoryController {
   createCategory = async (req: Request, res: Response) => {
-    await categoryService.createCategory(req.body as CreateCategoryDTO, req.adminAccount!);
+    await categoryService.createCategory(req.validatedBody as CreateCategoryDTO, req.file, req.adminAccount!);
     res.json(ApiResponse.success('Create category successfully', {}));
   }
   updateCategory = async (req: Request, res: Response) => {
-    await categoryService.updateCategory(req.params.id as string, req.body as UpdateCategoryDTO);
+    await categoryService.updateCategory(req.params.id as string, req.validatedBody as UpdateCategoryDTO, req.file);
     res.json(ApiResponse.success('Update category successfully', {}));
   }
   deleteCategory = async (req: Request, res: Response) => {
