@@ -13,19 +13,19 @@ const router = Router();
 // Search routes (phải đặt trước /:id để tránh conflict)
 router.get(
     '/search/name-slug',
-    authenticateMiddleware,
+    // authenticateMiddleware,
     productController.searchByNameSlug
 );
 router.get(
     '/search/sku/:sku',
-    authenticateMiddleware,
+    // authenticateMiddleware,
     productController.searchBySku
 );
 
 // Statistics
 router.get(
     '/statistics',
-    authenticateMiddleware,
+    // authenticateMiddleware,
     productController.getProductStatistics
 );
 
@@ -36,13 +36,13 @@ router.post('/', authenticateMiddleware, productController.createProduct);
 router.get(
     '/',
     validateQuery(ProductListQuerySchema),
-    authenticateMiddleware,
+    // authenticateMiddleware,
     productController.getProductList
 );
 router.get(
     '/:id',
     validateParams(ObjectIdSchema),
-    authenticateMiddleware,
+    // authenticateMiddleware,
     productController.getProductDetail
 );
 router.patch(
