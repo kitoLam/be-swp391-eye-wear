@@ -13,21 +13,39 @@ export class OrderRepository extends BaseRepository<IOrderDocument> {
     async getStatistics(): Promise<{
         total: number;
         byType: { type: string; count: number }[];
+        byStatus: { status: string; count: number }[];
         totalRevenue: number;
+        totalDiscount: number;
     }> {
         const total = await this.count();
+
         const byType = await OrderModel.aggregate([
             { $match: { deletedAt: null } },
             { $group: { _id: '$type', count: { $sum: 1 } } },
             { $project: { type: '$_id', count: 1, _id: 0 } },
         ]);
-        const revenue = await OrderModel.aggregate([
-            { $match: { deletedAt: null } },
-            { $group: { _id: null, total: { $sum: '$price' } } },
-        ]);
-        const totalRevenue = revenue[0]?.total || 0;
 
-        return { total, byType, totalRevenue };
+        const byStatus = await OrderModel.aggregate([
+            { $match: { deletedAt: null } },
+            { $group: { _id: '$payment.status', count: { $sum: 1 } } },
+            { $project: { status: '$_id', count: 1, _id: 0 } },
+        ]);
+
+        const financial = await OrderModel.aggregate([
+            { $match: { deletedAt: null } },
+            {
+                $group: {
+                    _id: null,
+                    totalRevenue: { $sum: '$payment.totalPrice' },
+                    totalDiscount: { $sum: '$payment.totalDiscount' },
+                },
+            },
+        ]);
+
+        const totalRevenue = financial[0]?.totalRevenue || 0;
+        const totalDiscount = financial[0]?.totalDiscount || 0;
+
+        return { total, byType, byStatus, totalRevenue, totalDiscount };
     }
 }
 

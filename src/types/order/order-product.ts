@@ -18,7 +18,7 @@ export const OrderProductLensSchema = z.object({
 // Order Product Schema
 export const OrderProductSchema = z.object({
     product_id: z.string().min(1, 'Product ID is required'),
-
+    sku: z.string().min(1, 'SKU is required'),
     quantity: z.number().int().min(1, 'Quantity must be at least 1'),
 
     lens: OrderProductLensSchema.optional(), // Lens is now OPTIONAL

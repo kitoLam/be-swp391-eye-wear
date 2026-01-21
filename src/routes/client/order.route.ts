@@ -15,4 +15,12 @@ router.post(
     orderController.createOrder
 );
 
+router.get('/', orderController.getOrders);
+router.get('/:id', orderController.getOrderDetail);
+router.put(
+    '/:id',
+    validateBody(ClientCreateOrderSchema),
+    orderController.updateOrder
+);
+
 export default router;

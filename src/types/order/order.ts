@@ -1,5 +1,6 @@
 import z from 'zod';
 import { OrderProductSchema } from './order-product';
+import { AddressSchema } from '../customer/address';
 
 // Verification Status Schema
 export const VerificationStatusSchema = z.object({
@@ -17,39 +18,67 @@ export const AssignmentSchema = z.object({
     status: z.enum(['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED']),
 });
 
+// Payment Schema
+export const PaymentSchema = z.object({
+    totalPrice: z.number().min(0, 'Total price must be non-negative'),
+    totalDiscount: z.number().min(0).default(0),
+    finalPrice: z.number().min(0),
+    voucher: z.array(z.string()).default([]),
+});
+
+// Customer Info Schema
+export const CustomerInfoSchema = z.object({
+    fullName: z.string().min(1, 'Full name is required'),
+    phone: z.string().min(1, 'Phone number is required'),
+});
+
 // Order Schema
 export const OrderSchema = z.object({
     _id: z.string().min(1, 'Order ID is required'),
+    owner: z.string().min(1, 'Owner ID is required'), // Added owner
     type: z.enum(['NORMAL', 'PRE-ORDER', 'MANUFACTURING']),
     products: z
         .array(OrderProductSchema)
         .min(1, 'At least one product is required'),
+
+    // Merged Invoice Fields
+    shippingAddress: AddressSchema,
+    customerInfo: CustomerInfoSchema,
+    payment: PaymentSchema,
+
     isVerified: VerificationStatusSchema.optional(),
     assignment: AssignmentSchema.optional(),
-    price: z.number().min(0, 'Price must be non-negative'),
+
+    note: z.string().optional(),
+
     createdAt: z.date().optional(),
     updatedAt: z.date().optional(),
     deletedAt: z.date().nullable().optional(),
 });
 
-// Create Order Schema
+// Create Order Schema (Internal/Full)
 export const CreateOrderSchema = z.object({
+    owner: z.string().min(1, 'Owner ID is required'),
     type: z.enum(['NORMAL', 'PRE-ORDER', 'MANUFACTURING']),
-    products: z
-        .array(OrderProductSchema)
-        .min(1, 'At least one product is required'),
+    products: z.array(OrderProductSchema).min(1),
+    shippingAddress: AddressSchema,
+    customerInfo: CustomerInfoSchema,
+    payment: PaymentSchema,
     isVerified: VerificationStatusSchema.optional(),
     assignment: AssignmentSchema.optional(),
-    price: z.number().min(0, 'Price must be non-negative'),
+    note: z.string().optional(),
 });
 
 // Update Order Schema
 export const UpdateOrderSchema = z.object({
     type: z.enum(['NORMAL', 'PRE-ORDER', 'MANUFACTURING']).optional(),
     products: z.array(OrderProductSchema).optional(),
+    shippingAddress: AddressSchema.optional(),
+    customerInfo: CustomerInfoSchema.optional(),
+    payment: PaymentSchema.optional(),
     isVerified: VerificationStatusSchema.optional(),
     assignment: AssignmentSchema.optional(),
-    price: z.number().min(0, 'Price must be non-negative').optional(),
+    note: z.string().optional(),
 });
 
 export type VerificationStatus = z.infer<typeof VerificationStatusSchema>;
@@ -58,12 +87,15 @@ export type Order = z.infer<typeof OrderSchema>;
 export type CreateOrder = z.infer<typeof CreateOrderSchema>;
 export type UpdateOrder = z.infer<typeof UpdateOrderSchema>;
 
-// Client Create Order Schema (Type is auto-calculated)
+// Client Create Order Schema
 export const ClientCreateOrderSchema = z.object({
     products: z
         .array(OrderProductSchema)
         .min(1, 'At least one product is required'),
-    price: z.number().min(0, 'Price must be non-negative'),
+    shippingAddress: AddressSchema,
+    customerInfo: CustomerInfoSchema,
+    voucher: z.array(z.string()).optional(),
+    paymentMethod: z.enum(['COD', 'VNPAY', 'MOMO']).default('COD'),
     note: z.string().optional(),
 });
 

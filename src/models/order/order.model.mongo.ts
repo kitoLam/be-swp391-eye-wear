@@ -6,6 +6,11 @@ export type IOrderDocument = Order & Document;
 // Main Order Schema
 const OrderSchema = new Schema<IOrderDocument>(
     {
+        owner: {
+            type: String,
+            required: [true, 'Owner ID is required'],
+            trim: true,
+        },
         type: {
             type: String,
             enum: {
@@ -21,6 +26,11 @@ const OrderSchema = new Schema<IOrderDocument>(
                 product_id: {
                     type: String,
                     required: [true, 'Product ID is required'],
+                    trim: true,
+                },
+                sku: {
+                    type: String,
+                    required: [true, 'SKU is required'],
                     trim: true,
                 },
                 quantity: {
@@ -67,6 +77,21 @@ const OrderSchema = new Schema<IOrderDocument>(
                 // Backward compatibility mapping can be handled in code if needed, but for now we follow new structure.
             },
         ],
+        shippingAddress: {
+            no: { type: String, required: true },
+            ward: { type: String, required: true },
+            city: { type: String, required: true },
+        },
+        customerInfo: {
+            fullName: { type: String, required: true },
+            phone: { type: String, required: true },
+        },
+        payment: {
+            totalPrice: { type: Number, required: true, min: 0 },
+            totalDiscount: { type: Number, default: 0, min: 0 },
+            finalPrice: { type: Number, required: true, min: 0 },
+            voucher: { type: [String], default: [] },
+        },
         isVerified: {
             status: {
                 type: String,
@@ -110,10 +135,9 @@ const OrderSchema = new Schema<IOrderDocument>(
                 default: 'PENDING',
             },
         },
-        price: {
-            type: Number,
-            required: [true, 'Price is required'],
-            min: [0, 'Price must be non-negative'],
+        note: {
+            type: String,
+            trim: true,
         },
         deletedAt: {
             type: Date,
@@ -124,6 +148,14 @@ const OrderSchema = new Schema<IOrderDocument>(
         timestamps: true,
     }
 );
+
+// Custom validation to ensure totalDiscount <= totalPrice
+OrderSchema.pre('save', function (next) {
+    if (this.payment && this.payment.totalDiscount > this.payment.totalPrice) {
+        return next(new Error('Total discount cannot exceed total price'));
+    }
+    next();
+});
 
 // Custom validation to ensure at least one product
 OrderSchema.pre('save', function (next) {
