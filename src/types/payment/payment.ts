@@ -1,12 +1,12 @@
 import z from 'zod';
+import { PaymentMethodType } from '../../config/enums/payment.enum';
 
 // Payment Schema
 export const PaymentSchema = z.object({
     _id: z.string().min(1, 'Payment ID is required'),
-    owner_id: z.string().min(1, 'Owner ID is required'),
-    invoice_id: z.string().min(1, 'Invoice ID is required'),
-    payForOrder: z.string().min(1, 'Order ID is required'),
-    payment_method: z.enum(['CASH', 'BANK']),
+    ownerId: z.string().min(1, 'Owner ID is required'),
+    orderId: z.string().min(1, 'Order ID is required'),
+    paymentMethod: z.enum(PaymentMethodType, {error: "Payment method is required"}),
     status: z.enum(['PAID', 'UNPAID']),
     note: z.string().default(''),
     price: z.number(), // Có thể là số âm cho đơn hoàn tiền
@@ -17,10 +17,9 @@ export const PaymentSchema = z.object({
 
 // Create Payment Schema
 export const CreatePaymentSchema = z.object({
-    owner_id: z.string().min(1, 'Owner ID is required'),
-    invoice_id: z.string().min(1, 'Invoice ID is required'),
-    payForOrder: z.string().min(1, 'Order ID is required'),
-    payment_method: z.enum(['CASH', 'BANK']),
+    ownerId: z.string().min(1, 'Owner ID is required'),
+    orderId: z.string().min(1, 'Order ID is required'),
+    paymentMethod: z.enum(['CASH', 'BANK']),
     status: z.enum(['PAID', 'UNPAID']).default('UNPAID'),
     note: z.string().optional().default(''),
     price: z.number(), // Có thể là số âm cho đơn hoàn tiền

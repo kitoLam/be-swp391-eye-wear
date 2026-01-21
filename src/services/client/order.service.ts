@@ -7,6 +7,10 @@ import {
     BadRequestError,
     NotFoundRequestError,
 } from '../../errors/apiError/api-error';
+import { generateOrderCode } from '../../utils/generate.util';
+import { OrderType } from '../../config/enums/order.enum';
+import { PaymentMethodType, PaymentStatus } from '../../config/enums/payment.enum';
+import { paymentRepository } from '../../repositories/payment/payment.repository';
 
 class OrderClientService {
     /**
@@ -14,72 +18,78 @@ class OrderClientService {
      */
     createOrder = async (customerId: string, payload: ClientCreateOrder) => {
         const { products, voucher: voucherCodes } = payload;
-
-        // 1. Calculate Product Price
+        // tính tổng tiền
         let totalPrice = 0;
-
+        // sản phẩm cho mặc định dạng NORMAL (tạm vậy chưa tính trường hợp PRE-ORDER), nếu có lens thì auto manu
+        let orderType = OrderType.NORMAL;
         for (const item of products) {
-            const product = await productRepository.findById(item.product_id);
-            if (!product) {
-                throw new NotFoundRequestError(
-                    `Product not found: ${item.product_id}`
+            // Mỗi sản phẩm phải chứa lens hoặc product
+            if (!item.product && !item.lens) {
+                throw new BadRequestError('Product is required');
+            }
+            // product này phải có type != lens
+            if (item.product) {
+                const product = await productRepository.findOne(
+                    {
+                        _id: item.product.product_id,
+                        type: {
+                            $ne: 'lens'
+                        }
+                    }
                 );
+                if (!product) {
+                    throw new NotFoundRequestError(
+                        `Product not found: ${item.product.product_id}`
+                    );
+                }
+                // Find variant by SKU
+                const variant = product.variants.find(v => v.sku === item.product?.sku);
+                if (!variant) {
+                    throw new BadRequestError(
+                        `Variant with SKU ${item.product.sku} not found for product ${product.nameBase}`
+                    );
+                }
+
+                // Check stock
+                if (variant.stock < item.quantity) {
+                    throw new BadRequestError(
+                        `Product ${product.nameBase} (SKU: ${item.product.sku}) is out of stock`
+                    );
+                }
+
+                // Use finalPrice from variant
+                totalPrice += variant.finalPrice * item.quantity;
             }
 
-            // Find variant by SKU
-            const variant = product.variants.find(v => v.sku === item.sku);
-            if (!variant) {
-                throw new BadRequestError(
-                    `Variant with SKU ${item.sku} not found for product ${product.nameBase}`
-                );
-            }
+            // ============ TODO: VIỆC CHƯA LÀM xóa product stock ===================
 
-            // Check stock
-            if (variant.stock < item.quantity) {
-                throw new BadRequestError(
-                    `Product ${product.nameBase} (SKU: ${item.sku}) is out of stock`
-                );
-            }
-
-            // Use finalPrice from variant
-            totalPrice += variant.finalPrice * item.quantity;
-
+            // ============ END TODO: VIỆC CHƯA LÀM xóa product stock ===================
             // Handle Lens Price if exists
             if (item.lens) {
-                const lensProduct = await productRepository.findById(
-                    item.lens.lens_id
-                );
+                orderType = OrderType.MANUFACTURING;
+                const lensProduct = await productRepository.findOne({
+                    _id: item.lens.lens_id,
+                    type: 'lens',
+                    deletedAt: null,
+                });
                 if (!lensProduct) {
                     throw new NotFoundRequestError(
                         `Lens product not found: ${item.lens.lens_id}`
                     );
                 }
-
-                // Lens usually has variants too (e.g. refractive index).
-                // Since we don't have SKU for lens in payload, we assume the first variant or a specific logic.
-                // For safety, we'll use the first variant's price.
-                if (lensProduct.variants && lensProduct.variants.length > 0) {
-                    const lensVariant = lensProduct.variants[0];
-                    const lensQty = item.lens.quantity || 1;
-                    totalPrice += lensVariant.finalPrice * lensQty;
-                }
-            }
-        }
-
-        // 2. Determine Order Type & Validate Lens
-        let orderType = 'NORMAL';
-        for (const item of products) {
-            if (item.lens) {
-                orderType = 'MANUFACTURING';
-                if (!item.lens.lens_id) {
+                // check sku:
+                const variant = lensProduct.variants.find(v => v.sku === item.lens?.sku);
+                if (!variant) {
                     throw new BadRequestError(
-                        'Lens ID is required for lens product'
+                        `Variant with SKU ${item.lens.sku} not found for product ${lensProduct.nameBase}`
                     );
                 }
+                totalPrice += variant.finalPrice * item.quantity
             }
         }
 
-        // 3. Apply Voucher
+
+        // Apply Voucher
         let totalDiscount = 0;
         if (voucherCodes && voucherCodes.length > 0) {
             const voucherCode = voucherCodes[0]; // Support single voucher for now
@@ -156,6 +166,7 @@ class OrderClientService {
         const finalPrice = totalPrice - totalDiscount;
 
         const orderData: any = {
+            orderCode: generateOrderCode(),
             owner: customerId,
             type: orderType,
             products: products,
@@ -170,17 +181,19 @@ class OrderClientService {
             note: payload.note,
         };
 
-        // 5. Add Manufacturing Specific Fields
-        if (orderType === 'MANUFACTURING') {
-            orderData.isVerified = { status: 'PENDING' };
-            orderData.assignment = { status: 'PENDING' };
-        } else {
-            // Normal orders might auto-approve or stay pending
-            orderData.isVerified = { status: 'APPROVE' };
-        }
-
-        // 6. Create Order
+        // Create Order
         const newOrder = await orderRepository.create(orderData);
+
+        // Tiến hành tạo payment giả sử đây có kiểu thanh toán là COD
+        if(payload.paymentMethod === PaymentMethodType.COD){
+            await paymentRepository.create({
+                ownerId: customerId,
+                orderId: newOrder._id.toString(),
+                paymentMethod: PaymentMethodType.COD,
+                status: PaymentStatus.UNPAID,
+                price: finalPrice
+            })
+        }
         return newOrder;
     };
 

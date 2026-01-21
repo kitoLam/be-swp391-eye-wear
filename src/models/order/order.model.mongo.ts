@@ -1,5 +1,10 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Order } from '../../types/order/order';
+import {
+    AssignmentOrderStatus,
+    OrderType,
+    VerifyOrderStatus,
+} from '../../config/enums/order.enum';
 
 export type IOrderDocument = Order & Document;
 
@@ -11,27 +16,27 @@ const OrderSchema = new Schema<IOrderDocument>(
             required: [true, 'Owner ID is required'],
             trim: true,
         },
+        orderCode: {
+            type: String,
+            required: true,
+        },
         type: {
             type: String,
-            enum: {
-                values: ['NORMAL', 'PRE-ORDER', 'MANUFACTURING'],
-                message:
-                    'Order type must be NORMAL, PRE-ORDER, or MANUFACTURING',
-            },
+            enum: OrderType,
             required: [true, 'Order type is required'],
         },
         products: [
             {
-                // Updated: renamed 'frames' to 'product_id' and added quantity
-                product_id: {
-                    type: String,
-                    required: [true, 'Product ID is required'],
-                    trim: true,
-                },
-                sku: {
-                    type: String,
-                    required: [true, 'SKU is required'],
-                    trim: true,
+                product: {
+                    type: new Schema({
+                        product_id: {
+                            type: String,
+                            required: true,
+                        },
+                        sku: String,
+                        price: { type: Number, default: 0 },
+                    }),
+                    required: false,
                 },
                 quantity: {
                     type: Number,
@@ -40,45 +45,38 @@ const OrderSchema = new Schema<IOrderDocument>(
                     default: 1,
                 },
                 lens: {
-                    // Lens object is now optional, so type fields are not strictly required unless lens is present.
-                    // However, in Mongoose, if 'lens' is present, we enforce validation via schema structure or logic.
-                    // Defining it as a sub-schema with required=false allows it to be optional.
-                    type: new Schema(
-                        {
-                            lens_id: {
-                                type: String,
-                                required: [true, 'Lens ID is required'],
-                                trim: true,
-                            },
-                            parameters: {
-                                left: {
-                                    SPH: { type: Number, required: true },
-                                    CYL: { type: Number, required: true },
-                                    AXIS: { type: Number, required: true },
-                                },
-                                right: {
-                                    SPH: { type: Number, required: true },
-                                    CYL: { type: Number, required: true },
-                                    AXIS: { type: Number, required: true },
-                                },
-                                PD: { type: Number, required: true },
-                            },
-                            quantity: {
-                                type: Number,
-                                required: [true, 'Lens quantity is required'],
-                                min: [1, 'Quantity must be at least 1'],
-                                default: 1,
-                            },
+                    /// nếu có lens sẽ validates
+                    type: new Schema({
+                        lens_id: {
+                            type: String,
+                            required: [true, 'Lens ID is required'],
+                            trim: true,
                         },
-                        { _id: false }
-                    ), // No separate _id for lens sub-doc if desired, or keep it. Often sub-docs get _ids.
+                        sku: {
+                            type: String,
+                            required: [true, 'SKU is required'],
+                            trim: true,
+                        },
+                        parameters: {
+                            left: {
+                                SPH: { type: Number, required: true },
+                                CYL: { type: Number, required: true },
+                                AXIS: { type: Number, required: true },
+                            },
+                            right: {
+                                SPH: { type: Number, required: true },
+                                CYL: { type: Number, required: true },
+                                AXIS: { type: Number, required: true },
+                            },
+                            PD: { type: Number, required: true },
+                        },
+                    }),
                     required: false, // Lens is optional
                 },
-                // Backward compatibility mapping can be handled in code if needed, but for now we follow new structure.
             },
         ],
         shippingAddress: {
-            no: { type: String, required: true },
+            street: { type: String, required: true },
             ward: { type: String, required: true },
             city: { type: String, required: true },
         },
@@ -93,46 +91,56 @@ const OrderSchema = new Schema<IOrderDocument>(
             voucher: { type: [String], default: [] },
         },
         isVerified: {
-            status: {
-                type: String,
-                enum: {
-                    values: ['PENDING', 'APPROVE', 'REJECT'],
-                    message:
-                        'Verification status must be PENDING, APPROVE, or REJECT',
+            type: {
+                status: {
+                    type: String,
+                    enum: VerifyOrderStatus,
+                    default: VerifyOrderStatus.PENDING,
                 },
-                default: 'PENDING',
+                staffVerified: {
+                    type: String,
+                    trim: true,
+                },
             },
-            staffVerified: {
-                type: String,
-                trim: true,
+            required: false,
+            default: {
+                status: 'PENDING',
+                staffVerified: null,
             },
         },
         assignment: {
-            staffId: {
-                type: String,
-                trim: true,
-            },
-            assignStaff: {
-                type: String,
-                trim: true,
-            },
-            assignedAt: {
-                type: Date,
-            },
-            startedAt: {
-                type: Date,
-            },
-            completedAt: {
-                type: Date,
-            },
-            status: {
-                type: String,
-                enum: {
-                    values: ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'],
-                    message:
-                        'Assignment status must be PENDING, ASSIGNED, IN_PROGRESS, or COMPLETED',
+            type: {
+                staffId: {
+                    type: String,
+                    trim: true,
                 },
-                default: 'PENDING',
+                assignStaff: {
+                    type: String,
+                    trim: true,
+                },
+                assignedAt: {
+                    type: Date,
+                },
+                startedAt: {
+                    type: Date,
+                },
+                completedAt: {
+                    type: Date,
+                },
+                status: {
+                    type: String,
+                    enum: AssignmentOrderStatus,
+                    default: AssignmentOrderStatus.PENDING,
+                },
+            },
+            required: false,
+            default: {
+                staffId: null,
+                assignStaff: null,
+                assignedAt: null,
+                startedAt: null,
+                completedAt: null,
+                status: AssignmentOrderStatus.PENDING,
             },
         },
         note: {
