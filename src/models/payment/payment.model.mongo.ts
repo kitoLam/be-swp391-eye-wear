@@ -1,38 +1,28 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Payment } from '../../types/payment/payment';
+import { PaymentMethodType, PaymentStatus } from '../../config/enums/payment.enum';
 
 export type IPaymentDocument = Payment & Document;
 
 // Main Payment Schema
 const PaymentSchema = new Schema<IPaymentDocument>(
     {
-        owner_id: {
+        ownerId: {
             type: String,
             required: [true, 'Owner ID is required'],
         },
-        invoice_id: {
-            type: String,
-            required: [true, 'Invoice ID is required'],
-        },
-        payForOrder: {
+        orderId: {
             type: String,
             required: [true, 'Order ID is required'],
         },
-        payment_method: {
+        paymentMethod: {
             type: String,
-            enum: {
-                values: ['CASH', 'BANK'],
-                message: 'Payment method must be CASH or BANK',
-            },
+            enum: PaymentMethodType,
             required: [true, 'Payment method is required'],
         },
         status: {
             type: String,
-            enum: {
-                values: ['PAID', 'UNPAID'],
-                message: 'Status must be PAID or UNPAID',
-            },
-            required: [true, 'Payment status is required'],
+            enum: PaymentStatus,
             default: 'UNPAID',
         },
         note: {
@@ -43,7 +33,6 @@ const PaymentSchema = new Schema<IPaymentDocument>(
         price: {
             type: Number,
             required: [true, 'Price is required'],
-            // Removed min validation to allow negative values for refunds
         },
         deletedAt: {
             type: Date,

@@ -6,7 +6,6 @@ import { ClientCreateOrderSchema } from '../../types/order/order';
 
 const router = Router();
 
-// Require login to create order? Usually yes.
 router.use(authenticateMiddlewareClient);
 
 router.post(

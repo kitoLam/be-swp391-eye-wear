@@ -1,6 +1,8 @@
 import z from 'zod';
 import { OrderProductSchema } from './order-product';
 import { AddressSchema } from '../customer/address';
+import { PaymentMethodType } from '../../config/enums/payment.enum';
+import { AssignmentOrderStatus } from '../../config/enums/order.enum';
 
 // Verification Status Schema
 export const VerificationStatusSchema = z.object({
@@ -15,7 +17,7 @@ export const AssignmentSchema = z.object({
     assignedAt: z.date().optional(),
     startedAt: z.date().optional(),
     completedAt: z.date().optional(),
-    status: z.enum(['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED']),
+    status: z.enum(AssignmentOrderStatus),
 });
 
 // Payment Schema
@@ -40,8 +42,8 @@ export const OrderSchema = z.object({
     products: z
         .array(OrderProductSchema)
         .min(1, 'At least one product is required'),
-
-    // Merged Invoice Fields
+    orderCode: z.string().nonempty(),
+    
     shippingAddress: AddressSchema,
     customerInfo: CustomerInfoSchema,
     payment: PaymentSchema,
@@ -94,9 +96,9 @@ export const ClientCreateOrderSchema = z.object({
         .min(1, 'At least one product is required'),
     shippingAddress: AddressSchema,
     customerInfo: CustomerInfoSchema,
-    voucher: z.array(z.string()).optional(),
-    paymentMethod: z.enum(['COD', 'VNPAY', 'MOMO']).default('COD'),
-    note: z.string().optional(),
+    voucher: z.array(z.string()).min(0),
+    paymentMethod: z.enum(PaymentMethodType, {error: "Payment method is required"}),
+    note: z.string(),
 });
 
 export type ClientCreateOrder = z.infer<typeof ClientCreateOrderSchema>;
