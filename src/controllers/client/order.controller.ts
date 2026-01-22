@@ -8,14 +8,8 @@ class OrderController {
     createOrder = async (req: Request, res: Response, next: NextFunction) => {
         const payload = req.body as ClientCreateOrder;
         const customerId = req.customer!.id;
-        try {
         const order = await orderClientService.createOrder(customerId, payload);
         res.json(ApiResponse.success('Tạo đơn hàng thành công!', { order }));
-        } catch (error) {
-            // - trong redis
-            await orderClientService.releaseOrderKey(payload);
-            next(error)
-        }
     };
 
     getOrders = async (req: Request, res: Response) => {

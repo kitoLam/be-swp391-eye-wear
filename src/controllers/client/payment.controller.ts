@@ -1,60 +1,22 @@
-// import { Request, Response } from 'express';
-// import paymentClientService from '../../services/client/payment.service';
-// import { ApiResponse } from '../../utils/api-response';
-// import { CreatePayment } from '../../types/payment/payment';
+import { Request, Response } from 'express';
+import paymentClientService from '../../services/client/payment.service';
+import { ApiResponse } from '../../utils/api-response';
+import { CreatePayment } from '../../types/payment/payment';
 
-// class PaymentController {
-//     /**
-//      * Create payment
-//      */
-//     createPayment = async (req: Request, res: Response) => {
-//         const customerId = req.customer!.id;
-//         const payload = req.body as CreatePayment;
-//         const payment = await paymentClientService.createPayment(
-//             customerId,
-//             payload
-//         );
-//         res.json(
-//             ApiResponse.success('Tạo thanh toán thành công!', { payment })
-//         );
-//     };
+class PaymentController {
+    getVnpayPaymentUrl = async (req: Request, res: Response) => {
+      let ipAddr = req.headers['x-forwarded-for'] ||
+            req.socket.remoteAddress;
+      const customerId = req.customer!.id;
+      const orderCode = req.query.orderCode as string;
+      const url = await paymentClientService.getVnPayUrl(customerId, orderCode, ipAddr as string);
+      res.json(ApiResponse.success('Tạo cổng thanh toán vnpay', { url }));
+    }
+    handlePaymentWithVnPayResult = async (req: Request, res: Response) => {
+      let vnp_Params = req.query;
+      const result = await paymentClientService.handleVnpayPaymentResult(req.customer!.id, vnp_Params);
+      res.json(ApiResponse.success('Thanh toán vnpay thanh cong', result));
+    }
+}
 
-//     /**
-//      * Get payments list
-//      */
-//     getPayments = async (req: Request, res: Response) => {
-//         const customerId = req.customer!.id;
-//         const page = parseInt(req.query.page as string) || 1;
-//         const limit = parseInt(req.query.limit as string) || 10;
-//         const status = req.query.status as string;
-
-//         const result = await paymentClientService.getPayments(
-//             customerId,
-//             page,
-//             limit,
-//             status
-//         );
-//         res.json(
-//             ApiResponse.success('Lấy danh sách thanh toán thành công!', result)
-//         );
-//     };
-
-//     /**
-//      * Get payment detail
-//      */
-//     getPaymentDetail = async (req: Request, res: Response) => {
-//         const customerId = req.customer!.id;
-//         const paymentId = req.params.id as string;
-//         const payment = await paymentClientService.getPaymentDetail(
-//             customerId,
-//             paymentId
-//         );
-//         res.json(
-//             ApiResponse.success('Lấy chi tiết thanh toán thành công!', {
-//                 payment,
-//             })
-//         );
-//     };
-// }
-
-// export default new PaymentController();
+export default new PaymentController();
