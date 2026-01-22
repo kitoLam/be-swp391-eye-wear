@@ -1,5 +1,5 @@
 import z from 'zod';
-import { OrderProductSchema } from './order-product';
+import { OrderProductClientUpdateSchema, OrderProductSchema } from './order-product';
 import { AddressSchema } from '../customer/address';
 import { PaymentMethodType } from '../../config/enums/payment.enum';
 import { AssignmentOrderStatus } from '../../config/enums/order.enum';
@@ -103,7 +103,8 @@ export const ClientCreateOrderSchema = z.object({
 
 export const ClientUpdateOrderSchema = z.object({
     shippingAddress: AddressSchema,
-    customerInfo: CustomerInfoSchema
+    customerInfo: CustomerInfoSchema,
+    products: z.array(OrderProductClientUpdateSchema).min(1), 
 });
 export type ClientCreateOrder = z.infer<typeof ClientCreateOrderSchema>;
 export type ClientUpdateOrder = z.infer<typeof ClientUpdateOrderSchema>;

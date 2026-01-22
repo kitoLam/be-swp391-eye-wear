@@ -35,8 +35,9 @@ const OrderSchema = new Schema<IOrderDocument>(
                         },
                         sku: String,
                         price: { type: Number, default: 0 },
-                    }),
+                    }, {_id: false}),
                     required: false,
+                    
                 },
                 quantity: {
                     type: Number,
@@ -70,7 +71,7 @@ const OrderSchema = new Schema<IOrderDocument>(
                             },
                             PD: { type: Number, required: true },
                         },
-                    }),
+                    }, {_id: false}),
                     required: false, // Lens is optional
                 },
             },

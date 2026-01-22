@@ -25,6 +25,12 @@ export const OrderProductSchema = z.object({
     quantity: z.number().int().min(1, 'Quantity must be at least 1'),
     lens: OrderProductLensSchema.optional(), // Lens is now OPTIONAL
 });
+export const OrderProductClientUpdateSchema = z.object({
+    product: OrderProductFrameSchema.optional(),
+    // quantity: z.number().int().min(1, 'Quantity must be at least 1'),
+    lens: OrderProductLensSchema.optional(), // Lens is now OPTIONAL
+});
 
 export type OrderProductLens = z.infer<typeof OrderProductLensSchema>;
 export type OrderProduct = z.infer<typeof OrderProductSchema>;
+export type OrderProductClientUpdate = z.infer<typeof OrderProductClientUpdateSchema>;

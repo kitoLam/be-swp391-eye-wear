@@ -308,9 +308,42 @@ class OrderClientService {
         if(order.isVerified.status !== VerifyOrderStatus.PENDING){
             throw new ConflictRequestError("This order is processed, so you can not update it");
         }
-
-        const updated = await orderRepository.update(order._id, payload);
-        return updated;
+        const updatedProduct: any = [];
+        order.products.forEach((item) => {
+            if(item.lens){
+                const foundLensInPayload = payload.products.find(itemInPayload => {
+                    if(item.lens
+                        && item.lens.lens_id === itemInPayload.lens?.lens_id
+                        && item.lens.sku === itemInPayload.lens.sku
+                    ){
+                        if(item.product){
+                            if(item.product.product_id === itemInPayload.product?.product_id
+                            && item.product.sku === itemInPayload.product.sku
+                            ){
+                                return true;
+                            }else return false;
+                        }
+                        else {
+                            return true;
+                        }
+                    }
+                });
+                if(foundLensInPayload){
+                    item.lens = {
+                        ...item.lens,
+                        parameters: foundLensInPayload.lens!.parameters
+                    };
+                }
+            }
+            // vẫn đẩy thông tin sản phẩm cũ vào updatedProduct nếu cái item product chứa lens của người dùng gửi lên bị sai
+            updatedProduct.push(item);
+            return item;
+        });
+        const updatedOrder = await orderRepository.update(order._id, {
+            ...payload,
+            products: updatedProduct
+        });
+        return updatedOrder;
     };
 }
 
