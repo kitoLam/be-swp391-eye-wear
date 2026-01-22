@@ -8,7 +8,6 @@ export class OrderRepository extends BaseRepository<IOrderDocument> {
     constructor() {
         super(OrderModel);
     }
-
     // Get order statistics
     async getStatistics(): Promise<{
         total: number;

@@ -1,4 +1,4 @@
-import { Model, Document, FilterQuery, SortOrder } from 'mongoose';
+import { Model, Document, FilterQuery, SortOrder, UpdateQuery } from 'mongoose';
 
 export interface PaginationOptions {
     page?: number;
@@ -103,6 +103,15 @@ export class BaseRepository<T extends Document> {
      */
     async update(id: string, data: Partial<T>): Promise<T | null> {
         return await this.model.findByIdAndUpdate(id, data, {
+            new: true,
+            runValidators: true,
+        });
+    }
+    /**
+     * Update by ID
+     */
+    async updateByFilter(filter: FilterQuery<T>, data: UpdateQuery<T>): Promise<T | null> {
+        return await this.model.findOneAndUpdate(filter, data, {
             new: true,
             runValidators: true,
         });

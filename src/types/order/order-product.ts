@@ -16,7 +16,7 @@ export const OrderProductLensSchema = z.object({
     //     .default(1),
 });
 export const OrderProductFrameSchema = z.object({
-    product_id: z.string().min(1, 'Frame ID is required'),
+    product_id: z.string().min(1, 'Frame ID is required').nonempty("product_id is required"),
     sku: z.string().min(1, 'SKU is required'),
 });
 // Order Product Schema
