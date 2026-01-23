@@ -3,7 +3,7 @@ name: Deploy to Google Cloud VM
 on:
   push:
     branches:
-      - main  # Hoặc 'master' tùy tên nhánh chính của bạn
+      - master  # Hoặc 'master' tùy tên nhánh chính của bạn
 
 jobs:
   deploy:
