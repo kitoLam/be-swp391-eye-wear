@@ -1,5 +1,5 @@
 import z from 'zod';
-import { OrderProductSchema } from './order-product';
+import { OrderProductClientUpdateSchema, OrderProductSchema } from './order-product';
 import { AddressSchema } from '../customer/address';
 import { PaymentMethodType } from '../../config/enums/payment.enum';
 import { AssignmentOrderStatus } from '../../config/enums/order.enum';
@@ -7,16 +7,16 @@ import { AssignmentOrderStatus } from '../../config/enums/order.enum';
 // Verification Status Schema
 export const VerificationStatusSchema = z.object({
     status: z.enum(['PENDING', 'APPROVE', 'REJECT']),
-    staffVerified: z.string().optional(), // Staff ID who verified
+    staffVerified: z.string().nullable(), // Staff ID who verified
 });
 
 // Assignment Schema
 export const AssignmentSchema = z.object({
-    staffId: z.string().optional(), // ID của nhân viên được giao làm đơn
-    assignStaff: z.string().optional(), // Staff ID who assigned
-    assignedAt: z.date().optional(),
-    startedAt: z.date().optional(),
-    completedAt: z.date().optional(),
+    staffId: z.string().nullable(), // ID của nhân viên được giao làm đơn
+    assignStaff: z.string().nullable(), // Staff ID who assigned
+    assignedAt: z.date().nullable(),
+    startedAt: z.date().nullable(),
+    completedAt: z.date().nullable(),
     status: z.enum(AssignmentOrderStatus),
 });
 
@@ -48,14 +48,14 @@ export const OrderSchema = z.object({
     customerInfo: CustomerInfoSchema,
     payment: PaymentSchema,
 
-    isVerified: VerificationStatusSchema.optional(),
-    assignment: AssignmentSchema.optional(),
+    isVerified: VerificationStatusSchema,
+    assignment: AssignmentSchema,
 
-    note: z.string().optional(),
+    note: z.string(),
 
-    createdAt: z.date().optional(),
-    updatedAt: z.date().optional(),
-    deletedAt: z.date().nullable().optional(),
+    createdAt: z.date(),
+    updatedAt: z.date(),
+    deletedAt: z.date().nullable(),
 });
 
 // Create Order Schema (Internal/Full)
@@ -101,4 +101,10 @@ export const ClientCreateOrderSchema = z.object({
     note: z.string(),
 });
 
+export const ClientUpdateOrderSchema = z.object({
+    shippingAddress: AddressSchema,
+    customerInfo: CustomerInfoSchema,
+    products: z.array(OrderProductClientUpdateSchema).min(1), 
+});
 export type ClientCreateOrder = z.infer<typeof ClientCreateOrderSchema>;
+export type ClientUpdateOrder = z.infer<typeof ClientUpdateOrderSchema>;

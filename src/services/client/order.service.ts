@@ -2,17 +2,41 @@ import { orderRepository } from '../../repositories/order/order.repository';
 import { voucherRepository } from '../../repositories/voucher/voucher.repository';
 import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 import { productRepository } from '../../repositories/product/product.repository';
-import { ClientCreateOrder, UpdateOrder } from '../../types/order/order';
+import { ClientCreateOrder, ClientUpdateOrder } from '../../types/order/order';
 import {
     BadRequestError,
+    ConflictRequestError,
     NotFoundRequestError,
 } from '../../errors/apiError/api-error';
 import { generateOrderCode } from '../../utils/generate.util';
-import { OrderType } from '../../config/enums/order.enum';
+import { OrderType, VerifyOrderStatus } from '../../config/enums/order.enum';
 import { PaymentMethodType, PaymentStatus } from '../../config/enums/payment.enum';
 import { paymentRepository } from '../../repositories/payment/payment.repository';
-
+import redisService from '../redis.service';
+import { redisPrefix } from '../../config/constants/redis.constant';
+type ClockKey = {
+    key: string,
+    quantity: number
+}
 class OrderClientService {
+    releaseOrderKey = async (payload: ClientCreateOrder) => {
+      for (const item of payload.products) {
+        if(item.lens){
+            const key = `${redisPrefix.orderClock}-${item.lens.lens_id}-${item.lens.sku}`;
+            const stockIsAcquiring = await redisService.getDataByKey<number>(item.lens.lens_id) || 0;
+            if(stockIsAcquiring != null){
+                await redisService.setDataWithExpiredTime(key, stockIsAcquiring - item.quantity, 10);
+            }
+        }
+        if(item.product){
+            const key = `${redisPrefix.orderClock}-${item.product.product_id}-${item.product.sku}`;
+            const stockIsAcquiring = await redisService.getDataByKey<number>(item.product.product_id);
+            if(stockIsAcquiring != null){
+                await redisService.setDataWithExpiredTime(key, stockIsAcquiring - item.quantity, 10);
+            }
+        }
+      }
+    }
     /**
      * Create new order (Checkout)
      */
@@ -49,21 +73,23 @@ class OrderClientService {
                         `Variant with SKU ${item.product.sku} not found for product ${product.nameBase}`
                     );
                 }
-
-                // Check stock
-                if (variant.stock < item.quantity) {
-                    throw new BadRequestError(
-                        `Product ${product.nameBase} (SKU: ${item.product.sku}) is out of stock`
+                // console.log(">>product ", item);
+                await productRepository.updateByFilter(
+                        { 
+                            _id: product._id,
+                            'variants.sku': item.product.sku,
+                        },
+                        { $inc: { 'variants.$.stock': -item.quantity } }
                     );
-                }
-
+                // console.log(">>> update oke")
                 // Use finalPrice from variant
                 totalPrice += variant.finalPrice * item.quantity;
             }
 
             // ============ TODO: VIỆC CHƯA LÀM xóa product stock ===================
-
+            
             // ============ END TODO: VIỆC CHƯA LÀM xóa product stock ===================
+
             // Handle Lens Price if exists
             if (item.lens) {
                 orderType = OrderType.MANUFACTURING;
@@ -84,6 +110,13 @@ class OrderClientService {
                         `Variant with SKU ${item.lens.sku} not found for product ${lensProduct.nameBase}`
                     );
                 }
+                await productRepository.updateByFilter(
+                        { 
+                            _id: item.lens.lens_id,
+                            'variants.sku': item.lens.sku,
+                        },
+                        { $inc: { 'variants.$.stock': -item.quantity } }
+                    );
                 totalPrice += variant.finalPrice * item.quantity
             }
         }
@@ -160,6 +193,7 @@ class OrderClientService {
 
             // Increment usage count in MongoDB
             await voucherRepository.incrementUsage(voucher._id.toString());
+            await this.releaseOrderKey(payload);
         }
 
         // 4. Prepare Order Data
@@ -237,14 +271,14 @@ class OrderClientService {
     /**
      * Get order detail
      */
-    getOrderDetail = async (customerId: string, orderId: string) => {
-        const order = await orderRepository.findById(orderId);
+    getOrderDetail = async (customerId: string, orderCode: string) => {
+        const order = await orderRepository.findOne({
+            orderCode: orderCode,
+            owner: customerId,
+            deletedAt: null
+        });
 
         if (!order) {
-            throw new NotFoundRequestError('Order not found');
-        }
-
-        if (order.owner !== customerId) {
             throw new NotFoundRequestError('Order not found');
         }
 
@@ -258,24 +292,58 @@ class OrderClientService {
      */
     updateOrder = async (
         customerId: string,
-        orderId: string,
-        payload: UpdateOrder
+        orderCode: string,
+        payload: ClientUpdateOrder
     ) => {
-        const order = await orderRepository.findById(orderId);
+        const order = await orderRepository.findOne({
+            orderCode,
+            owner: customerId,
+            deletedAt: null,
+        });
 
         if (!order) {
             throw new NotFoundRequestError('Order not found');
         }
 
-        if (order.owner !== customerId) {
-            throw new NotFoundRequestError('Order not found');
+        if(order.isVerified.status !== VerifyOrderStatus.PENDING){
+            throw new ConflictRequestError("This order is processed, so you can not update it");
         }
-
-        // Prevent update if order is already processed/shipping etc.
-        // This logic depends on business rules.
-
-        const updated = await orderRepository.update(orderId, payload);
-        return updated;
+        const updatedProduct: any = [];
+        order.products.forEach((item) => {
+            if(item.lens){
+                const foundLensInPayload = payload.products.find(itemInPayload => {
+                    if(item.lens
+                        && item.lens.lens_id === itemInPayload.lens?.lens_id
+                        && item.lens.sku === itemInPayload.lens.sku
+                    ){
+                        if(item.product){
+                            if(item.product.product_id === itemInPayload.product?.product_id
+                            && item.product.sku === itemInPayload.product.sku
+                            ){
+                                return true;
+                            }else return false;
+                        }
+                        else {
+                            return true;
+                        }
+                    }
+                });
+                if(foundLensInPayload){
+                    item.lens = {
+                        ...item.lens,
+                        parameters: foundLensInPayload.lens!.parameters
+                    };
+                }
+            }
+            // vẫn đẩy thông tin sản phẩm cũ vào updatedProduct nếu cái item product chứa lens của người dùng gửi lên bị sai
+            updatedProduct.push(item);
+            return item;
+        });
+        const updatedOrder = await orderRepository.update(order._id, {
+            ...payload,
+            products: updatedProduct
+        });
+        return updatedOrder;
     };
 }
 
