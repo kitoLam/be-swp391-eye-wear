@@ -18,7 +18,7 @@ import { paymentRepository } from '../../repositories/payment/payment.repository
 import redisService from '../redis.service';
 import { redisPrefix } from '../../config/constants/redis.constant';
 class OrderClientService {
-    releaseProductOrderLock = async (payload: {key: string, qty: number}[]) => {
+    private releaseProductOrderLock = async (payload: {key: string, qty: number}[]) => {
         const seconds = 10;
         for (const item of payload) {
             const stockIsAcquiring = await redisService.getDataByKey<number>(item.key);

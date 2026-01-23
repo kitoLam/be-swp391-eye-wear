@@ -7,6 +7,8 @@ import {
 import moment from 'moment';
 import { orderRepository } from '../../repositories/order/order.repository';
 import * as objectUtil from '../../utils/object.util';
+import { createHmac } from 'node:crypto';
+import axios from 'axios';
 class PaymentClientService {
     getVnPayUrl = async (
         customerId: string,
@@ -20,12 +22,13 @@ class PaymentClientService {
         });
         if (!orderDetail)
             throw new NotFoundRequestError('Đơn hàng không tồn tại');
+
         let date = new Date();
         let createDate = moment(date).format('YYYYMMDDHHmmss');
         let tmnCode = process.env.VNPAY_TMN_CODE;
         let secretKey = process.env.VNPAY_SECRET;
         let vnpUrl = process.env.VNPAY_URL;
-        let returnUrl = `http://localhost:5000/payments/vnpay/result`;
+        let returnUrl = 'https://552254cc937e.ngrok-free.app'; //process.env.VNPAY_RETURN_URL;
         let orderId = `${orderDetail.orderCode}-${Date.now()}`;
         let amount = orderDetail.payment.finalPrice;
         let bankCode = '';
@@ -41,7 +44,7 @@ class PaymentClientService {
         vnp_Params['vnp_TxnRef'] = orderId;
         vnp_Params['vnp_OrderInfo'] = 'Thanh toan cho ma GD:' + orderId;
         vnp_Params['vnp_OrderType'] = 'other';
-        vnp_Params['vnp_Amount'] = amount * 100;
+        vnp_Params['vnp_Amount'] = amount;
         vnp_Params['vnp_ReturnUrl'] = returnUrl;
         vnp_Params['vnp_IpAddr'] = ipAddr;
         vnp_Params['vnp_CreateDate'] = createDate;
@@ -59,8 +62,7 @@ class PaymentClientService {
         vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
         return vnpUrl;
     };
-    handleVnpayPaymentResult = async (customerId: string, vnp_Params: any, ) => {
-
+    handleVnpayPaymentResultCallback = async (customerId: string, vnp_Params: any) => {
         let secureHash = vnp_Params['vnp_SecureHash'];
 
         delete vnp_Params['vnp_SecureHash'];
@@ -74,7 +76,7 @@ class PaymentClientService {
         let signData = querystring.stringify(vnp_Params, { encode: false });
         let crypto = require('crypto');
         let hmac = crypto.createHmac('sha512', secretKey);
-        let signed = hmac.update( Buffer.from(signData, 'utf-8')).digest('hex');
+        let signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
         if (secureHash != signed) {
             // chữ kí không hợp lệ
             throw new ForbiddenRequestError('Chữ kí không hợp lệ');
@@ -85,11 +87,98 @@ class PaymentClientService {
         ) {
             const [orderCode, date] = vnp_Params.vnp_TxnRef.split('-');
             // XỬ LÍ LOGIC HẬU THANH TOÁN Ở ĐÂY
-
+            console.log('>>> orderCode::', orderCode);
             // END XỬ LÍ LOGIC HẬU THANH TOÁN
         } else {
-          throw new ForbiddenRequestError('Thanh toán khỏng thành công');
+            throw new ForbiddenRequestError('Thanh toán khỏng thành công');
         }
+    };
+
+    getZalopayUrl = async (customerId: string, orderCode: string) => {
+        const existOrder = await orderRepository.findOne({
+            orderCode: orderCode,
+            owner: customerId,
+            deleted: false,
+        });
+        if (!existOrder) {
+            throw new NotFoundRequestError('Đơn hàng không tồn tại');
+        }
+
+        // app info
+        const app_id = process.env.ZALO_APP_ID;
+        const key1 = process.env.ZALO_KEY1;
+        const key2 = process.env.ZALO_KEY2;
+        const apiZalopay = process.env.ZALO_API;
+        const transID = Math.floor(Math.random() * 1000000);
+        const embed_data = {
+            // sau khi gọi call back thành công, zalo đẩy chuyển UI từ màn hình thanh toán zalo sang màn hình app
+            // redirecturl: `${process.env.API_FE_CLIENT}/orders/success?orderCode=${orderCode}`,
+        };
+        const order = {
+            app_id,
+            app_trans_id: `${moment().format('YYMMDD')}_${transID}`,
+            app_user: `${existOrder.customerInfo.phone}-${existOrder.orderCode}`,
+            app_time: Date.now(), // miliseconds
+            item: JSON.stringify([{}]),
+            embed_data: JSON.stringify(embed_data),
+            amount: existOrder.payment.finalPrice,
+            description: `Thanh toán đơn hàng #${orderCode}`,
+            bank_code: '', // zalopayapp -> scan QR
+            mac: '',
+            callback_url: `${process.env.APP_API}/zalopay/result-callback`, // sau khi zalo pay thực hiện xong việc thanh toán thu tiền, sẽ chạy vào callback_url để xử lí tiếp
+        };
+        const data =
+            app_id +
+            '|' +
+            order.app_trans_id +
+            '|' +
+            order.app_user +
+            '|' +
+            order.amount +
+            '|' +
+            order.app_time +
+            '|' +
+            order.embed_data +
+            '|' +
+            order.item;
+        order.mac = createHmac('sha256', `${key1}`).update(data).digest('hex');
+        const resAxios = await axios.post(`${apiZalopay}`, null, {
+            params: order,
+        });
+        return resAxios.data.order_url;
+    };
+
+    handleZalopayResultCallback = async (zaloPayload: {
+        reqMac: string;
+        dataStr: string;
+    }) => {
+        const key2: any = `${process.env.ZALO_KEY2}`;
+        let result: any = {};
+        const { reqMac, dataStr } = zaloPayload;
+        try {
+
+            let mac = createHmac('sha256', key2).update(dataStr).digest('hex');
+            // kiểm tra callback hợp lệ (đến từ ZaloPay server)
+            if (reqMac !== mac) {
+                // callback không hợp lệ
+                result.return_code = -1;
+                result.return_message = 'mac not equal';
+            } else {
+                // thanh toán thành công
+                // merchant cập nhật trạng thái cho đơn hàng
+                // dataJson chứa app_user chứa thống thông tin khách hàng
+                let dataJson = JSON.parse(dataStr, key2);
+                const [phone, orderCode] = dataJson.app_user.split('-');
+                // 
+                result.return_code = 1;
+                result.return_message = 'success';
+            }
+        } catch (ex: any) {
+            result.return_code = 0; // ZaloPay server sẽ callback lại (tối đa 3 lần)
+            result.return_message = ex.message;
+        }
+        // đây là result ta trả cho zalo pay khi zalo gọi đến api này
+        return result;
     };
     // /**
     //  * Create new payment for invoice

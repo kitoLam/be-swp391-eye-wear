@@ -5,18 +5,20 @@ import { validateBody } from '../../middlewares/share/validator.middleware';
 import { CreatePaymentSchema } from '../../types/payment/payment';
 
 const router = Router();
-
+// api này do vnpay gọi tự động sau khi xử lí xong, ko auth
+router.get(
+    '/vnpay/result-callback',
+    paymentController.handlePaymentWithVnPayResult
+);
+router.post('/zalopay/result-callback', paymentController.getZaloPaymentUrl);
 // All payment routes require authentication
 router.use(authenticateMiddlewareClient);
 
 // Create payment
 router.get(
-    '/vnpay/url',
+    '/vnpay/url/:orderCode',
     paymentController.getVnpayPaymentUrl
 );
-router.get(
-    '/vnpay/result',
-    paymentController.handlePaymentWithVnPayResult
-);
-
+router.get('/zalopay/url/:orderCode', paymentController.getZaloPaymentUrl);
+// router.post('/zalopay/result-callback', orderController.checkoutZaloCallback);
 export default router;
