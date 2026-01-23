@@ -21,7 +21,7 @@ jobs:
                       cd ~/be-swp391-eye-wear
 
                       # 2. Lấy code mới nhất về
-                      git pull origin main
+                      git pull origin master
 
                       # 3. Build lại và khởi động lại Docker Container
                       # (Lệnh này sẽ tự tắt cái cũ và chạy cái mới)
