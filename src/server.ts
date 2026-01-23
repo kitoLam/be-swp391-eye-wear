@@ -3,7 +3,7 @@ import { config } from './config/env.config';
 import { connectMongoDB } from './config/database/mongodb.config';
 import { redisClient } from './config/database/redis.config';
 import { neo4jClient } from './config/database/neo4j.config';
-
+import './queues/order.worker';
 const startServer = async () => {
     try {
         // Connect to databases

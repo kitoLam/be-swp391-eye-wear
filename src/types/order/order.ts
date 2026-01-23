@@ -2,7 +2,7 @@ import z from 'zod';
 import { OrderProductClientUpdateSchema, OrderProductSchema } from './order-product';
 import { AddressSchema } from '../customer/address';
 import { PaymentMethodType } from '../../config/enums/payment.enum';
-import { AssignmentOrderStatus } from '../../config/enums/order.enum';
+import { AssignmentOrderStatus, OrderStatus } from '../../config/enums/order.enum';
 
 // Verification Status Schema
 export const VerificationStatusSchema = z.object({
@@ -52,6 +52,8 @@ export const OrderSchema = z.object({
     assignment: AssignmentSchema,
 
     note: z.string(),
+
+    orderStatus: z.enum(OrderStatus, { error: 'Order status is required' }),
 
     createdAt: z.date(),
     updatedAt: z.date(),
