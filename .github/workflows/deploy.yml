@@ -17,15 +17,14 @@ jobs:
                   key: ${{ secrets.SSH_KEY }}
                   port: 22
                   script: |
-                      # 1. Đi vào thư mục code trên server (SỬA ĐƯỜNG DẪN NÀY CHO ĐÚNG)
+                      # 1. Vào thư mục
                       cd ~/be-swp391-eye-wear
 
-                      # 2. Lấy code mới nhất về
-                      git pull origin master
+                      # 2. Lấy code (SỬA main THÀNH master NẾU CẦN)
+                      git pull origin main 
 
-                      # 3. Build lại và khởi động lại Docker Container
-                      # (Lệnh này sẽ tự tắt cái cũ và chạy cái mới)
-                      sudo docker compose up -d --build
+                      # 3. Chạy Docker (QUAN TRỌNG: ĐÃ XÓA CHỮ SUDO Ở ĐẦU)
+                      docker compose up -d --build
 
-                      # 4. Dọn dẹp các image cũ cho đỡ tốn dung lượng ổ cứng
-                      sudo docker image prune -f
+                      # 4. Dọn dẹp (QUAN TRỌNG: ĐÃ XÓA CHỮ SUDO Ở ĐẦU)
+                      docker image prune -f
