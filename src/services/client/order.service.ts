@@ -103,21 +103,22 @@ class OrderClientService {
                     }
                     // console.log(">>product ", item);
                     // check xem thg này có đủ kho hay khong mới cho xuống tiếp
-                    const key = `${redisPrefix.orderLockRace}-${item.product.product_id}-${item.product.sku}`;
-                    const stockIsAcquiring =
-                        (await redisService.getDataByKey<number>(key)) || 0;
-                    if (variant.stock - stockIsAcquiring < item.quantity) {
+                    const keyRace = `${redisPrefix.orderLockRace}-${item.product.product_id}-${item.product.sku}`;
+                    const keyOnline = `${redisPrefix.orderLockOnline}-${item.product.product_id}-${item.product.sku}`;
+                    const stockIsAcquiring = (await redisService.getDataByKey<number>(keyRace)) || 0;
+                    const stockIsAcquiringOnline = (await redisService.getDataByKey<number>(keyOnline)) || 0;
+                    if (variant.stock - (stockIsAcquiring + stockIsAcquiringOnline) < item.quantity) {
                         throw new ConflictRequestError(
                             `Product out of stock: ${product.nameBase}`
                         );
                     }
                     // acquire stock trong dưới Redis
                     await this.acquireProductOrderLock(
-                        key,
+                        keyRace,
                         item.quantity
                     );
                     // add key, qty vào acquiredLocks
-                    acquiredLocks.push({ key, qty: item.quantity });
+                    acquiredLocks.push({ key: keyRace, qty: item.quantity });
                     // nếu là COD mới sẽ trừ stock thật dưới mongo
                     if (payload.paymentMethod == PaymentMethodType.COD) {
                         await productRepository.updateByFilter(
@@ -161,21 +162,22 @@ class OrderClientService {
                         );
                     }
                     //  check xem thg này có đủ kho hay khong mới cho xuống tiếp
-                    const key = `${redisPrefix.orderLockRace}-${item.lens.lens_id}-${item.lens.sku}`;
-                    const stockIsAcquiring =
-                        (await redisService.getDataByKey<number>(key)) || 0;
-                    if (variant.stock - stockIsAcquiring < item.quantity) {
+                    const keyRace = `${redisPrefix.orderLockRace}-${item.lens.lens_id}-${item.lens.sku}`;
+                    const keyOnline = `${redisPrefix.orderLockOnline}-${item.lens.lens_id}-${item.lens.sku}`;
+                    const stockIsAcquiringRace = (await redisService.getDataByKey<number>(keyRace)) || 0;
+                    const stockIsAcquiringOnline = (await redisService.getDataByKey<number>(keyOnline)) || 0;
+                    if (variant.stock - (stockIsAcquiringRace + stockIsAcquiringOnline) < item.quantity) {
                         throw new ConflictRequestError(
                             `Lens out of stock: ${lensProduct.nameBase}`
                         );
                     }
                     // acquire stock trong dưới Redis
                     await this.acquireProductOrderLock(
-                        key,
+                        keyRace,
                         item.quantity
                     );
                     // add key, qty vào acquiredLocks
-                    acquiredLocks.push({ key, qty: item.quantity });
+                    acquiredLocks.push({ key: keyRace, qty: item.quantity });
                     if (payload.paymentMethod == PaymentMethodType.COD) {
                         await productRepository.updateByFilter(
                             {
@@ -291,7 +293,7 @@ class OrderClientService {
             const newOrder = await orderRepository.create(orderData);
 
             // Tạo payment, ban đầu all payment method đều có trạng thái là UNPAID
-            await paymentRepository.create({
+            const newPayment = await paymentRepository.create({
                 ownerId: customerId,
                 orderId: newOrder._id.toString(),
                 paymentMethod: payload.paymentMethod,
@@ -312,7 +314,10 @@ class OrderClientService {
                 }
                 await addOrderToTimeoutQueue({ orderId: newOrder.orderCode });
             }
-            return newOrder;
+            return {
+                order: newOrder,
+                payment: newPayment
+            };
         } catch (error) {
             // Rollback phần đã trừ dưới mongo
             for (const item of alreadyDescItems) {

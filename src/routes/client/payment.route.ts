@@ -6,19 +6,19 @@ import { CreatePaymentSchema } from '../../types/payment/payment';
 
 const router = Router();
 // api này do vnpay gọi tự động sau khi xử lí xong, ko auth
-router.get(
-    '/vnpay/result-callback',
-    paymentController.handlePaymentWithVnPayResult
-);
-router.post('/zalopay/result-callback', paymentController.getZaloPaymentUrl);
+// router.get(
+//     '/vnpay/result-callback',
+//     paymentController.handlePaymentWithVnPayResult
+// );
+router.post('/zalopay/result-callback', paymentController.handleZalopayResultCallback);
 // All payment routes require authentication
 router.use(authenticateMiddlewareClient);
 
 // Create payment
-router.get(
-    '/vnpay/url/:orderCode',
-    paymentController.getVnpayPaymentUrl
-);
-router.get('/zalopay/url/:orderCode', paymentController.getZaloPaymentUrl);
+// router.get(
+//     '/vnpay/url/:orderCode/:paymentId',
+//     paymentController.getVnpayPaymentUrl
+// );
+router.get('/zalopay/url/:orderCode/:paymentId', paymentController.getZaloPaymentUrl);
 // router.post('/zalopay/result-callback', orderController.checkoutZaloCallback);
 export default router;

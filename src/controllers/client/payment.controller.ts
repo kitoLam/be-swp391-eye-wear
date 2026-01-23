@@ -14,14 +14,15 @@ class PaymentController {
     }
     handlePaymentWithVnPayResult = async (req: Request, res: Response) => {
       let vnp_Params = req.query;
-      const result = await paymentClientService.handleVnpayPaymentResultCallback(req.customer!.id, vnp_Params);
+      const result = await paymentClientService.handleVnpayPaymentResultCallback(vnp_Params);
       res.json(ApiResponse.success('Thanh toán vnpay thanh cong', result));
     }
 
     getZaloPaymentUrl = async (req: Request, res: Response) => {
       const customerId = req.customer!.id;
       const orderCode = req.params.orderCode as string;
-      const url = await paymentClientService.getZalopayUrl(customerId, orderCode);
+      const paymentId = req.params.paymentId as string;
+      const url = await paymentClientService.getZalopayUrl(customerId, orderCode, paymentId);
       res.json(ApiResponse.success('Tạo cổng thanh toán zalo thành công', { url }));
     }
 
