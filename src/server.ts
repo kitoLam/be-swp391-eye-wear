@@ -2,7 +2,7 @@ import { httpServer, io } from './app';
 import { config } from './config/env.config';
 import { connectMongoDB } from './config/database/mongodb.config';
 import { redisClient } from './config/database/redis.config';
-// import { neo4jClient } from './config/database/neo4j.config';
+import { neo4jClient } from './config/database/neo4j.config';
 import './queues/order.worker';
 const startServer = async () => {
     try {
@@ -35,18 +35,18 @@ const startServer = async () => {
 };
 
 // Handle graceful shutdown
-// const gracefulShutdown = async () => {
-//     console.log('SIGTERM received, shutting down gracefully...');
-//     await redisClient.disconnect();
-//     await neo4jClient.close();
-//     process.exit(0);
-// };
-// process.on('SIGTERM', (): void => {
-//     void (async () => {
-//         await gracefulShutdown();
-//       }
-//     )();
-// });
+const gracefulShutdown = async () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    await redisClient.disconnect();
+    await neo4jClient.close();
+    process.exit(0);
+};
+process.on('SIGTERM', (): void => {
+    void (async () => {
+        await gracefulShutdown();
+      }
+    )();
+});
 
 void(async () => {
   await startServer();
