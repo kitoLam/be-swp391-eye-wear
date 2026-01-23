@@ -1,31 +1,31 @@
 name: Deploy to Google Cloud VM
 
 on:
-  push:
-    branches:
-      - master  # Hoặc 'master' tùy tên nhánh chính của bạn
+    push:
+        branches:
+            - master # Hoặc 'master' tùy tên nhánh chính của bạn
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: 22
-          script: |
-            # 1. Đi vào thư mục code trên server (SỬA ĐƯỜNG DẪN NÀY CHO ĐÚNG)
-            cd ~/be-swp391-eye-wear
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Deploy via SSH
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.HOST }}
+                  username: ${{ secrets.USERNAME }}
+                  key: ${{ secrets.SSH_KEY }}
+                  port: 22
+                  script: |
+                      # 1. Đi vào thư mục code trên server (SỬA ĐƯỜNG DẪN NÀY CHO ĐÚNG)
+                      cd ~/be-swp391-eye-wear
 
-            # 2. Lấy code mới nhất về
-            git pull origin main
+                      # 2. Lấy code mới nhất về
+                      git pull origin main
 
-            # 3. Build lại và khởi động lại Docker Container
-            # (Lệnh này sẽ tự tắt cái cũ và chạy cái mới)
-            sudo docker compose up -d --build
+                      # 3. Build lại và khởi động lại Docker Container
+                      # (Lệnh này sẽ tự tắt cái cũ và chạy cái mới)
+                      sudo docker compose up -d --build
 
-            # 4. Dọn dẹp các image cũ cho đỡ tốn dung lượng ổ cứng
-            sudo docker image prune -f
+                      # 4. Dọn dẹp các image cũ cho đỡ tốn dung lượng ổ cứng
+                      sudo docker image prune -f
