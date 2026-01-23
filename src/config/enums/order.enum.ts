@@ -17,3 +17,12 @@ export enum AssignmentOrderStatus {
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
 }
+export enum OrderStatus {
+  PENDING = 'PENDING',
+  CONFIRM = "CONFIRM", // được staff confirm
+  WAITING_MANUFACTURER = "WAITING_MANUFACTURER",
+  PACKING = "PACKING",
+  DELIVERED = 'DELIVERED',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED', // bị hủy
+}

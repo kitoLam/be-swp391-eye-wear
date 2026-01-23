@@ -17,9 +17,10 @@ import {
 import { paymentRepository } from '../../repositories/payment/payment.repository';
 import redisService from '../redis.service';
 import { redisPrefix } from '../../config/constants/redis.constant';
+import { addOrderToTimeoutQueue } from '../../queues/order.queue';
 class OrderClientService {
-    private releaseProductOrderLock = async (payload: {key: string, qty: number}[]) => {
-        const seconds = 10;
+    releaseProductOrderLock = async (payload: {key: string, qty: number}[], type: 'race' | 'online' = 'race') => {
+        const seconds = type == 'race' ? 10 : 15 * 60;
         for (const item of payload) {
             const stockIsAcquiring = await redisService.getDataByKey<number>(item.key);
             if (stockIsAcquiring != null) {
@@ -36,11 +37,12 @@ class OrderClientService {
             }
         }
     };
-    private acquireProductOrderLock = async (
+    acquireProductOrderLock = async (
         key: string,
         qty: number,
+        type: 'race' | 'online' = 'race'
     ) => {
-        const seconds = 10;
+        const seconds = type == 'race' ? 10 : 15 * 60;
         const stockIsAcquiring = await redisService.getDataByKey<number>(key);
         if (stockIsAcquiring != null) {
             const updateStockAcquiring = stockIsAcquiring + qty;
@@ -298,7 +300,17 @@ class OrderClientService {
             });
             // nếu cái paymentMethod != các phương thức tt ONLINE thì add thêm key vào redis lock lại 15'
             if(payload.paymentMethod != PaymentMethodType.COD){
-
+                for (const item of payload.products) {
+                    if(item.lens){
+                        const key = `${redisPrefix.orderLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
+                        await this.acquireProductOrderLock(key, item.quantity, 'online');
+                    }
+                    if(item.product){
+                        const key = `${redisPrefix.orderLockOnline}:${item.product.product_id}:${item.product.sku}`;
+                        await this.acquireProductOrderLock(key, item.quantity, 'online');
+                    }
+                }
+                await addOrderToTimeoutQueue({ orderId: newOrder.orderCode });
             }
             return newOrder;
         } catch (error) {
@@ -314,7 +326,7 @@ class OrderClientService {
             }
             throw error;
         } finally {
-            // release lock hiện tại
+            // release lock race hiện tại
             await this.releaseProductOrderLock(acquiredLocks);
         }
     };

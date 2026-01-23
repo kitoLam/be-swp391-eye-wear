@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { Order } from '../../types/order/order';
 import {
     AssignmentOrderStatus,
+    OrderStatus,
     OrderType,
     VerifyOrderStatus,
 } from '../../config/enums/order.enum';
@@ -24,6 +25,11 @@ const OrderSchema = new Schema<IOrderDocument>(
             type: String,
             enum: OrderType,
             required: [true, 'Order type is required'],
+        },
+        orderStatus: {
+            type: String,
+            enum: OrderStatus,
+            default: OrderStatus.PENDING,
         },
         products: [
             {
