@@ -8,8 +8,10 @@ class OrderController {
     createOrder = async (req: Request, res: Response, next: NextFunction) => {
         const payload = req.body as ClientCreateOrder;
         const customerId = req.customer!.id;
-        const order = await orderClientService.createOrder(customerId, payload);
-        res.json(ApiResponse.success('Tạo đơn hàng thành công!', { order }));
+        const data = await orderClientService.createOrder(customerId, payload);
+        res.json(ApiResponse.success('Tạo đơn hàng thành công!', {
+            ...data
+        }));
     };
 
     getOrders = async (req: Request, res: Response) => {

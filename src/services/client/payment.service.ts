@@ -9,6 +9,11 @@ import { orderRepository } from '../../repositories/order/order.repository';
 import * as objectUtil from '../../utils/object.util';
 import { createHmac } from 'node:crypto';
 import axios from 'axios';
+import { removeJobFromQueue } from '../../queues/order.queue';
+import orderService from './order.service';
+import { redisPrefix } from '../../config/constants/redis.constant';
+import { PaymentStatus } from '../../config/enums/payment.enum';
+import { productRepository } from '../../repositories/product/product.repository';
 class PaymentClientService {
     getVnPayUrl = async (
         customerId: string,
@@ -62,7 +67,9 @@ class PaymentClientService {
         vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
         return vnpUrl;
     };
-    handleVnpayPaymentResultCallback = async (customerId: string, vnp_Params: any) => {
+    handleVnpayPaymentResultCallback = async (
+        vnp_Params: any
+    ) => {
         let secureHash = vnp_Params['vnp_SecureHash'];
 
         delete vnp_Params['vnp_SecureHash'];
@@ -94,11 +101,11 @@ class PaymentClientService {
         }
     };
 
-    getZalopayUrl = async (customerId: string, orderCode: string) => {
+    getZalopayUrl = async (customerId: string, orderCode: string, paymentId: string) => {
         const existOrder = await orderRepository.findOne({
             orderCode: orderCode,
             owner: customerId,
-            deleted: false,
+            deletedAt: null,
         });
         if (!existOrder) {
             throw new NotFoundRequestError('Đơn hàng không tồn tại');
@@ -111,21 +118,23 @@ class PaymentClientService {
         const apiZalopay = process.env.ZALO_API;
         const transID = Math.floor(Math.random() * 1000000);
         const embed_data = {
+            orderCode,
+            paymentId,
             // sau khi gọi call back thành công, zalo đẩy chuyển UI từ màn hình thanh toán zalo sang màn hình app
             // redirecturl: `${process.env.API_FE_CLIENT}/orders/success?orderCode=${orderCode}`,
         };
         const order = {
             app_id,
             app_trans_id: `${moment().format('YYMMDD')}_${transID}`,
-            app_user: `${existOrder.customerInfo.phone}-${existOrder.orderCode}`,
+            app_user: `${existOrder.owner}`,
             app_time: Date.now(), // miliseconds
-            item: JSON.stringify([{}]),
+            item: JSON.stringify([]),
             embed_data: JSON.stringify(embed_data),
-            amount: existOrder.payment.finalPrice,
+            amount: Math.round(Number(existOrder.payment.finalPrice)),
             description: `Thanh toán đơn hàng #${orderCode}`,
-            bank_code: '', // zalopayapp -> scan QR
+            // bank_code: '', // zalopayapp -> scan QR
             mac: '',
-            callback_url: `${process.env.APP_API}/zalopay/result-callback`, // sau khi zalo pay thực hiện xong việc thanh toán thu tiền, sẽ chạy vào callback_url để xử lí tiếp
+            callback_url: `${process.env.APP_API}/payments/zalopay/result-callback`, // sau khi zalo pay thực hiện xong việc thanh toán thu tiền, sẽ chạy vào callback_url để xử lí tiếp
         };
         const data =
             app_id +
@@ -156,7 +165,6 @@ class PaymentClientService {
         let result: any = {};
         const { reqMac, dataStr } = zaloPayload;
         try {
-
             let mac = createHmac('sha256', key2).update(dataStr).digest('hex');
             // kiểm tra callback hợp lệ (đến từ ZaloPay server)
             if (reqMac !== mac) {
@@ -168,8 +176,61 @@ class PaymentClientService {
                 // merchant cập nhật trạng thái cho đơn hàng
                 // dataJson chứa app_user chứa thống thông tin khách hàng
                 let dataJson = JSON.parse(dataStr, key2);
-                const [phone, orderCode] = dataJson.app_user.split('-');
-                // 
+                const embedData = dataJson.embed_data
+                ? JSON.parse(dataJson.embed_data)
+                : {};
+                const { orderCode, paymentId } = embedData;
+                // xóa timeout job
+                removeJobFromQueue({ orderId: orderCode });
+                const orderDetail = await orderRepository.findOne({
+                    orderCode: orderCode,
+                    deletedAt: null,
+                });
+                if (orderDetail) {
+                    // trừ stock thật mongo
+                    const itemsUpdateRedis: { key: string; qty: number }[] = [];
+                    const itemsUpdateMongo: { id: string; sku: string; qty: number }[] = [];
+                    for (const item of orderDetail.products) {
+                        if (item.lens) {
+                            const key = `${redisPrefix.orderLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
+                            itemsUpdateRedis.push({
+                                key,
+                                qty: item.quantity,
+                            });
+                            itemsUpdateMongo.push({
+                                id: item.lens.lens_id,
+                                sku: item.lens.sku,
+                                qty: item.quantity
+                            })
+                        }
+                        if (item.product) {
+                            const key = `${redisPrefix.orderLockOnline}:${item.product.product_id}:${item.product.sku}`;
+                            itemsUpdateRedis.push({
+                                key,
+                                qty: item.quantity,
+                            });
+                            itemsUpdateMongo.push({
+                                id: item.product.product_id,
+                                sku: item.product.sku,
+                                qty: item.quantity
+                            })
+                        }
+                    }
+                    // trừ stock trong mongo
+                    for (const item of itemsUpdateMongo) {
+                        await productRepository.updateByFilter(
+                            {
+                                _id: item.id,
+                                'variants.sku': item.sku,
+                            },
+                            { $inc: { 'variants.$.stock': -item.qty } }
+                        );
+                    }
+                    await orderService.releaseProductOrderLock(itemsUpdateRedis, 'online');
+                    // cập nhật payment thành PAID
+                    await paymentRepository.updateByFilter({ _id: paymentId }, { status: PaymentStatus.PAID });
+                }
+                // cập nhật payment là đã thanh toán
                 result.return_code = 1;
                 result.return_message = 'success';
             }
