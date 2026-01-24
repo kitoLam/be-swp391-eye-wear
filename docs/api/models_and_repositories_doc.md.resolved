@@ -1,0 +1,427 @@
+# Order & Invoice Models and Repositories Documentation
+
+## Table of Contents
+1. [Order Model](#order-model)
+2. [Invoice Model](#invoice-model)
+3. [Order Repository](#order-repository)
+4. [Invoice Repository](#invoice-repository)
+5. [Base Repository Methods](#base-repository-methods)
+
+---
+
+## Order Model
+
+### Schema Overview
+```typescript
+{
+  type: OrderType,              // NORMAL | PRE-ORDER | MANUFACTURING
+  status: OrderStatus,          // Main order status
+  products: OrderProduct[],     // Array of products
+  isVerified: VerificationStatus,
+  assignment: Assignment,
+  price: number,
+  createdAt: Date,
+  updatedAt: Date,
+  deletedAt: Date | null
+}
+```
+
+### Fields Description
+
+#### `type` (OrderType - Required)
+Loại đơn hàng:
+- `NORMAL` - Đơn hàng thường
+- `PRE-ORDER` - Đơn đặt trước
+- `MANUFACTURING` - Đơn cần gia công
+
+#### `status` (OrderStatus - Required, Default: PENDING)
+Trạng thái chính của đơn hàng:
+- `PENDING` - Chờ xác minh
+- `VERIFIED` - Đã xác minh
+- `APPROVED` - Đã duyệt
+- `ASSIGNED` - Đã phân công
+- `MAKING` - Đang sản xuất
+- `PACKAGED` - Đã đóng gói
+- `REJECTED` - Bị từ chối
+- `CANCEL` - Đã hủy
+
+**Status Flow:**
+```
+PENDING → VERIFIED → APPROVED → ASSIGNED → MAKING → PACKAGED
+    ↓
+REJECTED / CANCEL
+```
+
+#### `products` (Array - Required, Min: 1)
+Danh sách sản phẩm trong đơn hàng:
+
+```typescript
+{
+  product?: {
+    product_id: string,    // ID sản phẩm (gọng kính)
+    sku?: string,          // SKU của sản phẩm
+    price?: number         // Giá sản phẩm
+  },
+  quantity: number,        // Số lượng (min: 1)
+  lens?: {                 // Tròng kính (optional)
+    lens_id: string,
+    sku: string,
+    parameters: {
+      left: { SPH, CYL, AXIS },
+      right: { SPH, CYL, AXIS },
+      PD: number
+    }
+  }
+}
+```
+
+#### `isVerified` (Object - Default: PENDING)
+Trạng thái xác minh đơn hàng:
+```typescript
+{
+  status: VerifyOrderStatus,  // PENDING | APPROVE | REJECT
+  staffVerified?: string      // ID của staff xác minh
+}
+```
+
+#### `assignment` (Object - Default: PENDING)
+Thông tin phân công:
+```typescript
+{
+  staffId?: string,           // ID nhân viên được phân công
+  assignStaff?: string,       // ID người phân công
+  assignedAt?: Date,          // Thời gian phân công
+  startedAt?: Date,           // Thời gian bắt đầu
+  completedAt?: Date,         // Thời gian hoàn thành
+  status: AssignmentOrderStatus  // PENDING | ASSIGNED | IN_PROGRESS | COMPLETED
+}
+```
+
+#### `price` (Number - Required, Min: 0)
+Giá của đơn hàng
+
+### Validations
+- ✅ Phải có ít nhất 1 sản phẩm
+- ✅ Price phải >= 0
+- ✅ Quantity phải >= 1
+
+---
+
+## Invoice Model
+
+### Schema Overview
+```typescript
+{
+  orders: string[],           // Array of Order IDs
+  owner: string,              // Customer ID
+  totalPrice: number,
+  voucher: string[],
+  address: Address,
+  status: InvoiceStatus,
+  fullName: string,
+  phone: string,
+  totalDiscount: number,
+  manager_onboard?: string,   // Manager ID
+  createdAt: Date,
+  updatedAt: Date,
+  deletedAt: Date | null
+}
+```
+
+### Fields Description
+
+#### `orders` (Array - Required, Min: 1)
+Danh sách Order IDs thuộc hóa đơn này
+
+#### `owner` (String - Required)
+ID của khách hàng sở hữu hóa đơn
+
+#### `totalPrice` (Number - Required, Min: 0)
+Tổng giá trị hóa đơn
+
+#### `voucher` (Array - Default: [])
+Danh sách voucher IDs được áp dụng
+
+#### `address` (Object - Required)
+Địa chỉ giao hàng:
+```typescript
+{
+  street: string,
+  ward: string,
+  city: string
+}
+```
+
+#### `status` (InvoiceStatus - Required, Default: PENDING)
+Trạng thái hóa đơn:
+- `PENDING` - Chờ đặt cọc
+- `DEPOSITED` - Đã đặt cọc
+- `WAITING_ASSIGN` - Chờ phân công manager
+- `ONBOARD` - Manager đang quản lý
+- `COMPLETED` - Hoàn thành (tất cả orders đã PACKAGED)
+- `DELIVERING` - Đang giao hàng
+- `DELIVERED` - Đã giao hàng
+
+**Status Flow:**
+```
+PENDING → DEPOSITED → WAITING_ASSIGN → ONBOARD → COMPLETED → DELIVERING → DELIVERED
+```
+
+#### `fullName` (String - Required)
+Tên người nhận
+
+#### `phone` (String - Required)
+Số điện thoại người nhận
+
+#### `totalDiscount` (Number - Default: 0, Min: 0)
+Tổng giảm giá
+
+#### `manager_onboard` (String - Optional)
+ID của manager phụ trách hóa đơn (khi status = ONBOARD)
+
+### Validations
+- ✅ totalDiscount <= totalPrice
+- ✅ Phải có ít nhất 1 order
+- ✅ totalPrice >= 0, totalDiscount >= 0
+
+---
+
+## Order Repository
+
+### Custom Methods
+
+#### [getStatistics()](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/order/order.repository.ts#11-39)
+Lấy thống kê đơn hàng
+
+**Returns:**
+```typescript
+{
+  total: number,                           // Tổng số orders
+  byType: { type: string, count: number }[], // Thống kê theo loại
+  totalRevenue: number                     // Tổng doanh thu
+}
+```
+
+**Example:**
+```typescript
+const stats = await orderRepository.getStatistics();
+// {
+//   total: 150,
+//   byType: [
+//     { type: 'NORMAL', count: 100 },
+//     { type: 'PRE-ORDER', count: 30 },
+//     { type: 'MANUFACTURING', count: 20 }
+//   ],
+//   totalRevenue: 50000000
+// }
+```
+
+### Inherited from BaseRepository
+- [findById(id)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#57-63) - Tìm order theo ID
+- [findOne(filter)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#64-73) - Tìm 1 order theo điều kiện
+- [find(filter, options)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#74-84) - Tìm nhiều orders với pagination
+- [findAll(options)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#85-93) - Lấy tất cả orders với pagination
+- [create(data)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#94-100) - Tạo order mới
+- [update(id, data)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#101-110) - Cập nhật order
+- [updateByFilter(filter, data)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#110-119) - Cập nhật theo điều kiện
+- [delete(id)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#120-130) - Soft delete order
+- [hardDelete(id)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#131-137) - Xóa vĩnh viễn
+- [count(filter)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#138-147) - Đếm số lượng
+- [exists(filter)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#148-158) - Kiểm tra tồn tại
+
+---
+
+## Invoice Repository
+
+### Custom Methods
+
+#### [findByOwner(ownerId: string)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/invoice/invoice.repository.ts#12-17)
+Lấy tất cả invoices của 1 khách hàng
+
+**Parameters:**
+- `ownerId` - ID của khách hàng
+
+**Returns:** `Promise<IInvoiceDocument[]>`
+
+**Example:**
+```typescript
+const invoices = await invoiceRepository.findByOwner('customer123');
+```
+
+#### [getStatistics()](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/order/order.repository.ts#11-39)
+Lấy thống kê hóa đơn
+
+**Returns:**
+```typescript
+{
+  total: number,                              // Tổng số invoices
+  byStatus: { status: string, count: number }[], // Thống kê theo status
+  totalRevenue: number,                       // Tổng doanh thu
+  totalDiscount: number                       // Tổng giảm giá
+}
+```
+
+**Example:**
+```typescript
+const stats = await invoiceRepository.getStatistics();
+// {
+//   total: 80,
+//   byStatus: [
+//     { status: 'PENDING', count: 10 },
+//     { status: 'DEPOSITED', count: 15 },
+//     { status: 'ONBOARD', count: 20 },
+//     { status: 'COMPLETED', count: 25 },
+//     { status: 'DELIVERED', count: 10 }
+//   ],
+//   totalRevenue: 100000000,
+//   totalDiscount: 5000000
+// }
+```
+
+### Inherited from BaseRepository
+- [findById(id)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#57-63) - Tìm invoice theo ID
+- [findOne(filter)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#64-73) - Tìm 1 invoice theo điều kiện
+- [find(filter, options)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#74-84) - Tìm nhiều invoices với pagination
+- [findAll(options)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#85-93) - Lấy tất cả invoices với pagination
+- [create(data)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#94-100) - Tạo invoice mới
+- [update(id, data)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#101-110) - Cập nhật invoice
+- [updateByFilter(filter, data)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#110-119) - Cập nhật theo điều kiện
+- [delete(id)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#120-130) - Soft delete invoice
+- [hardDelete(id)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#131-137) - Xóa vĩnh viễn
+- [count(filter)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#138-147) - Đếm số lượng
+- [exists(filter)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#148-158) - Kiểm tra tồn tại
+
+---
+
+## Base Repository Methods
+
+Tất cả các repository đều kế thừa từ [BaseRepository](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#18-159) với các methods sau:
+
+### [findById(id: string)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#57-63)
+Tìm document theo ID
+
+### [findOne(filter: FilterQuery)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#64-73)
+Tìm 1 document theo điều kiện (chỉ trả về documents chưa bị xóa)
+
+### [find(filter: Partial<T>, options?: PaginationOptions)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#74-84)
+Tìm nhiều documents với pagination
+
+**PaginationOptions:**
+```typescript
+{
+  page?: number,      // Default: 1
+  limit?: number,     // Default: 10
+  sortBy?: string,    // Default: 'createdAt'
+  sortOrder?: 'asc' | 'desc'  // Default: 'desc'
+}
+```
+
+**Returns:**
+```typescript
+{
+  data: T[],
+  total: number,
+  page: number,
+  limit: number,
+  totalPages: number
+}
+```
+
+### [findAll(options?: PaginationOptions)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#85-93)
+Lấy tất cả documents với pagination
+
+### [create(data: Partial<T>)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#94-100)
+Tạo document mới
+
+### [update(id: string, data: Partial<T>)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#101-110)
+Cập nhật document theo ID
+
+### [updateByFilter(filter: FilterQuery, data: UpdateQuery)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#110-119)
+Cập nhật document theo điều kiện
+
+### [delete(id: string)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#120-130)
+Soft delete (set deletedAt = current date)
+
+### [hardDelete(id: string)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#131-137)
+Xóa vĩnh viễn khỏi database
+
+### [count(filter?: FilterQuery)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#138-147)
+Đếm số lượng documents (chỉ đếm documents chưa bị xóa)
+
+### [exists(filter: FilterQuery)](file:///d:/code/SW391/be-swp391-eye-wear/src/repositories/base.repository.ts#148-158)
+Kiểm tra document có tồn tại không
+
+---
+
+## Usage Examples
+
+### Creating an Order
+```typescript
+const newOrder = await orderRepository.create({
+  type: OrderType.NORMAL,
+  status: OrderStatus.PENDING,
+  products: [
+    {
+      product: { product_id: 'frame123', sku: 'FR-001', price: 500000 },
+      quantity: 1,
+      lens: {
+        lens_id: 'lens456',
+        sku: 'LN-001',
+        parameters: {
+          left: { SPH: -2.5, CYL: -0.5, AXIS: 90 },
+          right: { SPH: -2.0, CYL: -0.75, AXIS: 85 },
+          PD: 63
+        }
+      }
+    }
+  ],
+  price: 800000,
+  isVerified: { status: VerifyOrderStatus.PENDING },
+  assignment: { status: AssignmentOrderStatus.PENDING }
+});
+```
+
+### Creating an Invoice
+```typescript
+const newInvoice = await invoiceRepository.create({
+  orders: ['order123', 'order456'],
+  owner: 'customer789',
+  totalPrice: 1500000,
+  totalDiscount: 100000,
+  voucher: ['voucher001'],
+  address: {
+    street: '123 Nguyen Hue',
+    ward: 'Ben Nghe',
+    city: 'Ho Chi Minh'
+  },
+  status: InvoiceStatus.PENDING,
+  fullName: 'Nguyen Van A',
+  phone: '0901234567'
+});
+```
+
+### Updating Order Status
+```typescript
+await orderRepository.update('order123', {
+  status: OrderStatus.APPROVED
+});
+```
+
+### Assigning Manager to Invoice
+```typescript
+await invoiceRepository.update('invoice123', {
+  status: InvoiceStatus.ONBOARD,
+  manager_onboard: 'manager456'
+});
+```
+
+### Finding Orders with Pagination
+```typescript
+const result = await orderRepository.find(
+  { type: OrderType.MANUFACTURING },
+  { page: 1, limit: 20, sortBy: 'createdAt', sortOrder: 'desc' }
+);
+// result.data - array of orders
+// result.total - total count
+// result.totalPages - total pages
+```

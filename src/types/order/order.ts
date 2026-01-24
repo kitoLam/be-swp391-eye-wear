@@ -1,112 +1,70 @@
 import z from 'zod';
-import { OrderProductClientUpdateSchema, OrderProductSchema } from './order-product';
-import { AddressSchema } from '../customer/address';
-import { PaymentMethodType } from '../../config/enums/payment.enum';
-import { AssignmentOrderStatus, OrderStatus } from '../../config/enums/order.enum';
-
-// Verification Status Schema
-export const VerificationStatusSchema = z.object({
-    status: z.enum(['PENDING', 'APPROVE', 'REJECT']),
-    staffVerified: z.string().nullable(), // Staff ID who verified
-});
-
-// Assignment Schema
-export const AssignmentSchema = z.object({
-    staffId: z.string().nullable(), // ID của nhân viên được giao làm đơn
-    assignStaff: z.string().nullable(), // Staff ID who assigned
-    assignedAt: z.date().nullable(),
-    startedAt: z.date().nullable(),
-    completedAt: z.date().nullable(),
-    status: z.enum(AssignmentOrderStatus),
-});
-
-// Payment Schema
-export const PaymentSchema = z.object({
-    totalPrice: z.number().min(0, 'Total price must be non-negative'),
-    totalDiscount: z.number().min(0).default(0),
-    finalPrice: z.number().min(0),
-    voucher: z.array(z.string()).default([]),
-});
-
-// Customer Info Schema
-export const CustomerInfoSchema = z.object({
-    fullName: z.string().min(1, 'Full name is required'),
-    phone: z.string().min(1, 'Phone number is required'),
-});
+import { OrderProductSchema } from './order-product';
+import {
+    AssignmentOrderStatus,
+    OrderStatus,
+    OrderType,
+} from '../../config/enums/order.enum';
 
 // Order Schema
 export const OrderSchema = z.object({
-    _id: z.string().min(1, 'Order ID is required'),
-    owner: z.string().min(1, 'Owner ID is required'), // Added owner
-    type: z.enum(['NORMAL', 'PRE-ORDER', 'MANUFACTURING']),
+    _id: z.string().optional(),
+    type: z.nativeEnum(OrderType),
     products: z
         .array(OrderProductSchema)
         .min(1, 'At least one product is required'),
-    orderCode: z.string().nonempty(),
-    
-    shippingAddress: AddressSchema,
-    customerInfo: CustomerInfoSchema,
-    payment: PaymentSchema,
+    status: z.nativeEnum(OrderStatus),
 
-    isVerified: VerificationStatusSchema,
-    assignment: AssignmentSchema,
+    // Verification fields (flattened from isVerified)
+    staffVerified: z.string().nullable().optional(),
 
-    note: z.string(),
+    // Assignment fields (flattened from assignment)
+    staffId: z.string().nullable().optional(),
+    assignStaff: z.string().nullable().optional(),
+    assignedAt: z.date().nullable().optional(),
+    startedAt: z.date().nullable().optional(),
+    completedAt: z.date().nullable().optional(),
+    assignmentStatus: z.nativeEnum(AssignmentOrderStatus),
 
-    orderStatus: z.enum(OrderStatus, { error: 'Order status is required' }),
+    price: z.number().min(0, 'Price must be non-negative'),
 
-    createdAt: z.date(),
-    updatedAt: z.date(),
-    deletedAt: z.date().nullable(),
+    createdAt: z.date().optional(),
+    updatedAt: z.date().optional(),
+    deletedAt: z.date().nullable().optional(),
 });
 
-// Create Order Schema (Internal/Full)
+// Create Order Schema (for creating new orders)
 export const CreateOrderSchema = z.object({
-    owner: z.string().min(1, 'Owner ID is required'),
-    type: z.enum(['NORMAL', 'PRE-ORDER', 'MANUFACTURING']),
-    products: z.array(OrderProductSchema).min(1),
-    shippingAddress: AddressSchema,
-    customerInfo: CustomerInfoSchema,
-    payment: PaymentSchema,
-    isVerified: VerificationStatusSchema.optional(),
-    assignment: AssignmentSchema.optional(),
-    note: z.string().optional(),
+    type: z.nativeEnum(OrderType),
+    products: z
+        .array(OrderProductSchema)
+        .min(1, 'At least one product is required'),
+    price: z.number().min(0, 'Price must be non-negative'),
+    status: z.nativeEnum(OrderStatus).default(OrderStatus.PENDING),
+    staffVerified: z.string().nullable().optional(),
+    assignmentStatus: z
+        .nativeEnum(AssignmentOrderStatus)
+        .default(AssignmentOrderStatus.PENDING),
+    staffId: z.string().nullable().optional(),
+    assignStaff: z.string().nullable().optional(),
 });
 
 // Update Order Schema
 export const UpdateOrderSchema = z.object({
-    type: z.enum(['NORMAL', 'PRE-ORDER', 'MANUFACTURING']).optional(),
+    type: z.nativeEnum(OrderType).optional(),
     products: z.array(OrderProductSchema).optional(),
-    shippingAddress: AddressSchema.optional(),
-    customerInfo: CustomerInfoSchema.optional(),
-    payment: PaymentSchema.optional(),
-    isVerified: VerificationStatusSchema.optional(),
-    assignment: AssignmentSchema.optional(),
-    note: z.string().optional(),
+    price: z.number().min(0).optional(),
+    status: z.nativeEnum(OrderStatus).optional(),
+    staffVerified: z.string().nullable().optional(),
+    assignmentStatus: z.nativeEnum(AssignmentOrderStatus).optional(),
+    staffId: z.string().nullable().optional(),
+    assignStaff: z.string().nullable().optional(),
+    assignedAt: z.date().nullable().optional(),
+    startedAt: z.date().nullable().optional(),
+    completedAt: z.date().nullable().optional(),
 });
 
-export type VerificationStatus = z.infer<typeof VerificationStatusSchema>;
-export type Assignment = z.infer<typeof AssignmentSchema>;
+// Type exports
 export type Order = z.infer<typeof OrderSchema>;
 export type CreateOrder = z.infer<typeof CreateOrderSchema>;
 export type UpdateOrder = z.infer<typeof UpdateOrderSchema>;
-
-// Client Create Order Schema
-export const ClientCreateOrderSchema = z.object({
-    products: z
-        .array(OrderProductSchema)
-        .min(1, 'At least one product is required'),
-    shippingAddress: AddressSchema,
-    customerInfo: CustomerInfoSchema,
-    voucher: z.array(z.string()).min(0),
-    paymentMethod: z.enum(PaymentMethodType, {error: "Payment method is required"}),
-    note: z.string(),
-});
-
-export const ClientUpdateOrderSchema = z.object({
-    shippingAddress: AddressSchema,
-    customerInfo: CustomerInfoSchema,
-    products: z.array(OrderProductClientUpdateSchema).min(1), 
-});
-export type ClientCreateOrder = z.infer<typeof ClientCreateOrderSchema>;
-export type ClientUpdateOrder = z.infer<typeof ClientUpdateOrderSchema>;
