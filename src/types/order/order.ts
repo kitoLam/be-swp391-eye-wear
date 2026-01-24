@@ -68,3 +68,24 @@ export const UpdateOrderSchema = z.object({
 export type Order = z.infer<typeof OrderSchema>;
 export type CreateOrder = z.infer<typeof CreateOrderSchema>;
 export type UpdateOrder = z.infer<typeof UpdateOrderSchema>;
+
+// Client-specific schemas with additional fields
+export const ClientCreateOrderSchema = CreateOrderSchema.extend({
+    voucher: z.array(z.string()).optional(),
+    paymentMethod: z.string(),
+    shippingAddress: z.any().optional(),
+    customerInfo: z.any().optional(),
+    note: z.string().optional(),
+});
+
+export const ClientUpdateOrderSchema = UpdateOrderSchema.extend({
+    voucher: z.array(z.string()).optional(),
+    paymentMethod: z.string().optional(),
+    shippingAddress: z.any().optional(),
+    customerInfo: z.any().optional(),
+    note: z.string().optional(),
+});
+
+// Client-specific type exports
+export type ClientCreateOrder = z.infer<typeof ClientCreateOrderSchema>;
+export type ClientUpdateOrder = z.infer<typeof ClientUpdateOrderSchema>;

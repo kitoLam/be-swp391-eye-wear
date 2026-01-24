@@ -93,10 +93,10 @@ export const invoiceWorker = new Worker(
     { connection: bullMqConnection }
 );
 
-invoiceWorker.on('completed', job => {
+invoiceWorker.on('completed', (job: Job) => {
     console.log(`[Worker] Job ${job.id} completed successfully`);
 });
 
-invoiceWorker.on('failed', (job, err) => {
+invoiceWorker.on('failed', (job: Job | undefined, err: Error) => {
     console.error(`[Worker] Job ${job?.id} failed:`, err);
 });
