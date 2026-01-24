@@ -21,6 +21,7 @@ jobs:
                       cd ~/be-swp391-eye-wear
 
                       # 2. Lấy code (SỬA main THÀNH master NẾU CẦN)
+                      git fetch origin
                       git pull origin master 
 
                       # 3. Chạy Docker (QUAN TRỌNG: ĐÃ XÓA CHỮ SUDO Ở ĐẦU)
