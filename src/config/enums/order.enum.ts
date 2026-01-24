@@ -1,30 +1,26 @@
+// Order Type Enum
 export enum OrderType {
-  NORMAL =  'NORMAL',
-  PRE_ORDER = 'PRE-ORDER',
-  MANUFACTURING = 'MANUFACTURING',
-};
-export enum VerifyOrderStatus {
-  PENDING = 'PENDING',
-  APPROVE = 'APPROVE',
-  REJECT = 'REJECT',
+    NORMAL = 'NORMAL',
+    PRE_ORDER = 'PRE-ORDER',
+    MANUFACTURING = 'MANUFACTURING',
 }
-export enum AssignmentOrderStatus {
-  PENDING = 'PENDING', //
-  PROCESSING = 'ASSIGNED', // đã giao cho nhân viên tiếp quản (Manager mới làm đc)
-  WAITING_MANUFACTURER = "WAITING_MANUFACTURER", 
-  PACKING = "PACKING",
-  DELIVERED = 'DELIVERED',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-}
-// PENDING -> CONFIRM/CANCELLED/REJECT -> WAITING_STOCK -> WAITING_MANUFACTURER -> PACKING -> DELIVERED
+
+// Order Status Enum
 export enum OrderStatus {
-  PENDING = 'PENDING',
-  CONFIRM = "CONFIRM", // được staff confirm
-  WAITING_STOCK = "WAITING_STOCK", // cho đơn pre-order
-  WAITING_MANUFACTURER = "WAITING_MANUFACTURER", // chỉ với đơn cần gia công
-  PACKING = "PACKING", 
-  DELIVERED = 'DELIVERED',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED', // bị hủy
+    PENDING = 'PENDING', // Chờ xác minh
+    VERIFIED = 'VERIFIED', // Đã xác minh
+    APPROVED = 'APPROVED', // Đã duyệt
+    ASSIGNED = 'ASSIGNED', // Đã phân công
+    MAKING = 'MAKING', // Đang sản xuất
+    PACKAGED = 'PACKAGED', // Đã đóng gói
+    REJECTED = 'REJECTED', // Bị từ chối
+    CANCEL = 'CANCEL', // Đã hủy
+}
+
+// Assignment Status Enum
+export enum AssignmentOrderStatus {
+    PENDING = 'PENDING', // Chưa phân công
+    ASSIGNED = 'ASSIGNED', // Đã phân công
+    IN_PROGRESS = 'IN_PROGRESS', // Đang xử lý
+    COMPLETED = 'COMPLETED', // Hoàn thành
 }
