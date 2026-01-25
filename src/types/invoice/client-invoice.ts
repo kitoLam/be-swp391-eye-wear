@@ -19,7 +19,7 @@ export const ClientCreateInvoiceSchema = z.object({
         .min(1, 'At least one product is required'),
 
     // Payment method (required for inventory logic)
-    paymentMethod: z.nativeEnum(PaymentMethodType),
+    paymentMethod: z.enum(PaymentMethodType),
 
     // Shipping information
     address: AddressSchema,

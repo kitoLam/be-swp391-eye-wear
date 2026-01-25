@@ -11,7 +11,7 @@ const PaymentSchema = new Schema<IPaymentDocument>(
             type: String,
             required: [true, 'Owner ID is required'],
         },
-        orderId: {
+        invoiceId: {
             type: String,
             required: [true, 'Order ID is required'],
         },

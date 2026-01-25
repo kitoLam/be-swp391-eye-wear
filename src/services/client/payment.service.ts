@@ -9,11 +9,16 @@ import { orderRepository } from '../../repositories/order/order.repository';
 import * as objectUtil from '../../utils/object.util';
 import { createHmac } from 'node:crypto';
 import axios from 'axios';
-import { removeJobFromQueue } from '../../queues/order.queue';
+import { removeJobFromQueue } from '../../queues/invoice.queue';
 import orderService from './order.service';
 import { redisPrefix } from '../../config/constants/redis.constant';
-import { PaymentStatus } from '../../config/enums/payment.enum';
+import {
+    PaymentMethodType,
+    PaymentStatus,
+} from '../../config/enums/payment.enum';
 import { productRepository } from '../../repositories/product/product.repository';
+import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
+import { InvoiceStatus } from '../../config/enums/invoice.enum';
 class PaymentClientService {
     getVnPayUrl = async (
         customerId: string,
@@ -104,15 +109,15 @@ class PaymentClientService {
 
     getZalopayUrl = async (
         customerId: string,
-        orderCode: string,
+        invoiceId: string,
         paymentId: string
     ) => {
-        const existOrder = await orderRepository.findOne({
-            orderCode: orderCode,
+        const existInvoice = await invoiceRepository.findOne({
+            _id: invoiceId,
             owner: customerId,
             deletedAt: null,
         });
-        if (!existOrder) {
+        if (!existInvoice) {
             throw new NotFoundRequestError('Đơn hàng không tồn tại');
         }
 
@@ -123,7 +128,7 @@ class PaymentClientService {
         const apiZalopay = process.env.ZALO_API;
         const transID = Math.floor(Math.random() * 1000000);
         const embed_data = {
-            orderCode,
+            invoiceId,
             paymentId,
             // sau khi gọi call back thành công, zalo đẩy chuyển UI từ màn hình thanh toán zalo sang màn hình app
             // redirecturl: `${process.env.API_FE_CLIENT}/orders/success?orderCode=${orderCode}`,
@@ -131,16 +136,14 @@ class PaymentClientService {
         const order = {
             app_id,
             app_trans_id: `${moment().format('YYMMDD')}_${transID}`,
-            // TODO: Fix - owner and payment properties don't exist on Order model
-            // app_user: `${existOrder.owner}`,
-            app_user: `user`,
+            app_user: `${existInvoice.owner}`,
             app_time: Date.now(), // miliseconds
             item: JSON.stringify([]),
             embed_data: JSON.stringify(embed_data),
             // amount: Math.round(Number(existOrder.payment.finalPrice)),
-            amount: 0, // Placeholder
-            description: `Thanh toán đơn hàng #${orderCode}`,
-            // bank_code: '', // zalopayapp -> scan QR
+            amount: existInvoice.totalPrice - existInvoice.totalDiscount, // Placeholder
+            description: `Thanh toán hóa đơn #${invoiceId}`,
+            bank_code: '', // zalopayapp -> scan QR
             mac: '',
             callback_url: `${process.env.APP_API}/payments/zalopay/result-callback`, // sau khi zalo pay thực hiện xong việc thanh toán thu tiền, sẽ chạy vào callback_url để xử lí tiếp
         };
@@ -162,6 +165,7 @@ class PaymentClientService {
         const resAxios = await axios.post(`${apiZalopay}`, null, {
             params: order,
         });
+        console.log(resAxios);
         return resAxios.data.order_url;
     };
 
@@ -187,14 +191,22 @@ class PaymentClientService {
                 const embedData = dataJson.embed_data
                     ? JSON.parse(dataJson.embed_data)
                     : {};
-                const { orderCode, paymentId } = embedData;
+                const { invoiceId, paymentId } = embedData;
                 // xóa timeout job
-                removeJobFromQueue({ orderId: orderCode });
-                const orderDetail = await orderRepository.findOne({
-                    orderCode: orderCode,
+                removeJobFromQueue({
+                    invoiceId: invoiceId,
+                });
+                const invoiceDetail = await invoiceRepository.findOne({
+                    _id: invoiceId,
                     deletedAt: null,
                 });
-                if (orderDetail) {
+                const paymentDetail = await paymentRepository.findOne({
+                    _id: paymentId,
+                    paymentMethod: PaymentMethodType.ZALOPAY,
+                    status: PaymentStatus.UNPAID,
+                    deletedAt: null,
+                });
+                if (invoiceDetail && paymentDetail) {
                     // trừ stock thật mongo
                     const itemsUpdateRedis: { key: string; qty: number }[] = [];
                     const itemsUpdateMongo: {
@@ -202,30 +214,37 @@ class PaymentClientService {
                         sku: string;
                         qty: number;
                     }[] = [];
-                    for (const item of orderDetail.products) {
-                        if (item.lens) {
-                            const key = `${redisPrefix.orderLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
-                            itemsUpdateRedis.push({
-                                key,
-                                qty: item.quantity,
-                            });
-                            itemsUpdateMongo.push({
-                                id: item.lens.lens_id,
-                                sku: item.lens.sku,
-                                qty: item.quantity,
-                            });
-                        }
-                        if (item.product) {
-                            const key = `${redisPrefix.orderLockOnline}:${item.product.product_id}:${item.product.sku}`;
-                            itemsUpdateRedis.push({
-                                key,
-                                qty: item.quantity,
-                            });
-                            itemsUpdateMongo.push({
-                                id: item.product.product_id,
-                                sku: item.product.sku,
-                                qty: item.quantity,
-                            });
+                    for (const orderId of invoiceDetail.orders) {
+                        const orderDetail = await orderRepository.findOne({
+                            _id: orderId,
+                        });
+                        if (orderDetail) {
+                            for (const item of orderDetail.products) {
+                                if (item.lens) {
+                                    const key = `${redisPrefix.productLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
+                                    itemsUpdateRedis.push({
+                                        key,
+                                        qty: item.quantity,
+                                    });
+                                    itemsUpdateMongo.push({
+                                        id: item.lens.lens_id,
+                                        sku: item.lens.sku,
+                                        qty: item.quantity,
+                                    });
+                                }
+                                if (item.product) {
+                                    const key = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
+                                    itemsUpdateRedis.push({
+                                        key,
+                                        qty: item.quantity,
+                                    });
+                                    itemsUpdateMongo.push({
+                                        id: item.product.product_id,
+                                        sku: item.product.sku,
+                                        qty: item.quantity,
+                                    });
+                                }
+                            }
                         }
                     }
                     // trừ stock trong mongo
@@ -246,6 +265,11 @@ class PaymentClientService {
                     await paymentRepository.updateByFilter(
                         { _id: paymentId },
                         { status: PaymentStatus.PAID }
+                    );
+                    // Cập nhật invoice status 
+                    await invoiceRepository.updateByFilter(
+                        { _id: invoiceId },
+                        { status: InvoiceStatus.DEPOSITED }
                     );
                 }
                 // cập nhật payment là đã thanh toán

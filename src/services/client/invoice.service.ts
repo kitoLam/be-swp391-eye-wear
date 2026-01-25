@@ -16,30 +16,18 @@ import {
     AssignmentOrderStatus,
 } from '../../config/enums/order.enum';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
-import { PaymentMethodType } from '../../config/enums/payment.enum';
+import { PaymentMethodType, PaymentStatus } from '../../config/enums/payment.enum';
 import redisService from '../redis.service';
 import { redisPrefix } from '../../config/constants/redis.constant';
 import { addInvoiceToTimeoutQueue } from '../../queues/invoice.queue';
+import { paymentRepository } from '../../repositories/payment/payment.repository';
+import { ClientCreateInvoice } from '../../types/invoice/client-invoice';
 
 interface InvoiceProduct {
     productId: string;
     sku: string;
     qty: number;
     type: 'frame' | 'lens';
-}
-
-interface CreateInvoicePayload {
-    products: OrderProduct[];
-    voucher?: string[];
-    address: {
-        street: string;
-        ward: string;
-        city: string;
-    };
-    fullName: string;
-    phone: string;
-    paymentMethod: PaymentMethodType;
-    note?: string;
 }
 
 class InvoiceClientService {
@@ -175,7 +163,7 @@ class InvoiceClientService {
      */
     createInvoice = async (
         customerId: string,
-        payload: CreateInvoicePayload
+        payload: ClientCreateInvoice
     ) => {
         const acquiredLocks: { key: string; qty: number }[] = [];
         const alreadyDecreasedItems: {
@@ -214,13 +202,13 @@ class InvoiceClientService {
                     throw new BadRequestError('Product or lens is required');
                 }
 
-                let productDoc: any;
+                // let productDoc: any;
                 let variant: any;
                 let itemPrice = 0;
 
                 // Process Frame Product
                 if (item.product) {
-                    productDoc = await productRepository.findOne({
+                    const productDoc = await productRepository.findOne({
                         _id: item.product.product_id,
                         type: { $ne: 'lens' },
                     });
@@ -241,8 +229,8 @@ class InvoiceClientService {
                     }
 
                     // Check stock
-                    const keyRace = `${redisPrefix.orderLockRace}:${item.product.product_id}:${item.product.sku}`;
-                    const keyOnline = `${redisPrefix.orderLockOnline}:${item.product.product_id}:${item.product.sku}`;
+                    const keyRace = `${redisPrefix.productLockRace}:${item.product.product_id}:${item.product.sku}`;
+                    const keyOnline = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
                     const stockRace =
                         (await redisService.getDataByKey<number>(keyRace)) || 0;
                     const stockOnline =
@@ -316,8 +304,8 @@ class InvoiceClientService {
                     }
 
                     // Check stock
-                    const keyRace = `${redisPrefix.orderLockRace}:${item.lens.lens_id}:${item.lens.sku}`;
-                    const keyOnline = `${redisPrefix.orderLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
+                    const keyRace = `${redisPrefix.productLockRace}:${item.lens.lens_id}:${item.lens.sku}`;
+                    const keyOnline = `${redisPrefix.productLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
                     const stockRace =
                         (await redisService.getDataByKey<number>(keyRace)) || 0;
                     const stockOnline =
@@ -459,7 +447,7 @@ class InvoiceClientService {
             if (payload.paymentMethod !== PaymentMethodType.COD) {
                 // Acquire online locks
                 for (const product of invoiceProducts) {
-                    const key = `${redisPrefix.orderLockOnline}:${product.productId}:${product.sku}`;
+                    const key = `${redisPrefix.productLockOnline}:${product.productId}:${product.sku}`;
                     await this.acquireProductLock(key, product.qty, 'online');
                 }
 
@@ -476,10 +464,17 @@ class InvoiceClientService {
                     invoiceId: newInvoice._id.toString(),
                 });
             }
-
+            // Create new payment
+            const newPayment = await paymentRepository.create({
+                ownerId: customerId,
+                invoiceId: newInvoice._id.toString(),
+                paymentMethod: payload.paymentMethod as PaymentMethodType,
+                status: PaymentStatus.UNPAID,
+                price: totalPrice - totalDiscount,
+            });
             return {
                 invoice: newInvoice,
-                finalPrice: totalPrice - totalDiscount,
+                payment: newPayment
             };
         } catch (error) {
             // Rollback: Restore decreased stock

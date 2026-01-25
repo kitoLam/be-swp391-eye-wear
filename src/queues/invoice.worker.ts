@@ -35,7 +35,7 @@ export const invoiceWorker = new Worker(
 
             // 2. Release all stock locks
             for (const product of productsData) {
-                const lockKey = `${redisPrefix.orderLockOnline}:${product.productId}:${product.sku}`;
+                const lockKey = `${redisPrefix.productLockOnline}:${product.productId}:${product.sku}`;
                 const currentLock =
                     await redisService.getDataByKey<number>(lockKey);
 
