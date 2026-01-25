@@ -96,6 +96,81 @@ class InvoiceClientService {
     };
 
     /**
+     * Helper: Calculate voucher discount
+     */
+    private calculateVoucherDiscount = async (
+        voucherCodes: string[] | undefined,
+        totalPrice: number,
+        customerId: string
+    ): Promise<{ discount: number; voucherId?: string }> => {
+        if (!voucherCodes || voucherCodes.length === 0) {
+            return { discount: 0 };
+        }
+
+        const voucherCode = voucherCodes[0];
+        const voucher = await voucherRepository.findOne({
+            code: voucherCode.toUpperCase(),
+            deletedAt: null,
+        });
+
+        if (!voucher) {
+            throw new NotFoundRequestError('Voucher không tồn tại');
+        }
+
+        // Check voucher access for SPECIFIC vouchers
+        if (voucher.applyScope === 'SPECIFIC') {
+            const hasAccess = await neo4jVoucherRepository.userHasVoucher(
+                customerId,
+                voucher._id.toString()
+            );
+            if (!hasAccess) {
+                throw new BadRequestError(
+                    'Bạn không có quyền sử dụng voucher này'
+                );
+            }
+        }
+
+        // Validate voucher
+        const now = new Date();
+        if (voucher.status !== 'ACTIVE') {
+            throw new BadRequestError('Voucher chưa được kích hoạt');
+        }
+        if (now < voucher.startedDate || now > voucher.endedDate) {
+            throw new BadRequestError('Voucher không trong thời gian sử dụng');
+        }
+        if (voucher.usageCount >= voucher.usageLimit) {
+            throw new BadRequestError('Voucher đã hết lượt sử dụng');
+        }
+        if (totalPrice < voucher.minOrderValue) {
+            throw new BadRequestError(
+                `Giá trị đơn hàng tối thiểu là ${voucher.minOrderValue.toLocaleString()}đ`
+            );
+        }
+
+        // Calculate discount
+        let discount = 0;
+        if (voucher.typeDiscount === 'FIXED') {
+            discount = voucher.value;
+        } else if (voucher.typeDiscount === 'PERCENTAGE') {
+            discount = (totalPrice * voucher.value) / 100;
+        }
+
+        discount = Math.min(discount, voucher.maxDiscountValue);
+        discount = Math.min(discount, totalPrice);
+
+        // Mark voucher as used
+        if (voucher.applyScope === 'SPECIFIC') {
+            await neo4jVoucherRepository.markVoucherAsUsed(
+                customerId,
+                voucher._id.toString()
+            );
+        }
+        await voucherRepository.incrementUsage(voucher._id.toString());
+
+        return { discount, voucherId: voucher._id.toString() };
+    };
+
+    /**
      * Create Invoice (Checkout)
      */
     createInvoice = async (
@@ -112,32 +187,52 @@ class InvoiceClientService {
         const createdOrders: string[] = [];
 
         try {
+            // Separate products by type
+            const normalProducts: OrderProduct[] = [];
+            const manufacturingProducts: OrderProduct[] = [];
+
+            for (const item of payload.products) {
+                if (item.lens) {
+                    manufacturingProducts.push(item);
+                } else {
+                    normalProducts.push(item);
+                }
+            }
+
             let totalPrice = 0;
 
-            // 1. Process each product and create orders
+            // Process and validate all products first
+            const processedProducts: Array<{
+                item: OrderProduct;
+                product: any;
+                variant: any;
+                price: number;
+            }> = [];
+
             for (const item of payload.products) {
                 if (!item.product && !item.lens) {
                     throw new BadRequestError('Product or lens is required');
                 }
 
-                let orderType = OrderType.NORMAL;
-                let orderPrice = 0;
+                let productDoc: any;
+                let variant: any;
+                let itemPrice = 0;
 
                 // Process Frame Product
                 if (item.product) {
-                    const product = await productRepository.findOne({
+                    productDoc = await productRepository.findOne({
                         _id: item.product.product_id,
                         type: { $ne: 'lens' },
                     });
 
-                    if (!product) {
+                    if (!productDoc) {
                         throw new NotFoundRequestError(
                             `Product not found: ${item.product.product_id}`
                         );
                     }
 
-                    const variant = product.variants.find(
-                        v => v.sku === item.product?.sku
+                    variant = productDoc.variants.find(
+                        (v: any) => v.sku === item.product?.sku
                     );
                     if (!variant) {
                         throw new BadRequestError(
@@ -159,7 +254,7 @@ class InvoiceClientService {
                         item.quantity
                     ) {
                         throw new ConflictRequestError(
-                            `Product out of stock: ${product.nameBase}`
+                            `Product out of stock: ${productDoc.nameBase}`
                         );
                     }
 
@@ -175,7 +270,7 @@ class InvoiceClientService {
                     if (payload.paymentMethod === PaymentMethodType.COD) {
                         await productRepository.updateByFilter(
                             {
-                                _id: product._id,
+                                _id: productDoc._id,
                                 'variants.sku': item.product.sku,
                                 'variants.stock': { $gte: item.quantity },
                             },
@@ -188,7 +283,7 @@ class InvoiceClientService {
                         });
                     }
 
-                    orderPrice += variant.finalPrice * item.quantity;
+                    itemPrice = variant.finalPrice * item.quantity;
                     invoiceProducts.push({
                         productId: item.product.product_id,
                         sku: item.product.sku,
@@ -199,8 +294,6 @@ class InvoiceClientService {
 
                 // Process Lens
                 if (item.lens) {
-                    orderType = OrderType.MANUFACTURING;
-
                     const lensProduct = await productRepository.findOne({
                         _id: item.lens.lens_id,
                         type: 'lens',
@@ -213,10 +306,10 @@ class InvoiceClientService {
                         );
                     }
 
-                    const variant = lensProduct.variants.find(
-                        v => v.sku === item.lens?.sku
+                    const lensVariant = lensProduct.variants.find(
+                        (v: any) => v.sku === item.lens?.sku
                     );
-                    if (!variant) {
+                    if (!lensVariant) {
                         throw new BadRequestError(
                             `Lens variant with SKU ${item.lens.sku} not found`
                         );
@@ -232,7 +325,7 @@ class InvoiceClientService {
                         0;
 
                     if (
-                        variant.stock - (stockRace + stockOnline) <
+                        lensVariant.stock - (stockRace + stockOnline) <
                         item.quantity
                     ) {
                         throw new ConflictRequestError(
@@ -265,7 +358,7 @@ class InvoiceClientService {
                         });
                     }
 
-                    orderPrice += variant.finalPrice * item.quantity;
+                    itemPrice += lensVariant.finalPrice * item.quantity;
                     invoiceProducts.push({
                         productId: item.lens.lens_id,
                         sku: item.lens.sku,
@@ -274,94 +367,86 @@ class InvoiceClientService {
                     });
                 }
 
-                // Create Order
-                const newOrder = await orderRepository.create({
-                    type: orderType,
-                    products: [item],
+                totalPrice += itemPrice;
+            }
+
+            // Create Orders with proper grouping
+            // 1. Create ONE order for all NORMAL products
+            if (normalProducts.length > 0) {
+                let normalOrderPrice = 0;
+                for (const item of normalProducts) {
+                    const product = await productRepository.findOne({
+                        _id: item.product!.product_id,
+                    });
+                    const variant = product!.variants.find(
+                        (v: any) => v.sku === item.product?.sku
+                    );
+                    normalOrderPrice += variant!.finalPrice * item.quantity;
+                }
+
+                const normalOrder = await orderRepository.create({
+                    type: OrderType.NORMAL,
+                    products: normalProducts,
                     status: OrderStatus.PENDING,
-                    price: orderPrice,
+                    price: normalOrderPrice,
                     assignmentStatus: AssignmentOrderStatus.PENDING,
                 });
 
-                createdOrders.push(newOrder._id.toString());
-                totalPrice += orderPrice;
+                createdOrders.push(normalOrder._id.toString());
             }
 
-            // 2. Apply Voucher
-            let totalDiscount = 0;
-            if (payload.voucher && payload.voucher.length > 0) {
-                const voucherCode = payload.voucher[0];
-                const voucher = await voucherRepository.findOne({
-                    code: voucherCode.toUpperCase(),
-                    deletedAt: null,
+            // 2. Create separate MANUFACTURING order for each product with lens
+            for (const item of manufacturingProducts) {
+                let mfgOrderPrice = 0;
+
+                // Calculate price for frame
+                if (item.product) {
+                    const product = await productRepository.findOne({
+                        _id: item.product.product_id,
+                    });
+                    const variant = product!.variants.find(
+                        (v: any) => v.sku === item.product?.sku
+                    );
+                    mfgOrderPrice += variant!.finalPrice * item.quantity;
+                }
+
+                // Calculate price for lens
+                if (item.lens) {
+                    const lensProduct = await productRepository.findOne({
+                        _id: item.lens.lens_id,
+                    });
+                    const lensVariant = lensProduct!.variants.find(
+                        (v: any) => v.sku === item.lens?.sku
+                    );
+                    mfgOrderPrice += lensVariant!.finalPrice * item.quantity;
+                }
+
+                const mfgOrder = await orderRepository.create({
+                    type: OrderType.MANUFACTURING,
+                    products: [item],
+                    status: OrderStatus.PENDING,
+                    price: mfgOrderPrice,
+                    assignmentStatus: AssignmentOrderStatus.PENDING,
                 });
 
-                if (!voucher) {
-                    throw new NotFoundRequestError('Voucher không tồn tại');
-                }
-
-                // Check voucher access for SPECIFIC vouchers
-                if (voucher.applyScope === 'SPECIFIC') {
-                    const hasAccess =
-                        await neo4jVoucherRepository.userHasVoucher(
-                            customerId,
-                            voucher._id.toString()
-                        );
-                    if (!hasAccess) {
-                        throw new BadRequestError(
-                            'Bạn không có quyền sử dụng voucher này'
-                        );
-                    }
-                }
-
-                // Validate voucher
-                const now = new Date();
-                if (voucher.status !== 'ACTIVE') {
-                    throw new BadRequestError('Voucher chưa được kích hoạt');
-                }
-                if (now < voucher.startedDate || now > voucher.endedDate) {
-                    throw new BadRequestError(
-                        'Voucher không trong thời gian sử dụng'
-                    );
-                }
-                if (voucher.usageCount >= voucher.usageLimit) {
-                    throw new BadRequestError('Voucher đã hết lượt sử dụng');
-                }
-                if (totalPrice < voucher.minOrderValue) {
-                    throw new BadRequestError(
-                        `Giá trị đơn hàng tối thiểu là ${voucher.minOrderValue.toLocaleString()}đ`
-                    );
-                }
-
-                // Calculate discount
-                let discount = 0;
-                if (voucher.typeDiscount === 'FIXED') {
-                    discount = voucher.value;
-                } else if (voucher.typeDiscount === 'PERCENTAGE') {
-                    discount = (totalPrice * voucher.value) / 100;
-                }
-
-                discount = Math.min(discount, voucher.maxDiscountValue);
-                discount = Math.min(discount, totalPrice);
-                totalDiscount = discount;
-
-                // Mark voucher as used
-                if (voucher.applyScope === 'SPECIFIC') {
-                    await neo4jVoucherRepository.markVoucherAsUsed(
-                        customerId,
-                        voucher._id.toString()
-                    );
-                }
-                await voucherRepository.incrementUsage(voucher._id.toString());
+                createdOrders.push(mfgOrder._id.toString());
             }
 
-            // 3. Create Invoice
+            // Apply Voucher
+            const { discount: totalDiscount, voucherId } =
+                await this.calculateVoucherDiscount(
+                    payload.voucher,
+                    totalPrice,
+                    customerId
+                );
+
+            // Create Invoice
             const invoiceData: any = {
                 orders: createdOrders,
                 owner: customerId,
                 totalPrice,
                 totalDiscount,
-                voucher: payload.voucher || [],
+                voucher: voucherId ? [voucherId] : [],
                 address: payload.address,
                 status: InvoiceStatus.PENDING,
                 fullName: payload.fullName,
@@ -370,7 +455,7 @@ class InvoiceClientService {
 
             const newInvoice = await invoiceRepository.create(invoiceData);
 
-            // 4. If ONLINE payment, acquire online locks and add to timeout queue
+            // If ONLINE payment, acquire online locks and add to timeout queue
             if (payload.paymentMethod !== PaymentMethodType.COD) {
                 // Acquire online locks
                 for (const product of invoiceProducts) {

@@ -2,10 +2,8 @@ import { Router } from 'express';
 import invoiceController from '../../controllers/client/invoice.controller';
 import { authenticateMiddlewareClient } from '../../middlewares/client/auth.middleware';
 import { validateBody } from '../../middlewares/share/validator.middleware';
-import {
-    CreateInvoiceSchema,
-    UpdateInvoiceSchema,
-} from '../../types/invoice/invoice';
+import { ClientCreateInvoiceSchema } from '../../types/invoice/client-invoice';
+import { UpdateInvoiceSchema } from '../../types/invoice/invoice';
 
 const router = Router();
 
@@ -14,7 +12,7 @@ router.use(authenticateMiddlewareClient);
 // Create invoice (Checkout)
 router.post(
     '/',
-    validateBody(CreateInvoiceSchema),
+    validateBody(ClientCreateInvoiceSchema),
     invoiceController.createInvoice
 );
 

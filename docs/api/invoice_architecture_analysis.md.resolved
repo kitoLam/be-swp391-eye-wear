@@ -1,0 +1,507 @@
+# Phân Tích Lỗi Kiến Trúc Invoice/Order System
+
+## 📋 Tổng Quan
+
+Dựa trên tài liệu lỗi và phân tích source code, hệ thống hiện tại có **4 lỗi kiến trúc nghiêm trọng** ảnh hưởng đến tính toàn vẹn dữ liệu, bảo mật và trải nghiệm người dùng.
+
+---
+
+## 🔴 LỖI 1: Xung Đột Schema vs Service Logic
+
+### Mô Tả Lỗi
+
+**Zod Schema** ([invoice.ts:9](file:///d:/code/SW391/be-swp391-eye-wear/src/types/invoice/invoice.ts#L9)):
+```typescript
+orders: z.array(z.string()).min(1, 'At least one order is required')
+```
+- Mong đợi: Danh sách **ID đơn hàng có sẵn** (string[])
+
+**Service Logic** ([invoice.service.ts:32](file:///d:/code/SW391/be-swp391-eye-wear/src/services/client/invoice.service.ts#L32)):
+```typescript
+interface CreateInvoicePayload {
+    products: OrderProduct[];  // Mảng sản phẩm để TẠO MỚI đơn hàng
+    // ...
+}
+```
+- Mong đợi: Danh sách **sản phẩm** để khởi tạo đơn hàng mới
+
+### Ảnh Hưởng
+
+| Khía Cạnh | Hậu Quả |
+|-----------|---------|
+| **Validation** | Middleware `validateBody(CreateInvoiceSchema)` sẽ **từ chối 100%** request từ Frontend |
+| **HTTP Status** | Luôn trả về `400 Bad Request` |
+| **User Experience** | Người dùng **không thể checkout** |
+| **Business Impact** | **Mất 100% doanh thu** từ tính năng đặt hàng |
+
+### Luồng Lỗi
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Middleware
+    participant Controller
+    participant Service
+    
+    Client->>Middleware: POST /invoice<br/>{products: [...]}
+    Middleware->>Middleware: Validate với CreateInvoiceSchema<br/>Expect: {orders: string[]}
+    Middleware-->>Client: ❌ 400 Bad Request<br/>"orders is required"
+    Note over Controller,Service: Code không bao giờ chạy đến đây
+```
+
+---
+
+## 🔴 LỖI 2: Thiếu Trường `paymentMethod` Trong Schema
+
+### Mô Tả Lỗi
+
+**Zod Schema** ([invoice.ts:33-49](file:///d:/code/SW391/be-swp391-eye-wear/src/types/invoice/invoice.ts#L33-L49)):
+```typescript
+export const CreateInvoiceSchema = z.object({
+    orders: z.array(z.string()),
+    // ... các trường khác
+    // ❌ KHÔNG CÓ paymentMethod
+});
+```
+
+**Service Logic** ([invoice.service.ts:41](file:///d:/code/SW391/be-swp391-eye-wear/src/services/client/invoice.service.ts#L41)):
+```typescript
+interface CreateInvoicePayload {
+    paymentMethod: PaymentMethodType;  // ✅ CẦN THIẾT
+}
+```
+
+**Business Logic Phụ Thuộc** ([invoice.service.ts:175](file:///d:/code/SW391/be-swp391-eye-wear/src/services/client/invoice.service.ts#L175)):
+```typescript
+if (payload.paymentMethod === PaymentMethodType.COD) {
+    // Trừ kho NGAY LẬP TỨC
+    await productRepository.updateByFilter(..., { $inc: { 'variants.$.stock': -item.quantity } });
+} else {
+    // Giữ kho TẠM THỜI (15 phút) cho thanh toán online
+    await this.acquireProductLock(key, product.qty, 'online');
+}
+```
+
+### Ảnh Hưởng
+
+| Khía Cạnh | Hậu Quả |
+|-----------|---------|
+| **Data Loss** | `paymentMethod` bị Zod **lọc bỏ** trước khi vào Controller |
+| **Inventory Logic** | Không phân biệt được COD vs Online → **Không trừ kho** hoặc **trừ sai** |
+| **Race Condition** | Có thể bán **vượt tồn kho** do không lock đúng cách |
+| **Payment Flow** | Không thể tích hợp cổng thanh toán (ZaloPay, MoMo, VNPay) |
+
+### Ví Dụ Thực Tế
+
+```typescript
+// Frontend gửi:
+{
+  "products": [...],
+  "paymentMethod": "COD"  // ← Trường này
+}
+
+// Sau khi qua validateBody(CreateInvoiceSchema):
+{
+  "products": [...]
+  // ❌ paymentMethod đã bị xóa
+}
+
+// Service nhận được:
+payload.paymentMethod === undefined  // ← Lỗi runtime hoặc logic sai
+```
+
+---
+
+## 🔴 LỖI 3: Client Có Thể Gian Lận Giá
+
+### Mô Tả Lỗi
+
+**Schema Hiện Tại** ([invoice.ts:37-38](file:///d:/code/SW391/be-swp391-eye-wear/src/types/invoice/invoice.ts#L37-L38)):
+```typescript
+totalPrice: z.number().min(0, 'Total price must be non-negative'),  // ❌ REQUIRED
+totalDiscount: z.number().min(0).default(0),
+```
+
+**Vấn Đề**: Client có thể gửi bất kỳ giá trị nào:
+```json
+{
+  "products": [
+    {"product_id": "abc", "sku": "XYZ", "quantity": 10}
+  ],
+  "totalPrice": 1,           // ← Giá thật: 10,000,000 VNĐ
+  "totalDiscount": 0
+}
+```
+
+### Ảnh Hưởng
+
+| Khía Cạnh | Hậu Quả |
+|-----------|---------|
+| **Security** | Lỗ hổng bảo mật **nghiêm trọng** - Client điều khiển giá |
+| **Revenue Loss** | Mất tiền do khách hàng **tự đặt giá** |
+| **Data Integrity** | Dữ liệu giá không đáng tin cậy |
+| **Audit Trail** | Không thể truy vết gian lận |
+
+### So Sánh Logic Hiện Tại vs Đúng
+
+| Aspect | ❌ Hiện Tại | ✅ Nên Làm |
+|--------|-------------|------------|
+| **Nguồn Giá** | Client gửi | Server tính từ DB |
+| **Validation** | Chỉ check ≥ 0 | Tính toán lại và so sánh |
+| **Trust Model** | Trust client | Never trust client |
+
+**Service Đã Tính Đúng** ([invoice.service.ts:191](file:///d:/code/SW391/be-swp391-eye-wear/src/services/client/invoice.service.ts#L191)):
+```typescript
+orderPrice += variant.finalPrice * item.quantity;  // ✅ Tính từ DB
+totalPrice += orderPrice;
+```
+
+Nhưng **không sử dụng** giá trị này để validate input từ client!
+
+---
+
+## 🔴 LỖI 4: Logic Nhóm Đơn Hàng Sai
+
+### Mô Tả Lỗi
+
+**Code Hiện Tại** ([invoice.service.ts:118-287](file:///d:/code/SW391/be-swp391-eye-wear/src/services/client/invoice.service.ts#L118-L287)):
+```typescript
+for (const item of payload.products) {
+    // Xử lý từng sản phẩm...
+    
+    // ❌ TẠO ORDER CHO TỪNG SẢN PHẨM
+    const newOrder = await orderRepository.create({
+        type: orderType,
+        products: [item],  // ← Mỗi item = 1 Order
+        // ...
+    });
+    
+    createdOrders.push(newOrder._id.toString());
+}
+```
+
+### Ảnh Hưởng
+
+**Ví Dụ Thực Tế**:
+
+Khách mua:
+- 3 gọng kính thường (không lens)
+- 1 gọng kính + lens gia công
+
+**Kết Quả Hiện Tại**: 4 Orders riêng biệt
+```
+Invoice #12345
+├── Order #1: Gọng A (NORMAL)
+├── Order #2: Gọng B (NORMAL)
+├── Order #3: Gọng C (NORMAL)
+└── Order #4: Gọng D + Lens (MANUFACTURING)
+```
+
+**Kết Quả Mong Muốn**: 2 Orders
+```
+Invoice #12345
+├── Order #1: Gọng A + B + C (NORMAL) ← Gom chung
+└── Order #2: Gọng D + Lens (MANUFACTURING)
+```
+
+### Bảng So Sánh
+
+| Khía Cạnh | ❌ Hiện Tại (4 Orders) | ✅ Nên Làm (2 Orders) |
+|-----------|------------------------|------------------------|
+| **Shipping** | 4 gói hàng riêng | 2 gói (tối ưu chi phí) |
+| **Tracking** | 4 mã vận đơn | 2 mã (dễ theo dõi) |
+| **Warehouse** | 4 lần đóng gói | 2 lần (tiết kiệm thời gian) |
+| **Customer UX** | Rối, khó hiểu | Rõ ràng, logic |
+| **Database** | 4 documents | 2 documents (hiệu quả) |
+
+### Quy Tắc Nhóm Đúng
+
+```typescript
+// Nhóm 1: NORMAL Orders (gom tất cả sản phẩm không lens)
+const normalProducts = products.filter(p => !p.lens);
+if (normalProducts.length > 0) {
+    createOrder({ type: NORMAL, products: normalProducts });
+}
+
+// Nhóm 2+: MANUFACTURING Orders (mỗi sản phẩm có lens = 1 order riêng)
+const manufacturingProducts = products.filter(p => p.lens);
+for (const item of manufacturingProducts) {
+    createOrder({ type: MANUFACTURING, products: [item] });
+}
+```
+
+---
+
+## 📊 Tổng Hợp Mức Độ Nghiêm Trọng
+
+| Lỗi | Severity | Impact | Priority |
+|-----|----------|--------|----------|
+| **Lỗi 1: Schema Conflict** | 🔴 Critical | Hệ thống **không hoạt động** | P0 |
+| **Lỗi 2: Missing paymentMethod** | 🔴 Critical | Logic nghiệp vụ **sai hoàn toàn** | P0 |
+| **Lỗi 3: Client-side Pricing** | 🔴 Critical | **Lỗ hổng bảo mật** nghiêm trọng | P0 |
+| **Lỗi 4: Order Grouping** | 🟡 High | UX kém, chi phí cao | P1 |
+
+---
+
+## 💡 Giải Pháp Đề Xuất
+
+### Giải Pháp 1: Tạo Schema Mới Cho Client Request
+
+**Tạo file mới**: `src/types/invoice/client-invoice.ts`
+
+```typescript
+import z from 'zod';
+import { OrderProductSchema } from '../order/order-product';
+import { AddressSchema } from '../customer/address';
+import { PaymentMethodType } from '../../config/enums/payment.enum';
+
+export const ClientCreateInvoiceSchema = z.object({
+    // ✅ Nhận products thay vì orders
+    products: z.array(OrderProductSchema).min(1, 'At least one product is required'),
+    
+    // ✅ Bắt buộc có paymentMethod
+    paymentMethod: z.nativeEnum(PaymentMethodType),
+    
+    // ✅ Thông tin giao hàng
+    address: AddressSchema,
+    fullName: z.string().min(1, 'Full name is required'),
+    phone: z.string().min(1, 'Phone number is required'),
+    
+    // ✅ Voucher (optional)
+    voucher: z.array(z.string()).optional(),
+    
+    // ✅ Ghi chú (optional)
+    note: z.string().optional(),
+    
+    // ❌ KHÔNG CHO CLIENT GỬI totalPrice và totalDiscount
+});
+
+export type ClientCreateInvoice = z.infer<typeof ClientCreateInvoiceSchema>;
+```
+
+**Cập nhật route** ([invoice.route.ts:15-19](file:///d:/code/SW391/be-swp391-eye-wear/src/routes/client/invoice.route.ts#L15-L19)):
+```typescript
+import { ClientCreateInvoiceSchema } from '../../types/invoice/client-invoice';
+
+router.post(
+    '/',
+    validateBody(ClientCreateInvoiceSchema),  // ← Dùng schema mới
+    invoiceController.createInvoice
+);
+```
+
+### Giải Pháp 2: Server-Side Price Calculation với Validation
+
+**Cập nhật Service** ([invoice.service.ts:101-421](file:///d:/code/SW391/be-swp391-eye-wear/src/services/client/invoice.service.ts#L101-L421)):
+
+```typescript
+createInvoice = async (customerId: string, payload: ClientCreateInvoice) => {
+    let calculatedTotalPrice = 0;
+    
+    // 1. Tính giá từ database
+    for (const item of payload.products) {
+        const product = await productRepository.findOne({...});
+        const variant = product.variants.find(v => v.sku === item.sku);
+        
+        calculatedTotalPrice += variant.finalPrice * item.quantity;
+    }
+    
+    // 2. Áp dụng voucher
+    const discount = await this.calculateVoucherDiscount(
+        payload.voucher,
+        calculatedTotalPrice,
+        customerId
+    );
+    
+    // 3. Tạo invoice với giá đã tính
+    const invoice = await invoiceRepository.create({
+        // ...
+        totalPrice: calculatedTotalPrice,      // ← Server tính
+        totalDiscount: discount,                // ← Server tính
+        // ...
+    });
+    
+    return {
+        invoice,
+        finalPrice: calculatedTotalPrice - discount
+    };
+};
+```
+
+### Giải Pháp 3: Sửa Logic Nhóm Order
+
+**Refactor Service**:
+
+```typescript
+createInvoice = async (customerId: string, payload: ClientCreateInvoice) => {
+    const normalProducts: OrderProduct[] = [];
+    const manufacturingProducts: OrderProduct[] = [];
+    
+    // 1. Phân loại sản phẩm
+    for (const item of payload.products) {
+        if (item.lens) {
+            manufacturingProducts.push(item);
+        } else {
+            normalProducts.push(item);
+        }
+    }
+    
+    const createdOrders: string[] = [];
+    
+    // 2. Tạo 1 Order NORMAL cho tất cả sản phẩm thường
+    if (normalProducts.length > 0) {
+        const normalOrder = await orderRepository.create({
+            type: OrderType.NORMAL,
+            products: normalProducts,  // ← Gom tất cả
+            // ...
+        });
+        createdOrders.push(normalOrder._id.toString());
+    }
+    
+    // 3. Tạo Order MANUFACTURING riêng cho từng sản phẩm có lens
+    for (const item of manufacturingProducts) {
+        const mfgOrder = await orderRepository.create({
+            type: OrderType.MANUFACTURING,
+            products: [item],  // ← Mỗi lens = 1 order
+            // ...
+        });
+        createdOrders.push(mfgOrder._id.toString());
+    }
+    
+    // 4. Tạo Invoice
+    const invoice = await invoiceRepository.create({
+        orders: createdOrders,
+        // ...
+    });
+};
+```
+
+### Giải Pháp 4: Thêm Validation Layer
+
+**Tạo middleware mới**: `src/middlewares/invoice-validation.middleware.ts`
+
+```typescript
+export const validateInvoiceIntegrity = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const { products, voucher } = req.body;
+    
+    // 1. Validate products tồn tại và có stock
+    for (const item of products) {
+        const product = await productRepository.findOne({
+            _id: item.product?.product_id || item.lens?.lens_id
+        });
+        
+        if (!product) {
+            throw new NotFoundRequestError('Product not found');
+        }
+        
+        const variant = product.variants.find(v => v.sku === item.sku);
+        if (!variant || variant.stock < item.quantity) {
+            throw new ConflictRequestError('Insufficient stock');
+        }
+    }
+    
+    // 2. Validate voucher (nếu có)
+    if (voucher && voucher.length > 0) {
+        const voucherDoc = await voucherRepository.findOne({
+            code: voucher[0].toUpperCase()
+        });
+        
+        if (!voucherDoc || voucherDoc.status !== 'ACTIVE') {
+            throw new BadRequestError('Invalid voucher');
+        }
+    }
+    
+    next();
+};
+```
+
+**Áp dụng vào route**:
+```typescript
+router.post(
+    '/',
+    validateBody(ClientCreateInvoiceSchema),
+    validateInvoiceIntegrity,  // ← Thêm middleware
+    invoiceController.createInvoice
+);
+```
+
+---
+
+## 🎯 Roadmap Triển Khai
+
+### Phase 1: Critical Fixes (P0) - 1-2 ngày
+
+- [ ] Tạo `ClientCreateInvoiceSchema` mới
+- [ ] Thêm `paymentMethod` vào schema
+- [ ] Loại bỏ `totalPrice` và `totalDiscount` khỏi client schema
+- [ ] Cập nhật route sử dụng schema mới
+- [ ] Test API với Postman/Thunder Client
+
+### Phase 2: Business Logic (P0) - 2-3 ngày
+
+- [ ] Implement server-side price calculation
+- [ ] Refactor voucher discount logic
+- [ ] Thêm validation middleware
+- [ ] Unit tests cho price calculation
+- [ ] Integration tests cho checkout flow
+
+### Phase 3: Optimization (P1) - 1-2 ngày
+
+- [ ] Sửa logic nhóm Order
+- [ ] Test với nhiều scenarios (normal, manufacturing, mixed)
+- [ ] Cập nhật documentation
+- [ ] Performance testing
+
+### Phase 4: Monitoring & Rollout
+
+- [ ] Thêm logging cho price calculation
+- [ ] Setup alerts cho price mismatch
+- [ ] Gradual rollout với feature flag
+- [ ] Monitor error rates
+
+---
+
+## 📝 Checklist Kiểm Tra Trước Khi Deploy
+
+- [ ] **Schema**: Client không thể gửi `totalPrice` và `totalDiscount`
+- [ ] **PaymentMethod**: Bắt buộc và được validate
+- [ ] **Price Calculation**: 100% server-side, không trust client
+- [ ] **Order Grouping**: NORMAL products được gom chung
+- [ ] **Stock Management**: Lock đúng cho COD vs Online
+- [ ] **Voucher**: Validate và apply đúng
+- [ ] **Error Handling**: Rollback khi có lỗi
+- [ ] **Tests**: Coverage ≥ 80% cho checkout flow
+- [ ] **Documentation**: API docs đã cập nhật
+
+---
+
+## 🔗 Files Liên Quan
+
+### Cần Sửa
+- [invoice.ts](file:///d:/code/SW391/be-swp391-eye-wear/src/types/invoice/invoice.ts) - Tạo schema mới
+- [invoice.service.ts](file:///d:/code/SW391/be-swp391-eye-wear/src/services/client/invoice.service.ts) - Refactor logic
+- [invoice.route.ts](file:///d:/code/SW391/be-swp391-eye-wear/src/routes/client/invoice.route.ts) - Cập nhật middleware
+
+### Tham Khảo
+- [order.ts](file:///d:/code/SW391/be-swp391-eye-wear/src/types/order/order.ts) - OrderProduct schema
+- [payment.enum.ts](file:///d:/code/SW391/be-swp391-eye-wear/src/config/enums/payment.enum.ts) - PaymentMethodType
+- [invoice.model.mongo.ts](file:///d:/code/SW391/be-swp391-eye-wear/src/models/invoice/invoice.model.mongo.ts) - Database schema
+
+---
+
+## ⚠️ Rủi Ro & Mitigation
+
+| Rủi Ro | Xác Suất | Impact | Mitigation |
+|--------|----------|--------|------------|
+| Breaking change cho Frontend | High | High | Versioning API (v1 → v2) |
+| Data migration cần thiết | Low | Medium | Không cần - chỉ sửa logic mới |
+| Performance degradation | Low | Low | Cache product prices |
+| Voucher race condition | Medium | Medium | Redis distributed lock |
+
+---
+
+**Tổng Kết**: Hệ thống hiện tại có **4 lỗi nghiêm trọng** khiến tính năng checkout **không thể hoạt động** và có **lỗ hổng bảo mật**. Cần ưu tiên sửa ngay **Lỗi 1, 2, 3** (P0) trước khi deploy production.
