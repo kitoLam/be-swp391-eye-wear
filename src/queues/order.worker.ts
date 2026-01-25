@@ -18,14 +18,14 @@ export const orderWorker = new Worker(
             const items: { key: string; qty: number }[] = [];
             for (const item of orderDetail.products) {
                 if (item.lens) {
-                    const key = `${redisPrefix.orderLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
+                    const key = `${redisPrefix.productLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
                     items.push({
                         key,
                         qty: item.quantity,
                     });
                 }
                 if (item.product) {
-                    const key = `${redisPrefix.orderLockOnline}:${item.product.product_id}:${item.product.sku}`;
+                    const key = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
                     items.push({
                         key,
                         qty: item.quantity,

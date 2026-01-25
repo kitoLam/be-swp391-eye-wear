@@ -11,14 +11,11 @@ const router = Router();
 //     paymentController.handlePaymentWithVnPayResult
 // );
 router.post('/zalopay/result-callback', paymentController.handleZalopayResultCallback);
-// All payment routes require authentication
-router.use(authenticateMiddlewareClient);
-
 // Create payment
 // router.get(
 //     '/vnpay/url/:orderCode/:paymentId',
 //     paymentController.getVnpayPaymentUrl
 // );
-router.get('/zalopay/url/:orderCode/:paymentId', paymentController.getZaloPaymentUrl);
+router.get('/zalopay/url/:invoiceId/:paymentId', authenticateMiddlewareClient, paymentController.getZaloPaymentUrl);
 // router.post('/zalopay/result-callback', orderController.checkoutZaloCallback);
 export default router;

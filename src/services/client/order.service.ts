@@ -108,8 +108,8 @@ class OrderClientService {
                     }
                     // console.log(">>product ", item);
                     // check xem thg này có đủ kho hay khong mới cho xuống tiếp
-                    const keyRace = `${redisPrefix.orderLockRace}-${item.product.product_id}-${item.product.sku}`;
-                    const keyOnline = `${redisPrefix.orderLockOnline}-${item.product.product_id}-${item.product.sku}`;
+                    const keyRace = `${redisPrefix.productLockRace}-${item.product.product_id}-${item.product.sku}`;
+                    const keyOnline = `${redisPrefix.productLockOnline}-${item.product.product_id}-${item.product.sku}`;
                     const stockIsAcquiring =
                         (await redisService.getDataByKey<number>(keyRace)) || 0;
                     const stockIsAcquiringOnline =
@@ -171,8 +171,8 @@ class OrderClientService {
                         );
                     }
                     //  check xem thg này có đủ kho hay khong mới cho xuống tiếp
-                    const keyRace = `${redisPrefix.orderLockRace}-${item.lens.lens_id}-${item.lens.sku}`;
-                    const keyOnline = `${redisPrefix.orderLockOnline}-${item.lens.lens_id}-${item.lens.sku}`;
+                    const keyRace = `${redisPrefix.productLockRace}-${item.lens.lens_id}-${item.lens.sku}`;
+                    const keyOnline = `${redisPrefix.productLockOnline}-${item.lens.lens_id}-${item.lens.sku}`;
                     const stockIsAcquiringRace =
                         (await redisService.getDataByKey<number>(keyRace)) || 0;
                     const stockIsAcquiringOnline =
@@ -308,7 +308,7 @@ class OrderClientService {
             // Tạo payment, ban đầu all payment method đều có trạng thái là UNPAID
             const newPayment = await paymentRepository.create({
                 ownerId: customerId,
-                orderId: newOrder._id.toString(),
+                invoiceId: newOrder._id.toString(),
                 paymentMethod: payload.paymentMethod as PaymentMethodType,
                 status: PaymentStatus.UNPAID,
                 price: finalPrice,
@@ -317,7 +317,7 @@ class OrderClientService {
             if (payload.paymentMethod != PaymentMethodType.COD) {
                 for (const item of payload.products) {
                     if (item.lens) {
-                        const key = `${redisPrefix.orderLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
+                        const key = `${redisPrefix.productLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
                         await this.acquireProductOrderLock(
                             key,
                             item.quantity,
@@ -325,7 +325,7 @@ class OrderClientService {
                         );
                     }
                     if (item.product) {
-                        const key = `${redisPrefix.orderLockOnline}:${item.product.product_id}:${item.product.sku}`;
+                        const key = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
                         await this.acquireProductOrderLock(
                             key,
                             item.quantity,

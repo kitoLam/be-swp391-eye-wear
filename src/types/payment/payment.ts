@@ -5,7 +5,7 @@ import { PaymentMethodType } from '../../config/enums/payment.enum';
 export const PaymentSchema = z.object({
     _id: z.string().min(1, 'Payment ID is required'),
     ownerId: z.string().min(1, 'Owner ID is required'),
-    orderId: z.string().min(1, 'Order ID is required'),
+    invoiceId: z.string().min(1, 'Order ID is required'),
     paymentMethod: z.enum(PaymentMethodType, {error: "Payment method is required"}),
     status: z.enum(['PAID', 'UNPAID']),
     note: z.string().default(''),

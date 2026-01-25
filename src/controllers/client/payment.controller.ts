@@ -20,9 +20,9 @@ class PaymentController {
 
     getZaloPaymentUrl = async (req: Request, res: Response) => {
       const customerId = req.customer!.id;
-      const orderCode = req.params.orderCode as string;
+      const invoiceId = req.params.invoiceId as string;
       const paymentId = req.params.paymentId as string;
-      const url = await paymentClientService.getZalopayUrl(customerId, orderCode, paymentId);
+      const url = await paymentClientService.getZalopayUrl(customerId, invoiceId, paymentId);
       res.json(ApiResponse.success('Tạo cổng thanh toán zalo thành công', { url }));
     }
 
