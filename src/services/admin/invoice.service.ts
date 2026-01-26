@@ -42,76 +42,100 @@ class InvoiceService {
             },
         };
     };
-    verifyInvoice = async (
-        id: string,
-        status: InvoiceStatus.APPROVED | InvoiceStatus.REJECTED,
-        adminContext: AuthAdminContext
-    ) => {
-        const invoiceDetail = await invoiceRepository.findById(id);
+    /**
+     * Hàm xử lí nghiệp vụ duyệt đơn cùa sale staff
+     * @param invoiceId 
+     * @param adminContext 
+     * @returns 
+     */
+    approveInvoice = async (invoiceId: string, adminContext: AuthAdminContext) => {
+        const invoiceDetail = await invoiceRepository.findById(invoiceId);
         if (!invoiceDetail) {
             throw new NotFoundRequestError('Invoice not found');
         }
         // Đơn bị hủy rồi thì ko cho approve
-        if (invoiceDetail.status == InvoiceStatus.CANCELED) {
+        if (
+            invoiceDetail.status == InvoiceStatus.CANCELED ||
+            invoiceDetail.status == InvoiceStatus.REJECTED
+        ) {
             throw new ConflictRequestError(
-                'Invoice is canceled by customer, you can not change status anymore'
-            );
-        }
-        // để tránh đg là reject mà gửi lên reject cái nữa thì cũng trừ kho
-        if (status == invoiceDetail.status) {
-            throw new ConflictRequestError(
-                'New status are conflict with current status'
+                'Invoice is canceled or rejected , you can not change status anymore'
             );
         }
         // Muốn approve thì khách hiện tại phải đã cọc xong rồi
-        if (
-            status == InvoiceStatus.APPROVED &&
-            !(invoiceDetail.status == InvoiceStatus.DEPOSITED)
-        ) {
+        if (!(invoiceDetail.status == InvoiceStatus.DEPOSITED)) {
             throw new ConflictRequestError(
                 'You can not approve invoice until deposit is done'
             );
         }
-        if (status == InvoiceStatus.REJECTED) {
-            // Cập nhật lại stock của từng order trong đơn về lại kho
-            for (const orderId of invoiceDetail.orders) {
-                const orderDetail = await orderRepository.findById(orderId);
-                if (orderDetail) {
-                    for (const orderProduct of orderDetail.products) {
-                        if (orderProduct.product) {
-                            await productRepository.updateByFilter(
-                                {
-                                    _id: orderProduct.product.product_id,
-                                    'variants.sku': orderProduct.product.sku,
+        // Cập nhật trạng thái approve
+        const updatedInvoice = await invoiceRepository.update(invoiceId, {
+            status: InvoiceStatus.APPROVED,
+            staffVerified: adminContext.id,
+        });
+        return updatedInvoice;
+    };
+    /**
+     * Hàm xử lí nghiệp vụ từ chối đơn của sale staff
+     * @param invoiceId 
+     * @param adminContext 
+     * @returns 
+     */
+    rejectInvoice = async (
+        invoiceId: string,
+        adminContext: AuthAdminContext
+    ) => {
+        const invoiceDetail = await invoiceRepository.findById(invoiceId);
+        if (!invoiceDetail) {
+            throw new NotFoundRequestError('Invoice not found');
+        }
+        // Đơn bị hủy rồi thì ko cho approve
+        if (
+            invoiceDetail.status == InvoiceStatus.CANCELED ||
+            invoiceDetail.status == InvoiceStatus.REJECTED
+        ) {
+            throw new ConflictRequestError(
+                'Invoice is canceled or rejected , you can not change status anymore'
+            );
+        }
+        // cập nhật lại kho
+        // Cập nhật lại stock của từng order trong đơn về lại kho
+        for (const orderId of invoiceDetail.orders) {
+            const orderDetail = await orderRepository.findById(orderId);
+            if (orderDetail) {
+                for (const orderProduct of orderDetail.products) {
+                    if (orderProduct.product) {
+                        await productRepository.updateByFilter(
+                            {
+                                _id: orderProduct.product.product_id,
+                                'variants.sku': orderProduct.product.sku,
+                            },
+                            {
+                                $inc: {
+                                    'variants.$.stock': orderProduct.quantity,
                                 },
-                                {
-                                    $inc: {
-                                        'variants.$.stock':
-                                            orderProduct.quantity,
-                                    },
-                                }
-                            );
-                        }
-                        if (orderProduct.lens) {
-                            await productRepository.updateByFilter(
-                                {
-                                    _id: orderProduct.lens.lens_id,
-                                    'variants.sku': orderProduct.lens.sku,
+                            }
+                        );
+                    }
+                    if (orderProduct.lens) {
+                        await productRepository.updateByFilter(
+                            {
+                                _id: orderProduct.lens.lens_id,
+                                'variants.sku': orderProduct.lens.sku,
+                            },
+                            {
+                                $inc: {
+                                    'variants.$.stock': orderProduct.quantity,
                                 },
-                                {
-                                    $inc: {
-                                        'variants.$.stock':
-                                            orderProduct.quantity,
-                                    },
-                                }
-                            );
-                        }
+                            }
+                        );
                     }
                 }
             }
         }
-        const updatedInvoice = await invoiceRepository.update(id, {
-            status: status,
+        // Cập nhật trạng thái rejected
+        const updatedInvoice = await invoiceRepository.update(invoiceId, {
+            status: InvoiceStatus.REJECTED,
             staffVerified: adminContext.id,
         });
         return updatedInvoice;

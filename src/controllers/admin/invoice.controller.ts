@@ -27,13 +27,18 @@ class InvoiceController {
         }));
     };
 
-    verifyInvoice = async (req: Request, res: Response) => {
+    approveInvoice = async (req: Request, res: Response) => {
       const adminContext = req.adminAccount!;
-      const {id: invoiceId, status} = req.params as InvoiceVerifyParams;
-      const updatedInvoice = await invoiceService.verifyInvoice(invoiceId, status, adminContext);
-      res.json(ApiResponse.success('Verify invoice success', {
-        invoice: updatedInvoice
-      }));
+      const invoiceId = req.params.id as string;
+      await invoiceService.approveInvoice(invoiceId, adminContext);
+      res.json(ApiResponse.success('Approve invoice success', null));
+    }
+
+    rejectInvoice = async (req: Request, res: Response) => {
+      const adminContext = req.adminAccount!;
+      const invoiceId = req.params.id as string;
+      await invoiceService.rejectInvoice(invoiceId, adminContext);
+      res.json(ApiResponse.success('Reject invoice success', null));
     }
 }
 export default new InvoiceController();

@@ -3,7 +3,6 @@ import { orderRepository } from '../../repositories/order/order.repository';
 import { voucherRepository } from '../../repositories/voucher/voucher.repository';
 import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 import { productRepository } from '../../repositories/product/product.repository';
-import { CreateInvoice, UpdateInvoice } from '../../types/invoice/invoice';
 import { OrderProduct } from '../../types/order/order-product';
 import {
     BadRequestError,
@@ -16,13 +15,17 @@ import {
     AssignmentOrderStatus,
 } from '../../config/enums/order.enum';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
-import { PaymentMethodType, PaymentStatus } from '../../config/enums/payment.enum';
+import {
+    PaymentMethodType,
+    PaymentStatus,
+} from '../../config/enums/payment.enum';
 import redisService from '../redis.service';
 import { redisPrefix } from '../../config/constants/redis.constant';
 import { addInvoiceToTimeoutQueue } from '../../queues/invoice.queue';
 import { paymentRepository } from '../../repositories/payment/payment.repository';
 import { ClientCreateInvoice } from '../../types/invoice/client-invoice';
 import { generateInvoiceCode } from '../../utils/generate.util';
+import { AuthCustomerContext } from '../../types/context/context';
 
 interface InvoiceProduct {
     productId: string;
@@ -476,7 +479,7 @@ class InvoiceClientService {
             });
             return {
                 invoice: newInvoice,
-                payment: newPayment
+                payment: newPayment,
             };
         } catch (error) {
             // Rollback: Restore decreased stock
@@ -562,28 +565,66 @@ class InvoiceClientService {
     /**
      * Update invoice status
      */
-    updateInvoiceStatus = async (
+    cancelInvoice = async (
         invoiceId: string,
-        status: InvoiceStatus,
-        managerId?: string
+        customer: AuthCustomerContext
     ) => {
-        const invoice = await invoiceRepository.findById(invoiceId);
-
-        if (!invoice) {
+        const existInvoice = await invoiceRepository.findOne({
+            _id: invoiceId,
+            status: {
+                $nin: [InvoiceStatus.CANCELED, InvoiceStatus.REJECTED],
+            },
+        });
+        // check invoice exist
+        if (!existInvoice) {
             throw new NotFoundRequestError('Invoice not found');
         }
-
-        const updateData: any = { status };
-
-        // If status is ONBOARD, set manager
-        if (status === InvoiceStatus.ONBOARD && managerId) {
-            updateData.manager_onboard = managerId;
+        // Nếu đơn đã qua bước được staff approve rồi thì không cho hủy nữa
+        if (
+            existInvoice.status != InvoiceStatus.PENDING &&
+            existInvoice.status != InvoiceStatus.DEPOSITED
+        ) {
+            throw new ConflictRequestError(
+                'Invoice has been approved, so you can not cancel it'
+            );
         }
-
-        const updatedInvoice = await invoiceRepository.update(
-            invoiceId,
-            updateData
-        );
+        // Cập nhật lại stock của từng order trong đơn về lại kho
+        for (const orderId of existInvoice.orders) {
+            const orderDetail = await orderRepository.findById(orderId);
+            if (orderDetail) {
+                for (const orderProduct of orderDetail.products) {
+                    if (orderProduct.product) {
+                        await productRepository.updateByFilter(
+                            {
+                                _id: orderProduct.product.product_id,
+                                'variants.sku': orderProduct.product.sku,
+                            },
+                            {
+                                $inc: {
+                                    'variants.$.stock': orderProduct.quantity,
+                                },
+                            }
+                        );
+                    }
+                    if (orderProduct.lens) {
+                        await productRepository.updateByFilter(
+                            {
+                                _id: orderProduct.lens.lens_id,
+                                'variants.sku': orderProduct.lens.sku,
+                            },
+                            {
+                                $inc: {
+                                    'variants.$.stock': orderProduct.quantity,
+                                },
+                            }
+                        );
+                    }
+                }
+            }
+        }
+        const updatedInvoice = await invoiceRepository.update(invoiceId, {
+            status: InvoiceStatus.CANCELED,
+        });
         return updatedInvoice;
     };
 }

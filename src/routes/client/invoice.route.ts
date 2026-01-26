@@ -19,6 +19,8 @@ router.post(
 // Get invoices
 router.get('/', invoiceController.getInvoices);
 
+router.patch('/:id/cancel', invoiceController.cancelInvoice);
+
 // Get invoice detail
 router.get('/:invoiceId', invoiceController.getInvoiceDetail);
 

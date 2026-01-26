@@ -57,20 +57,14 @@ class InvoiceController {
     /**
      * Update invoice status
      */
-    updateInvoiceStatus = async (req: Request, res: Response) => {
-        const { invoiceId } = req.params;
-        const { status, managerId } = req.body;
-
-        const invoice = await invoiceClientService.updateInvoiceStatus(
+    cancelInvoice = async (req: Request, res: Response) => {
+        const invoiceId = req.params.id;
+        await invoiceClientService.cancelInvoice(
             invoiceId as string,
-            status,
-            managerId
+            req.customer!
         );
-
         res.json(
-            ApiResponse.success('Cập nhật trạng thái hóa đơn thành công!', {
-                invoice,
-            })
+            ApiResponse.success('Cancel invoice successfully', null)
         );
     };
 }

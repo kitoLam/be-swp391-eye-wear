@@ -78,8 +78,6 @@ export const invoiceWorker = new Worker(
     },
     { 
         connection: bullMqConnection,
-        concurrency: 1,  
-        skipStalledCheck: true, 
-        drainDelay: 3000,
+        concurrency: 1,
     }
 );
