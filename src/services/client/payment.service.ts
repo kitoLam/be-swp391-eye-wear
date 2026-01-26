@@ -1,5 +1,4 @@
 import { paymentRepository } from '../../repositories/payment/payment.repository';
-import { CreatePayment } from '../../types/payment/payment';
 import {
     ForbiddenRequestError,
     NotFoundRequestError,
@@ -10,7 +9,6 @@ import * as objectUtil from '../../utils/object.util';
 import { createHmac } from 'node:crypto';
 import axios from 'axios';
 import { removeJobFromQueue } from '../../queues/invoice.queue';
-import orderService from './order.service';
 import { redisPrefix } from '../../config/constants/redis.constant';
 import {
     PaymentMethodType,
@@ -19,6 +17,7 @@ import {
 import { productRepository } from '../../repositories/product/product.repository';
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
+import invoiceService from './invoice.service';
 class PaymentClientService {
     getVnPayUrl = async (
         customerId: string,
@@ -257,7 +256,7 @@ class PaymentClientService {
                             { $inc: { 'variants.$.stock': -item.qty } }
                         );
                     }
-                    await orderService.releaseProductOrderLock(
+                    await invoiceService.releaseProductLock(
                         itemsUpdateRedis,
                         'online'
                     );

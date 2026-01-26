@@ -22,11 +22,4 @@ router.get('/', invoiceController.getInvoices);
 // Get invoice detail
 router.get('/:invoiceId', invoiceController.getInvoiceDetail);
 
-// Update invoice status (admin/staff)
-router.patch(
-    '/:invoiceId/status',
-    validateBody(UpdateInvoiceSchema),
-    invoiceController.updateInvoiceStatus
-);
-
 export default router;

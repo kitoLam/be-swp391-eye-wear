@@ -22,6 +22,7 @@ import { redisPrefix } from '../../config/constants/redis.constant';
 import { addInvoiceToTimeoutQueue } from '../../queues/invoice.queue';
 import { paymentRepository } from '../../repositories/payment/payment.repository';
 import { ClientCreateInvoice } from '../../types/invoice/client-invoice';
+import { generateInvoiceCode } from '../../utils/generate.util';
 
 interface InvoiceProduct {
     productId: string;
@@ -34,7 +35,7 @@ class InvoiceClientService {
     /**
      * Helper: Acquire product lock in Redis
      */
-    private acquireProductLock = async (
+    public acquireProductLock = async (
         key: string,
         qty: number,
         type: 'race' | 'online' = 'race'
@@ -56,7 +57,7 @@ class InvoiceClientService {
     /**
      * Helper: Release product lock in Redis
      */
-    private releaseProductLock = async (
+    public releaseProductLock = async (
         locks: { key: string; qty: number }[],
         type: 'race' | 'online' = 'race'
     ) => {
@@ -439,6 +440,7 @@ class InvoiceClientService {
                 status: InvoiceStatus.PENDING,
                 fullName: payload.fullName,
                 phone: payload.phone,
+                invoiceCode: generateInvoiceCode(),
             };
 
             const newInvoice = await invoiceRepository.create(invoiceData);

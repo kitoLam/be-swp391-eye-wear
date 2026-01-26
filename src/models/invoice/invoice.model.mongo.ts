@@ -6,6 +6,11 @@ export type IInvoiceDocument = Invoice & Document;
 
 const InvoiceSchema = new Schema<IInvoiceDocument>(
     {
+        invoiceCode: {
+            type: String,
+            required: true,
+            unique: true,
+        },
         orders: [
             {
                 type: String,
@@ -49,6 +54,12 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
             type: Number,
             default: 0,
             min: 0,
+        },
+        // Verification fields (flattened)
+        staffVerified: {
+            type: String,
+            trim: true,
+            default: null,
         },
         manager_onboard: {
             type: String,

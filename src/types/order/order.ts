@@ -9,28 +9,25 @@ import {
 // Order Schema
 export const OrderSchema = z.object({
     _id: z.string().optional(),
-    type: z.nativeEnum(OrderType),
+    type: z.enum(OrderType),
     products: z
         .array(OrderProductSchema)
         .min(1, 'At least one product is required'),
-    status: z.nativeEnum(OrderStatus),
-
-    // Verification fields (flattened from isVerified)
-    staffVerified: z.string().nullable().optional(),
+    status: z.enum(OrderStatus),
 
     // Assignment fields (flattened from assignment)
-    staffId: z.string().nullable().optional(),
-    assignStaff: z.string().nullable().optional(),
-    assignedAt: z.date().nullable().optional(),
-    startedAt: z.date().nullable().optional(),
-    completedAt: z.date().nullable().optional(),
-    assignmentStatus: z.nativeEnum(AssignmentOrderStatus),
+    staffId: z.string().nullable(),
+    assignStaff: z.string().nullable(),
+    assignedAt: z.date().nullable(),
+    startedAt: z.date().nullable(),
+    completedAt: z.date().nullable(),
+    assignmentStatus: z.enum(AssignmentOrderStatus),
 
     price: z.number().min(0, 'Price must be non-negative'),
 
-    createdAt: z.date().optional(),
-    updatedAt: z.date().optional(),
-    deletedAt: z.date().nullable().optional(),
+    createdAt: z.date(),
+    updatedAt: z.date(),
+    deletedAt: z.date().nullable(),
 });
 
 // Create Order Schema (for creating new orders)

@@ -5,24 +5,25 @@ import { InvoiceStatus } from '../../config/enums/invoice.enum';
 // Invoice Schema
 export const InvoiceSchema = z
     .object({
-        _id: z.string().optional(),
+        _id: z.string(),
+        invoiceCode: z.string(),
         orders: z.array(z.string()).min(1, 'At least one order is required'),
         owner: z.string().min(1, 'Owner ID is required'),
         totalPrice: z.number().min(0, 'Total price must be non-negative'),
-        voucher: z.array(z.string()).default([]),
+        voucher: z.array(z.string()).min(0).default([]),
         address: AddressSchema,
-        status: z.nativeEnum(InvoiceStatus),
+        status: z.enum(InvoiceStatus),
         fullName: z.string().min(1, 'Full name is required'),
         phone: z.string().min(1, 'Phone number is required'),
         totalDiscount: z
             .number()
             .min(0, 'Total discount must be non-negative')
             .default(0),
-        manager_onboard: z.string().optional(), // Manager ID when status is ONBOARD
-
-        createdAt: z.date().optional(),
-        updatedAt: z.date().optional(),
-        deletedAt: z.date().nullable().optional(),
+        manager_onboard: z.string(), // Manager ID when status is ONBOARD
+        staffVerified: z.string().nullable(),
+        createdAt: z.date(),
+        updatedAt: z.date(),
+        deletedAt: z.date().nullable(),
     })
     .refine(data => data.totalDiscount <= data.totalPrice, {
         message: 'Total discount cannot exceed total price',

@@ -1,11 +1,9 @@
 import { Worker, Job } from 'bullmq';
 import { bullMqConnection } from '../config/bullmq-connection';
 import { invoiceRepository } from '../repositories/invoice/invoice.repository';
-import { orderRepository } from '../repositories/order/order.repository';
 import redisService from '../services/redis.service';
 import { redisPrefix } from '../config/constants/redis.constant';
 import { InvoiceStatus } from '../config/enums/invoice.enum';
-import { OrderStatus } from '../config/enums/order.enum';
 
 interface InvoiceProduct {
     productId: string;
@@ -59,23 +57,11 @@ export const invoiceWorker = new Worker(
             }
 
             // 3. Update Invoice status to CANCELLED
-            const invoice = await invoiceRepository.findById(invoiceId);
-            if (invoice && invoice.status === InvoiceStatus.PENDING) {
-                await invoiceRepository.update(invoiceId, {
-                    status: InvoiceStatus.PENDING, // Keep as PENDING but mark as timeout
-                });
-                console.log(`[Worker] Invoice ${invoiceId} timeout processed`);
-
-                // 4. Update all Orders status to CANCEL
-                for (const orderId of invoice.orders) {
-                    await orderRepository.update(orderId, {
-                        status: OrderStatus.CANCEL,
-                    });
-                }
-                console.log(
-                    `[Worker] Updated ${invoice.orders.length} orders to CANCEL`
-                );
-            }
+            await invoiceRepository.updateByFilter({
+                _id: invoiceId,
+            }, {
+                status: InvoiceStatus.CANCELED,
+            });
 
             // 5. Clean up Redis invoice-products mapping
             await redisService.deleteDataByKey(productsKey);
@@ -90,13 +76,10 @@ export const invoiceWorker = new Worker(
             throw error; // BullMQ will retry based on attempts config
         }
     },
-    { connection: bullMqConnection }
+    { 
+        connection: bullMqConnection,
+        concurrency: 1,  
+        skipStalledCheck: true, 
+        drainDelay: 3000,
+    }
 );
-
-invoiceWorker.on('completed', (job: Job) => {
-    console.log(`[Worker] Job ${job.id} completed successfully`);
-});
-
-invoiceWorker.on('failed', (job: Job | undefined, err: Error) => {
-    console.error(`[Worker] Job ${job?.id} failed:`, err);
-});

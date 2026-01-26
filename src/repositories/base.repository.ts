@@ -76,7 +76,7 @@ export class BaseRepository<T extends Document> {
      * Usage: find({ email: 'test@example.com' }, { page: 1, limit: 10 })
      */
     async find(
-        filter: Partial<T>,
+        filter: FilterQuery<T>,
         options: PaginationOptions = {}
     ): Promise<PaginatedResult<T>> {
         return await this.findWithPagination(filter as FilterQuery<T>, options);
