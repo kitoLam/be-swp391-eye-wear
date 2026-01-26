@@ -7,6 +7,14 @@ export const generateOrderCode = () => {
   OD += new Date().getTime();
   return OD;
 };
+export const generateInvoiceCode = () => {
+  let OD = "HD_";
+  for (let i = 0; i < 6; i++) {
+    OD += numberStr[Math.floor(Math.random() * numberStr.length)];
+  }
+  OD += new Date().getTime();
+  return OD;
+};
 export const generateSessionId = () => {
   let SID = "SID";
   for (let i = 0; i < 6; i++) {

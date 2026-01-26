@@ -1,11 +1,9 @@
 import { Worker, Job } from 'bullmq';
 import { bullMqConnection } from '../config/bullmq-connection';
 import { invoiceRepository } from '../repositories/invoice/invoice.repository';
-import { orderRepository } from '../repositories/order/order.repository';
 import redisService from '../services/redis.service';
 import { redisPrefix } from '../config/constants/redis.constant';
 import { InvoiceStatus } from '../config/enums/invoice.enum';
-import { OrderStatus } from '../config/enums/order.enum';
 
 interface InvoiceProduct {
     productId: string;
@@ -78,13 +76,10 @@ export const invoiceWorker = new Worker(
             throw error; // BullMQ will retry based on attempts config
         }
     },
-    { connection: bullMqConnection }
+    { 
+        connection: bullMqConnection,
+        concurrency: 1,  
+        skipStalledCheck: true, 
+        drainDelay: 3000,
+    }
 );
-
-invoiceWorker.on('completed', (job: Job) => {
-    console.log(`[Worker] Job ${job.id} completed successfully`);
-});
-
-invoiceWorker.on('failed', (job: Job | undefined, err: Error) => {
-    console.error(`[Worker] Job ${job?.id} failed:`, err);
-});

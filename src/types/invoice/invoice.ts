@@ -6,6 +6,7 @@ import { InvoiceStatus } from '../../config/enums/invoice.enum';
 export const InvoiceSchema = z
     .object({
         _id: z.string(),
+        invoiceCode: z.string(),
         orders: z.array(z.string()).min(1, 'At least one order is required'),
         owner: z.string().min(1, 'Owner ID is required'),
         totalPrice: z.number().min(0, 'Total price must be non-negative'),

@@ -6,6 +6,11 @@ export type IInvoiceDocument = Invoice & Document;
 
 const InvoiceSchema = new Schema<IInvoiceDocument>(
     {
+        invoiceCode: {
+            type: String,
+            required: true,
+            unique: true,
+        },
         orders: [
             {
                 type: String,

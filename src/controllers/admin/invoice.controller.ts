@@ -1,0 +1,39 @@
+import { Request, Response } from 'express';
+import { ApiResponse } from '../../utils/api-response';
+import invoiceService from '../../services/admin/invoice.service';
+import { InvoiceListQuery } from '../../types/invoice/invoice.query';
+import { formatDateToString, formatNumberToVND } from '../../utils/formatter';
+import { InvoiceVerifyParams } from '../../types/invoice/invoice.params';
+
+class InvoiceController {
+    getListInvoice = async (req: Request, res: Response) => {
+        const query = req.validatedQuery as InvoiceListQuery;
+        const data = await invoiceService.getInvoiceList(query);
+        const invoiceListFinal = data.invoiceList.map(item => {
+          return {
+            id: item._id.toString(),
+            invoiceCode: item.invoiceCode,
+            fullName: item.fullName,
+            phone: item.phone,
+            finalPrice: formatNumberToVND(item.totalPrice - item.totalDiscount),
+            status: item.status,
+            createdAt: formatDateToString(item.createdAt),
+            address: [item.address.street, item.address.ward, item.address.city].join(', ')
+          }
+        })
+        res.json(ApiResponse.success('Get invoice list success', {
+            pagination: data.pagination,
+            invoiceList: invoiceListFinal,
+        }));
+    };
+
+    verifyInvoice = async (req: Request, res: Response) => {
+      const adminContext = req.adminAccount!;
+      const {id: invoiceId, status} = req.params as InvoiceVerifyParams;
+      const updatedInvoice = await invoiceService.verifyInvoice(invoiceId, status, adminContext);
+      res.json(ApiResponse.success('Verify invoice success', {
+        invoice: updatedInvoice
+      }));
+    }
+}
+export default new InvoiceController();
