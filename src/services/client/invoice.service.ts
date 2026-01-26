@@ -571,6 +571,7 @@ class InvoiceClientService {
     ) => {
         const existInvoice = await invoiceRepository.findOne({
             _id: invoiceId,
+            owner: customer.id,
             status: {
                 $nin: [InvoiceStatus.CANCELED, InvoiceStatus.REJECTED],
             },
