@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import invoiceClientService from '../../services/client/invoice.service';
 import { ApiResponse } from '../../utils/api-response';
+import { ClientUpdateInvoice } from '../../types/invoice/client-invoice';
 
 class InvoiceController {
     /**
@@ -54,9 +55,6 @@ class InvoiceController {
         );
     };
 
-    /**
-     * Update invoice status
-     */
     cancelInvoice = async (req: Request, res: Response) => {
         const invoiceId = req.params.id;
         await invoiceClientService.cancelInvoice(
@@ -67,6 +65,17 @@ class InvoiceController {
             ApiResponse.success('Cancel invoice successfully', null)
         );
     };
+
+    updateInvoice = async (req: Request, res: Response) => {
+        const invoiceId = req.params.id;
+        const payload = req.body as ClientUpdateInvoice;
+        const data = await invoiceClientService.updateInvoice(
+            req.customer!,
+            invoiceId as string,
+            payload,
+        );
+        res.json(ApiResponse.success('Update invoice successfully', data));
+    }
 }
 
 export default new InvoiceController();

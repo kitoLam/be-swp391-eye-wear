@@ -23,7 +23,7 @@ import redisService from '../redis.service';
 import { redisPrefix } from '../../config/constants/redis.constant';
 import { addInvoiceToTimeoutQueue } from '../../queues/invoice.queue';
 import { paymentRepository } from '../../repositories/payment/payment.repository';
-import { ClientCreateInvoice } from '../../types/invoice/client-invoice';
+import { ClientCreateInvoice, ClientUpdateInvoice } from '../../types/invoice/client-invoice';
 import { generateInvoiceCode } from '../../utils/generate.util';
 import { AuthCustomerContext } from '../../types/context/context';
 
@@ -627,6 +627,32 @@ class InvoiceClientService {
         });
         return updatedInvoice;
     };
+
+    /**
+     * Hàm xử lí logic sửa hóa đơn của khách (chỉ sửa thông tin giao ở service này)
+     * @param customer 
+     * @param invoiceId 
+     * @param payload 
+     */
+    updateInvoice = async (customer: AuthCustomerContext, invoiceId: string, payload: ClientUpdateInvoice) => {
+        const invoiceDetail = await invoiceRepository.findOne({
+            _id: invoiceId,
+            owner: customer.id,
+        });
+        if (!invoiceDetail) {
+            throw new NotFoundRequestError(
+                'Invoice not found '
+            );
+        }
+        // chỉ được sửa khi trc bước sale confirm
+        if (
+            !(invoiceDetail.status == InvoiceStatus.PENDING) &&
+            !(invoiceDetail.status == InvoiceStatus.DEPOSITED)
+        ) {
+            throw new ConflictRequestError("Invoice is confirm by our staff, you can't update it");
+        }
+        await invoiceRepository.update(invoiceId, payload);
+    }
 }
 
 export default new InvoiceClientService();

@@ -1,13 +1,15 @@
 import { orderRepository } from '../../repositories/order/order.repository';
-import {  ClientUpdateOrder } from '../../types/order/order';
+import { ClientUpdateOrder } from '../../types/order/order';
 import {
     BadRequestError,
     ConflictRequestError,
     NotFoundRequestError,
 } from '../../errors/apiError/api-error';
+import { AuthCustomerContext } from '../../types/context/context';
+import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
+import { InvoiceStatus } from '../../config/enums/invoice.enum';
+import { OrderType } from '../../config/enums/order.enum';
 class OrderClientService {
-    
-
     /**
      * Get customer's orders
      */
@@ -48,12 +50,8 @@ class OrderClientService {
     /**
      * Get order detail
      */
-    getOrderDetail = async (customerId: string, orderCode: string) => {
-        const order = await orderRepository.findOne({
-            orderCode: orderCode,
-            owner: customerId,
-            deletedAt: null,
-        });
+    getOrderDetail = async (customerId: string, orderId: string) => {
+        const order = await orderRepository.findById(orderId);
 
         if (!order) {
             throw new NotFoundRequestError('Order not found');
@@ -61,74 +59,49 @@ class OrderClientService {
 
         return order;
     };
-
     /**
-     * Update order (e.g. cancel, or update status)
-     * Client usually can only cancel or update shipping info if not processed.
-     * For now, generic update with validation.
+     * Hàm giúp cập nhật thông số gia công trong order đơn thuốc (chỉ cho đơn loại MANUFACTURING vào sửa thông số đo)
+     * @param customer 
+     * @param orderId 
+     * @param payload 
      */
-    updateOrder = async (
-        customerId: string,
-        orderCode: string,
+    updateOrderPrescription = async (
+        customer: AuthCustomerContext,
+        orderId: string,
         payload: ClientUpdateOrder
     ) => {
-        const order = await orderRepository.findOne({
-            orderCode,
-            owner: customerId,
-            deletedAt: null,
+        const invoiceContainOrderDetail = await invoiceRepository.findOne({
+            _id: payload.invoiceId,
+            owner: customer.id,
+            orders: orderId,
         });
-
-        if (!order) {
-            throw new NotFoundRequestError('Order not found');
+        const orderDetail = await orderRepository.findOne({
+            _id: orderId,
+            type: OrderType.MANUFACTURING
+        });
+        if (!invoiceContainOrderDetail || !orderDetail) {
+            throw new NotFoundRequestError(
+                'Invoice not found or order not exist in invoice!'
+            );
         }
-
-        // TODO: Fix - isVerified property doesn't exist on Order model
-        // if (order.isVerified.status !== VerifyOrderStatus.PENDING) {
-        //     throw new ConflictRequestError(
-        //         'This order is processed, so you can not update it'
-        //     );
-        // }
-        const updatedProduct: any = [];
-        order.products.forEach(item => {
-            if (item.lens) {
-                const foundLensInPayload = payload.products?.find(
-                    itemInPayload => {
-                        if (
-                            item.lens &&
-                            item.lens.lens_id === itemInPayload.lens?.lens_id &&
-                            item.lens.sku === itemInPayload.lens.sku
-                        ) {
-                            if (item.product) {
-                                if (
-                                    item.product.product_id ===
-                                        itemInPayload.product?.product_id &&
-                                    item.product.sku ===
-                                        itemInPayload.product.sku
-                                ) {
-                                    return true;
-                                } else return false;
-                            } else {
-                                return true;
-                            }
-                        }
-                    }
-                );
-                if (foundLensInPayload) {
-                    item.lens = {
-                        ...item.lens,
-                        parameters: foundLensInPayload.lens!.parameters,
-                    };
-                }
+        // chỉ được sửa khi trc bước sale confirm
+        if (
+            !(invoiceContainOrderDetail.status == InvoiceStatus.PENDING) &&
+            !(invoiceContainOrderDetail.status == InvoiceStatus.DEPOSITED)
+        ) {
+            throw new ConflictRequestError("Order can't be updated!");
+        }
+        await orderRepository.updateByFilter(
+            {
+                _id: orderId,
+                'products.lens': { $exists: true },
+            },
+            {
+                $set: {
+                    'products.$.lens.parameters': payload.lensParameter,
+                },
             }
-            // vẫn đẩy thông tin sản phẩm cũ vào updatedProduct nếu cái item product chứa lens của người dùng gửi lên bị sai
-            updatedProduct.push(item);
-            return item;
-        });
-        const updatedOrder = await orderRepository.update(order._id, {
-            ...payload,
-            products: updatedProduct,
-        });
-        return updatedOrder;
+        );
     };
 }
 

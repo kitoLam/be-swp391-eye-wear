@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import orderClientService from '../../services/client/order.service';
 import { ApiResponse } from '../../utils/api-response';
-import { ClientCreateOrder } from '../../types/order/order';
 
 class OrderController {
 
@@ -21,22 +20,22 @@ class OrderController {
 
     getOrderDetail = async (req: Request, res: Response) => {
         const customerId = req.customer!.id;
-        const { orderCode } = req.params;
+        const orderId = req.params.orderId as string;
         const order = await orderClientService.getOrderDetail(
             customerId,
-            orderCode as string
+            orderId as string
         );
         res.json(
             ApiResponse.success('Lấy chi tiết đơn hàng thành công!', { order })
         );
     };
 
-    updateOrder = async (req: Request, res: Response) => {
-        const customerId = req.customer!.id;
+    updateOrderPrescription = async (req: Request, res: Response) => {
+        const customer = req.customer!;
         const { orderCode } = req.params;
         const payload = req.body;
-        const order = await orderClientService.updateOrder(
-            customerId,
+        const order = await orderClientService.updateOrderPrescription(
+            customer,
             orderCode as string,
             payload
         );
