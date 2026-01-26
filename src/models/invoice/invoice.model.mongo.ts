@@ -50,6 +50,12 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
             default: 0,
             min: 0,
         },
+        // Verification fields (flattened)
+        staffVerified: {
+            type: String,
+            trim: true,
+            default: null,
+        },
         manager_onboard: {
             type: String,
             required: false,

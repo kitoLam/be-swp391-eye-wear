@@ -77,13 +77,6 @@ const OrderSchema = new Schema<IOrderDocument>(
             },
         ],
 
-        // Verification fields (flattened)
-        staffVerified: {
-            type: String,
-            trim: true,
-            default: null,
-        },
-
         // Assignment fields (flattened)
         staffId: {
             type: String,

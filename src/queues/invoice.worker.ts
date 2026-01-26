@@ -59,23 +59,11 @@ export const invoiceWorker = new Worker(
             }
 
             // 3. Update Invoice status to CANCELLED
-            const invoice = await invoiceRepository.findById(invoiceId);
-            if (invoice && invoice.status === InvoiceStatus.PENDING) {
-                await invoiceRepository.update(invoiceId, {
-                    status: InvoiceStatus.PENDING, // Keep as PENDING but mark as timeout
-                });
-                console.log(`[Worker] Invoice ${invoiceId} timeout processed`);
-
-                // 4. Update all Orders status to CANCEL
-                for (const orderId of invoice.orders) {
-                    await orderRepository.update(orderId, {
-                        status: OrderStatus.CANCEL,
-                    });
-                }
-                console.log(
-                    `[Worker] Updated ${invoice.orders.length} orders to CANCEL`
-                );
-            }
+            await invoiceRepository.updateByFilter({
+                _id: invoiceId,
+            }, {
+                status: InvoiceStatus.CANCELED,
+            });
 
             // 5. Clean up Redis invoice-products mapping
             await redisService.deleteDataByKey(productsKey);
