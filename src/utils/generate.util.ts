@@ -16,7 +16,7 @@ export const generateInvoiceCode = () => {
   return OD;
 };
 export const generateSessionId = () => {
-  let SID = "SID";
+  let SID = "";
   for (let i = 0; i < 6; i++) {
     SID += numberStr[Math.floor(Math.random() * numberStr.length)];
   }
