@@ -57,13 +57,13 @@ app.use(cookieParser());
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'My API is running 1' });
 });
-// Common/Public routes (no auth required)
-app.use(`/api/${config.apiVersion}`, commonRouter);
 // Admin routes (auth required)
 app.use(
     `/api/${config.apiVersion}/${systemConstant.prefixPathAdmin}`,
     adminRouter
 );
+// Common/Public routes (no auth required)
+app.use(`/api/${config.apiVersion}`, commonRouter);
 // Client routes
 app.use(
     `/api/${config.apiVersion}/${systemConstant.prefixPathClient}`,
