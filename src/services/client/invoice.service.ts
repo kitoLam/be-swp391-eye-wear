@@ -418,7 +418,7 @@ class InvoiceClientService {
                 totalDiscount,
                 voucher: [], // NÀO LÀM VOUCHER RỒI THÌ ADD VÀO, voucherId ? [voucherId] : [],
                 address: payload.address,
-                status: InvoiceStatus.PENDING,
+                status: payload.paymentMethod == PaymentMethodType.COD ? InvoiceStatus.DEPOSITED : InvoiceStatus.PENDING,
                 fullName: payload.fullName,
                 phone: payload.phone,
                 invoiceCode: generateInvoiceCode(),
@@ -535,7 +535,7 @@ class InvoiceClientService {
         );
 
         return {
-            ...invoice,
+            invoice,
             ordersDetail,
         };
     };

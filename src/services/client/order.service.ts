@@ -10,48 +10,15 @@ import { invoiceRepository } from '../../repositories/invoice/invoice.repository
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 import { OrderType } from '../../config/enums/order.enum';
 class OrderClientService {
-    /**
-     * Get customer's orders
-     */
-    getOrders = async (
-        customerId: string,
-        page: number = 1,
-        limit: number = 10,
-        status?: string
-    ) => {
-        const filter: any = {
-            owner: customerId,
-            deletedAt: null,
-        };
-
-        if (status) {
-            filter['payment.status'] = status;
-        }
-
-        const items = await orderRepository.find(filter, {
-            limit,
-            skip: (page - 1) * limit,
-            sort: { createdAt: -1 },
-        } as any);
-
-        const total = await orderRepository.count(filter);
-
-        return {
-            items,
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-            },
-        };
-    };
 
     /**
      * Get order detail
      */
     getOrderDetail = async (customerId: string, orderId: string) => {
-        const order = await orderRepository.findById(orderId);
+        const order = await orderRepository.findOne({
+            _id: orderId,
+            owner: customerId,
+        });
 
         if (!order) {
             throw new NotFoundRequestError('Order not found');

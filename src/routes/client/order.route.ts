@@ -7,7 +7,6 @@ import { ClientUpdateOrderPrescriptionSchema } from '../../types/order/order';
 const router = Router();
 
 router.use(authenticateMiddlewareClient);
-// router.get('/', orderController.getOrders);
 router.get('/:orderId', orderController.getOrderDetail);
 router.patch('/:orderId', validateBody(ClientUpdateOrderPrescriptionSchema), orderController.updateOrderPrescription);
 export default router;

@@ -65,7 +65,7 @@ class InvoiceService {
         // Muốn approve thì khách hiện tại phải đã cọc xong rồi
         if (!(invoiceDetail.status == InvoiceStatus.DEPOSITED)) {
             throw new ConflictRequestError(
-                'You can not approve invoice until deposit is done'
+                'You can not approve invoice if current status is not DEPOSITED'
             );
         }
         // Cập nhật trạng thái approve
@@ -89,7 +89,7 @@ class InvoiceService {
         if (!invoiceDetail) {
             throw new NotFoundRequestError('Invoice not found');
         }
-        // Đơn bị hủy rồi thì ko cho approve
+        // Đơn bị hủy rồi thì ko cho reject nữa
         if (
             invoiceDetail.status == InvoiceStatus.CANCELED ||
             invoiceDetail.status == InvoiceStatus.REJECTED
