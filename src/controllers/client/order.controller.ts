@@ -4,20 +4,6 @@ import { ApiResponse } from '../../utils/api-response';
 
 class OrderController {
 
-    getOrders = async (req: Request, res: Response) => {
-        const customerId = req.customer!.id;
-        const { page, limit, status } = req.query;
-        const result = await orderClientService.getOrders(
-            customerId,
-            Number(page) || 1,
-            Number(limit) || 10,
-            status as string
-        );
-        res.json(
-            ApiResponse.success('Lấy danh sách đơn hàng thành công!', result)
-        );
-    };
-
     getOrderDetail = async (req: Request, res: Response) => {
         const customerId = req.customer!.id;
         const orderId = req.params.orderId as string;
@@ -32,11 +18,11 @@ class OrderController {
 
     updateOrderPrescription = async (req: Request, res: Response) => {
         const customer = req.customer!;
-        const { orderCode } = req.params;
+        const orderId = req.params.orderId;
         const payload = req.body;
         const order = await orderClientService.updateOrderPrescription(
             customer,
-            orderCode as string,
+            orderId as string,
             payload
         );
         res.json(

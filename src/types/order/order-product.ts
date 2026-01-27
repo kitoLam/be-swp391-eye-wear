@@ -23,7 +23,7 @@ export const OrderProductFrameSchema = z.object({
 });
 // Order Product Schema
 export const OrderProductSchema = z.object({
-    product: OrderProductFrameSchema,
+    product: OrderProductFrameSchema.optional(),
     quantity: z.number().int().min(1, 'Quantity must be at least 1'),
     lens: OrderProductLensSchema.optional(), // Lens is now OPTIONAL
 });

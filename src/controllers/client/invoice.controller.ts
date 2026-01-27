@@ -45,13 +45,15 @@ class InvoiceController {
         const customerId = req.customer!.id;
         const { invoiceId } = req.params;
 
-        const invoice = await invoiceClientService.getInvoiceDetail(
+        const data = await invoiceClientService.getInvoiceDetail(
             customerId,
             invoiceId as string
         );
 
         res.json(
-            ApiResponse.success('Lấy chi tiết hóa đơn thành công!', { invoice })
+            ApiResponse.success('Lấy chi tiết hóa đơn thành công!', { 
+                ...data
+             })
         );
     };
 
