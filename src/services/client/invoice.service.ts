@@ -23,7 +23,10 @@ import redisService from '../redis.service';
 import { redisPrefix } from '../../config/constants/redis.constant';
 import { addInvoiceToTimeoutQueue } from '../../queues/invoice.queue';
 import { paymentRepository } from '../../repositories/payment/payment.repository';
-import { ClientCreateInvoice, ClientUpdateInvoice } from '../../types/invoice/client-invoice';
+import {
+    ClientCreateInvoice,
+    ClientUpdateInvoice,
+} from '../../types/invoice/client-invoice';
 import { generateInvoiceCode } from '../../utils/generate.util';
 import { AuthCustomerContext } from '../../types/context/context';
 
@@ -31,7 +34,7 @@ interface InvoiceProduct {
     productId: string;
     sku: string;
     qty: number;
-    type: 'frame' | 'lens';
+    type: 'frame' | 'lens' | 'sunglass';
 }
 
 class InvoiceClientService {
@@ -163,7 +166,10 @@ class InvoiceClientService {
     };
 
     /**
-     * Create Invoice (Checkout)
+     * 
+     * @param customerId 
+     * @param payload 
+     * @returns 
      */
     createInvoice = async (
         customerId: string,
@@ -180,16 +186,8 @@ class InvoiceClientService {
 
         try {
             // Separate products by type
-            const normalProducts: OrderProduct[] = [];
-            const manufacturingProducts: OrderProduct[] = [];
-
-            for (const item of payload.products) {
-                if (item.lens) {
-                    manufacturingProducts.push(item);
-                } else {
-                    normalProducts.push(item);
-                }
-            }
+            const normalProducts: (OrderProduct & {pricePerUnit: number})[] = [];
+            const manufacturingProducts: (OrderProduct & { pricePerUnit: number })[] = [];
 
             let totalPrice = 0;
 
@@ -202,88 +200,79 @@ class InvoiceClientService {
             }> = [];
 
             for (const item of payload.products) {
-                if (!item.product && !item.lens) {
-                    throw new BadRequestError('Product or lens is required');
+                if (!item.product) {
+                    throw new BadRequestError('Product is required');
                 }
 
                 // let productDoc: any;
-                let variant: any;
+                let productVariant: any;
                 let itemPrice = 0;
 
-                // Process Frame Product
-                if (item.product) {
-                    const productDoc = await productRepository.findOne({
+                // Process Product
+                const productDoc = await productRepository.findOne({
+                    _id: item.product.product_id
+                });
+
+                if (!productDoc) {
+                    throw new NotFoundRequestError(
+                        `Product not found: ${item.product.product_id}`
+                    );
+                }
+
+                productVariant = productDoc.variants.find(
+                    (v: any) => v.sku === item.product?.sku
+                );
+                if (!productVariant) {
+                    throw new BadRequestError(
+                        `Variant with SKU ${item.product.sku} not found`
+                    );
+                }
+
+                // Check stock
+                const keyRace = `${redisPrefix.productLockRace}:${item.product.product_id}:${item.product.sku}`;
+                const keyOnline = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
+                const stockRace =
+                    (await redisService.getDataByKey<number>(keyRace)) || 0;
+                const stockOnline =
+                    (await redisService.getDataByKey<number>(keyOnline)) || 0;
+
+                if (productVariant.stock - (stockRace + stockOnline) < item.quantity) {
+                    throw new ConflictRequestError(
+                        `Product out of stock: ${productDoc.nameBase}`
+                    );
+                }
+
+                // Acquire race lock
+                await this.acquireProductLock(keyRace, item.quantity, 'race');
+                acquiredLocks.push({ key: keyRace, qty: item.quantity });
+
+                // If COD, decrease stock immediately
+                if (payload.paymentMethod === PaymentMethodType.COD) {
+                    await productRepository.updateByFilter(
+                        {
+                            _id: productDoc._id,
+                            'variants.sku': item.product.sku,
+                            'variants.stock': { $gte: item.quantity },
+                        },
+                        { $inc: { 'variants.$.stock': -item.quantity } }
+                    );
+                    alreadyDecreasedItems.push({
                         _id: item.product.product_id,
-                        type: { $ne: 'lens' },
-                    });
-
-                    if (!productDoc) {
-                        throw new NotFoundRequestError(
-                            `Product not found: ${item.product.product_id}`
-                        );
-                    }
-
-                    variant = productDoc.variants.find(
-                        (v: any) => v.sku === item.product?.sku
-                    );
-                    if (!variant) {
-                        throw new BadRequestError(
-                            `Variant with SKU ${item.product.sku} not found`
-                        );
-                    }
-
-                    // Check stock
-                    const keyRace = `${redisPrefix.productLockRace}:${item.product.product_id}:${item.product.sku}`;
-                    const keyOnline = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
-                    const stockRace =
-                        (await redisService.getDataByKey<number>(keyRace)) || 0;
-                    const stockOnline =
-                        (await redisService.getDataByKey<number>(keyOnline)) ||
-                        0;
-
-                    if (
-                        variant.stock - (stockRace + stockOnline) <
-                        item.quantity
-                    ) {
-                        throw new ConflictRequestError(
-                            `Product out of stock: ${productDoc.nameBase}`
-                        );
-                    }
-
-                    // Acquire race lock
-                    await this.acquireProductLock(
-                        keyRace,
-                        item.quantity,
-                        'race'
-                    );
-                    acquiredLocks.push({ key: keyRace, qty: item.quantity });
-
-                    // If COD, decrease stock immediately
-                    if (payload.paymentMethod === PaymentMethodType.COD) {
-                        await productRepository.updateByFilter(
-                            {
-                                _id: productDoc._id,
-                                'variants.sku': item.product.sku,
-                                'variants.stock': { $gte: item.quantity },
-                            },
-                            { $inc: { 'variants.$.stock': -item.quantity } }
-                        );
-                        alreadyDecreasedItems.push({
-                            _id: item.product.product_id,
-                            sku: item.product.sku,
-                            qty: item.quantity,
-                        });
-                    }
-
-                    itemPrice = variant.finalPrice * item.quantity;
-                    invoiceProducts.push({
-                        productId: item.product.product_id,
                         sku: item.product.sku,
                         qty: item.quantity,
-                        type: 'frame',
                     });
                 }
 
+                itemPrice = productVariant.finalPrice * item.quantity;
+                invoiceProducts.push({
+                    productId: item.product.product_id,
+                    sku: item.product.sku,
+                    qty: item.quantity,
+                    type: productDoc.type,
+                });
+                item.product.pricePerUnit = productVariant.finalPrice;
+                // End process product
+                
                 // Process Lens
                 if (item.lens) {
                     const lensProduct = await productRepository.findOne({
@@ -357,6 +346,19 @@ class InvoiceClientService {
                         qty: item.quantity,
                         type: 'lens',
                     });
+                    item.lens.pricePerUnit = lensVariant.finalPrice;
+                    // Nếu có lens và check đầy đủ hết, push vào loại đơn hàng MANUFACTURING
+                    manufacturingProducts.push({
+                        ...item,
+                        pricePerUnit: lensVariant.finalPrice + productVariant.finalPrice,
+                    });
+                }
+                else {
+                    // Nếu không đây là đơn NORMAL
+                    normalProducts.push({
+                        ...item,
+                        pricePerUnit: productVariant.finalPrice,
+                    });
                 }
 
                 totalPrice += itemPrice;
@@ -367,13 +369,7 @@ class InvoiceClientService {
             if (normalProducts.length > 0) {
                 let normalOrderPrice = 0;
                 for (const item of normalProducts) {
-                    const product = await productRepository.findOne({
-                        _id: item.product!.product_id,
-                    });
-                    const variant = product!.variants.find(
-                        (v: any) => v.sku === item.product?.sku
-                    );
-                    normalOrderPrice += variant!.finalPrice * item.quantity;
+                    normalOrderPrice += item.pricePerUnit * item.quantity;
                 }
 
                 const normalOrder = await orderRepository.create({
@@ -389,29 +385,7 @@ class InvoiceClientService {
 
             // 2. Create separate MANUFACTURING order for each product with lens
             for (const item of manufacturingProducts) {
-                let mfgOrderPrice = 0;
-
-                // Calculate price for frame
-                if (item.product) {
-                    const product = await productRepository.findOne({
-                        _id: item.product.product_id,
-                    });
-                    const variant = product!.variants.find(
-                        (v: any) => v.sku === item.product?.sku
-                    );
-                    mfgOrderPrice += variant!.finalPrice * item.quantity;
-                }
-
-                // Calculate price for lens
-                if (item.lens) {
-                    const lensProduct = await productRepository.findOne({
-                        _id: item.lens.lens_id,
-                    });
-                    const lensVariant = lensProduct!.variants.find(
-                        (v: any) => v.sku === item.lens?.sku
-                    );
-                    mfgOrderPrice += lensVariant!.finalPrice * item.quantity;
-                }
+                let mfgOrderPrice = item.pricePerUnit * item.quantity;
 
                 const mfgOrder = await orderRepository.create({
                     type: OrderType.MANUFACTURING,
@@ -423,14 +397,18 @@ class InvoiceClientService {
 
                 createdOrders.push(mfgOrder._id.toString());
             }
+            // SAU NÀY CÓ LẠI CÁI MONGO VOUCHER SẼ SỬA LẠI LOGIC VOUCHER
 
             // Apply Voucher
-            const { discount: totalDiscount, voucherId } =
-                await this.calculateVoucherDiscount(
-                    payload.voucher,
-                    totalPrice,
-                    customerId
-                );
+            // const { discount: totalDiscount, voucherId } =
+            //     await this.calculateVoucherDiscount(
+            //         payload.voucher,
+            //         totalPrice,
+            //         customerId
+            //     );
+            const { discount: totalDiscount, voucherId } = {discount: 0, voucherId: null};
+
+            // END SAU NÀY CÓ LẠI CÁI MONGO VOUCHER SẼ SỬA LẠI 
 
             // Create Invoice
             const invoiceData: any = {
@@ -438,7 +416,7 @@ class InvoiceClientService {
                 owner: customerId,
                 totalPrice,
                 totalDiscount,
-                voucher: voucherId ? [voucherId] : [],
+                voucher: [], // NÀO LÀM VOUCHER RỒI THÌ ADD VÀO, voucherId ? [voucherId] : [],
                 address: payload.address,
                 status: InvoiceStatus.PENDING,
                 fullName: payload.fullName,
@@ -631,29 +609,33 @@ class InvoiceClientService {
 
     /**
      * Hàm xử lí logic sửa hóa đơn của khách (chỉ sửa thông tin giao ở service này)
-     * @param customer 
-     * @param invoiceId 
-     * @param payload 
+     * @param customer
+     * @param invoiceId
+     * @param payload
      */
-    updateInvoice = async (customer: AuthCustomerContext, invoiceId: string, payload: ClientUpdateInvoice) => {
+    updateInvoice = async (
+        customer: AuthCustomerContext,
+        invoiceId: string,
+        payload: ClientUpdateInvoice
+    ) => {
         const invoiceDetail = await invoiceRepository.findOne({
             _id: invoiceId,
             owner: customer.id,
         });
         if (!invoiceDetail) {
-            throw new NotFoundRequestError(
-                'Invoice not found '
-            );
+            throw new NotFoundRequestError('Invoice not found ');
         }
         // chỉ được sửa khi trc bước sale confirm
         if (
             !(invoiceDetail.status == InvoiceStatus.PENDING) &&
             !(invoiceDetail.status == InvoiceStatus.DEPOSITED)
         ) {
-            throw new ConflictRequestError("Invoice is confirm by our staff, you can't update it");
+            throw new ConflictRequestError(
+                "Invoice is confirm by our staff, you can't update it"
+            );
         }
         await invoiceRepository.update(invoiceId, payload);
-    }
+    };
 }
 
 export default new InvoiceClientService();

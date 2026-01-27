@@ -6,6 +6,7 @@ export const OrderProductLensSchema = z.object({
     lens_id: z.string().min(1, 'Lens ID is required'),
     parameters: LensParametersSchema,
     sku: z.string().min(1, 'SKU is required'),
+    pricePerUnit: z.number().optional(),
     // Quantity của lens thường đi theo cặp hoặc bằng sl gọng, nhưng ở đây có thể optional hoặc required tùy business.
     // Giữ nguyên quantity cho lens nếu lens tracking riêng.
     // quantity: z
@@ -18,10 +19,11 @@ export const OrderProductLensSchema = z.object({
 export const OrderProductFrameSchema = z.object({
     product_id: z.string().min(1, 'Frame ID is required').nonempty("product_id is required"),
     sku: z.string().min(1, 'SKU is required'),
+    pricePerUnit: z.number().optional(),
 });
 // Order Product Schema
 export const OrderProductSchema = z.object({
-    product: OrderProductFrameSchema.optional(),
+    product: OrderProductFrameSchema,
     quantity: z.number().int().min(1, 'Quantity must be at least 1'),
     lens: OrderProductLensSchema.optional(), // Lens is now OPTIONAL
 });

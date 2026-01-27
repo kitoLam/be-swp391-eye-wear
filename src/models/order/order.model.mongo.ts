@@ -31,7 +31,7 @@ const OrderSchema = new Schema<IOrderDocument>(
                                 required: true,
                             },
                             sku: String,
-                            price: { type: Number, default: 0 },
+                            pricePerUnit: { type: Number, required: true },
                         },
                         { _id: false }
                     ),
@@ -69,6 +69,7 @@ const OrderSchema = new Schema<IOrderDocument>(
                                 },
                                 PD: { type: Number, required: true },
                             },
+                            pricePerUnit: { type: Number, required: true },
                         },
                         { _id: false }
                     ),
