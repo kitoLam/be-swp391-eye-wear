@@ -33,6 +33,15 @@ export const ClientCreateInvoiceSchema = z.object({
     voucher: z.array(z.string()).optional().default([]),
     note: z.string().max(500, 'Note must not exceed 500 characters').optional(),
 });
-
+export const ClientUpdateInvoiceSchema = z.object({
+    address: AddressSchema,
+    fullName: z.string().min(1, 'Full name is required'),
+    phone: z
+        .string()
+        .min(10, 'Phone number must be at least 10 digits')
+        .max(15, 'Phone number must not exceed 15 digits'),
+    note: z.string().max(500, 'Note must not exceed 500 characters').optional()
+});
 // Type export
 export type ClientCreateInvoice = z.infer<typeof ClientCreateInvoiceSchema>;
+export type ClientUpdateInvoice = z.infer<typeof ClientUpdateInvoiceSchema>;
