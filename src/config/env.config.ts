@@ -48,10 +48,10 @@ interface Config {
     jwt: {
         secret: string; // Khóa bí mật để mã hóa token
         expiresIn: string; // Thời gian hết hạn access token
-        expiresInSecond: number, // Thời gian hết hạn của access token tính theo dây
+        expiresInSecond: number; // Thời gian hết hạn của access token tính theo dây
         refreshSecret: string; // Khóa bí mật cho refresh token
         refreshExpiresIn: string; // Thời gian hết hạn refresh token
-        refreshExpiresInSecond: number, // Thời gian hết hạn của refresh token tính theo dây
+        refreshExpiresInSecond: number; // Thời gian hết hạn của refresh token tính theo dây
     };
 
     // Cấu hình CORS (cho phép frontend truy cập)
@@ -60,9 +60,14 @@ interface Config {
     };
 
     cloudinary: {
-      cloud_name: string,
-      secret_key: string,
-      api_key: string,
+        cloud_name: string;
+        secret_key: string;
+        api_key: string;
+    };
+
+    supabase: {
+        url: string;
+        key: string;
     };
 }
 
@@ -111,12 +116,16 @@ export const config: Config = {
         secret: process.env.JWT_SECRET || 'your-secret-key',
         // Thời gian hết hạn access token (7d = 7 ngày, 1h = 1 giờ)
         expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-        expiresInSecond: process.env.JWT_EXPIRES_IN_SECOND ? Number(process.env.JWT_EXPIRES_IN_SECOND) : 600,
+        expiresInSecond: process.env.JWT_EXPIRES_IN_SECOND
+            ? Number(process.env.JWT_EXPIRES_IN_SECOND)
+            : 600,
         // Secret key cho refresh token (khác với access token)
         refreshSecret: process.env.JWT_REFRESH_SECRET || 'your-refresh-secret',
         // Thời gian hết hạn refresh token (thường dài hơn access token)
         refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
-        refreshExpiresInSecond: process.env.JWT_REFRESH_EXPIRES_IN_SECOND ? Number(process.env.JWT_REFRESH_EXPIRES_IN_SECOND) : 2592000,
+        refreshExpiresInSecond: process.env.JWT_REFRESH_EXPIRES_IN_SECOND
+            ? Number(process.env.JWT_REFRESH_EXPIRES_IN_SECOND)
+            : 2592000,
     },
 
     // CORS configuration
@@ -124,14 +133,22 @@ export const config: Config = {
         // URL frontend được phép truy cập API
         // Development: http://localhost:3000
         // Production: https://yourdomain.com
-        origin: [process.env.FE_CLIENT_DOMAIN || '', process.env.FE_ADMIN_DOMAIN || ''],
+        origin: [
+            process.env.FE_CLIENT_DOMAIN || '',
+            process.env.FE_ADMIN_DOMAIN || '',
+        ],
     },
 
     cloudinary: {
-      api_key: process.env.CLOUD_API_KEY || "",
-      secret_key: process.env.CLOUD_SECRET_KEY || "",
-      cloud_name: process.env.CLOUD_NAME || "",
-    }
+        api_key: process.env.CLOUD_API_KEY || '',
+        secret_key: process.env.CLOUD_SECRET_KEY || '',
+        cloud_name: process.env.CLOUD_NAME || '',
+    },
+
+    supabase: {
+        url: process.env.SUPABASE_URL || '',
+        key: process.env.SUPABASE_KEY || '',
+    },
 };
 
 // =====================================================
@@ -143,6 +160,8 @@ const requiredEnvVars = [
     'REDIS_URL', // Không có thì không kết nối được Redis
     'NEO4J_URI', // Không có thì không kết nối được Neo4j
     'JWT_SECRET', // Không có thì không tạo được token
+    'SUPABASE_URL',
+    'SUPABASE_KEY',
 ];
 
 // Kiểm tra từng biến

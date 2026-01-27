@@ -1,7 +1,8 @@
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { orderRepository } from '../../repositories/order/order.repository';
 import { voucherRepository } from '../../repositories/voucher/voucher.repository';
-import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
+import { supabase } from '../../config/supabase.config';
+// import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 import { productRepository } from '../../repositories/product/product.repository';
 import { OrderProduct } from '../../types/order/order-product';
 import {
@@ -114,11 +115,15 @@ class InvoiceClientService {
 
         // Check voucher access for SPECIFIC vouchers
         if (voucher.applyScope === 'SPECIFIC') {
-            const hasAccess = await neo4jVoucherRepository.userHasVoucher(
-                customerId,
-                voucher._id.toString()
-            );
-            if (!hasAccess) {
+            const { data, error } = await supabase
+                .from('voucher_user')
+                .select('id')
+                .eq('customer_id', customerId)
+                .eq('voucher_id', voucher._id.toString())
+                .is('deleted_at', null)
+                .single();
+
+            if (error || !data) {
                 throw new BadRequestError(
                     'Bạn không có quyền sử dụng voucher này'
                 );
@@ -155,10 +160,30 @@ class InvoiceClientService {
 
         // Mark voucher as used
         if (voucher.applyScope === 'SPECIFIC') {
-            await neo4jVoucherRepository.markVoucherAsUsed(
-                customerId,
-                voucher._id.toString()
-            );
+            // Update metadata to include invoice_id and used_at
+            // First get current metadata
+            const { data: currentRecord } = await supabase
+                .from('voucher_user')
+                .select('metadata')
+                .eq('customer_id', customerId)
+                .eq('voucher_id', voucher._id.toString())
+                .single();
+
+            const newMetadata = {
+                ...currentRecord?.metadata,
+                invoice_id: 'PENDING_INVOICE', // We don't have invoice ID yet here, or we can update it later.
+                // Actually this function returns discount and then createInvoice uses it.
+                // But createInvoice creates invoice AFTER this check.
+                // So maybe we just mark it as used?
+                // The original code marked it as used here.
+                used_at: new Date(),
+            };
+
+            await supabase
+                .from('voucher_user')
+                .update({ metadata: newMetadata, updated_at: new Date() })
+                .eq('customer_id', customerId)
+                .eq('voucher_id', voucher._id.toString());
         }
         await voucherRepository.incrementUsage(voucher._id.toString());
 
@@ -166,10 +191,10 @@ class InvoiceClientService {
     };
 
     /**
-     * 
-     * @param customerId 
-     * @param payload 
-     * @returns 
+     *
+     * @param customerId
+     * @param payload
+     * @returns
      */
     createInvoice = async (
         customerId: string,
@@ -186,8 +211,11 @@ class InvoiceClientService {
 
         try {
             // Separate products by type
-            const normalProducts: (OrderProduct & {pricePerUnit: number})[] = [];
-            const manufacturingProducts: (OrderProduct & { pricePerUnit: number })[] = [];
+            const normalProducts: (OrderProduct & { pricePerUnit: number })[] =
+                [];
+            const manufacturingProducts: (OrderProduct & {
+                pricePerUnit: number;
+            })[] = [];
 
             let totalPrice = 0;
 
@@ -210,7 +238,7 @@ class InvoiceClientService {
 
                 // Process Product
                 const productDoc = await productRepository.findOne({
-                    _id: item.product.product_id
+                    _id: item.product.product_id,
                 });
 
                 if (!productDoc) {
@@ -236,7 +264,10 @@ class InvoiceClientService {
                 const stockOnline =
                     (await redisService.getDataByKey<number>(keyOnline)) || 0;
 
-                if (productVariant.stock - (stockRace + stockOnline) < item.quantity) {
+                if (
+                    productVariant.stock - (stockRace + stockOnline) <
+                    item.quantity
+                ) {
                     throw new ConflictRequestError(
                         `Product out of stock: ${productDoc.nameBase}`
                     );
@@ -272,7 +303,7 @@ class InvoiceClientService {
                 });
                 item.product.pricePerUnit = productVariant.finalPrice;
                 // End process product
-                
+
                 // Process Lens
                 if (item.lens) {
                     const lensProduct = await productRepository.findOne({
@@ -350,10 +381,10 @@ class InvoiceClientService {
                     // Nếu có lens và check đầy đủ hết, push vào loại đơn hàng MANUFACTURING
                     manufacturingProducts.push({
                         ...item,
-                        pricePerUnit: lensVariant.finalPrice + productVariant.finalPrice,
+                        pricePerUnit:
+                            lensVariant.finalPrice + productVariant.finalPrice,
                     });
-                }
-                else {
+                } else {
                     // Nếu không đây là đơn NORMAL
                     normalProducts.push({
                         ...item,
@@ -406,9 +437,12 @@ class InvoiceClientService {
             //         totalPrice,
             //         customerId
             //     );
-            const { discount: totalDiscount, voucherId } = {discount: 0, voucherId: null};
+            const { discount: totalDiscount, voucherId } = {
+                discount: 0,
+                voucherId: null,
+            };
 
-            // END SAU NÀY CÓ LẠI CÁI MONGO VOUCHER SẼ SỬA LẠI 
+            // END SAU NÀY CÓ LẠI CÁI MONGO VOUCHER SẼ SỬA LẠI
 
             // Create Invoice
             const invoiceData: any = {
@@ -418,7 +452,10 @@ class InvoiceClientService {
                 totalDiscount,
                 voucher: [], // NÀO LÀM VOUCHER RỒI THÌ ADD VÀO, voucherId ? [voucherId] : [],
                 address: payload.address,
-                status: payload.paymentMethod == PaymentMethodType.COD ? InvoiceStatus.DEPOSITED : InvoiceStatus.PENDING,
+                status:
+                    payload.paymentMethod == PaymentMethodType.COD
+                        ? InvoiceStatus.DEPOSITED
+                        : InvoiceStatus.PENDING,
                 fullName: payload.fullName,
                 phone: payload.phone,
                 invoiceCode: generateInvoiceCode(),

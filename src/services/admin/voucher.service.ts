@@ -1,5 +1,6 @@
 import { voucherRepository } from '../../repositories/voucher/voucher.repository';
-import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
+import { supabase } from '../../config/supabase.config';
+// import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 import { CreateVoucher, UpdateVoucher } from '../../types/voucher/voucher';
 import {
     NotFoundRequestError,
@@ -15,21 +16,25 @@ class VoucherAdminService {
             // 1. Create in MongoDB
             const voucher = await voucherRepository.create(payload as any);
 
-            // 2. Create node in Neo4j
-            await neo4jVoucherRepository.createVoucherNode(
-                voucher._id.toString(),
-                voucher.code
-            );
+            // 2. Create in Supabase
+            const { error } = await supabase.from('voucher').insert([
+                {
+                    id: voucher._id.toString(),
+                    code: voucher.code,
+                    created_at: new Date(),
+                },
+            ]);
+
+            if (error) {
+                // Delete from MongoDB if Supabase creation failed
+                await voucherRepository.delete(voucher._id.toString());
+                throw new BadRequestError(
+                    'Failed to create voucher in Supabase: ' + error.message
+                );
+            }
 
             return voucher;
         } catch (error: any) {
-            // Rollback if Neo4j fails
-            if (error.message?.includes('Neo4j')) {
-                // Delete from MongoDB if Neo4j creation failed
-                throw new BadRequestError(
-                    'Failed to create voucher in graph database'
-                );
-            }
             throw error;
         }
     };
@@ -83,13 +88,9 @@ class VoucherAdminService {
             throw new NotFoundRequestError('Voucher not found');
         }
 
-        // Get Neo4j statistics
-        const stats =
-            await neo4jVoucherRepository.getVoucherStatistics(voucherId);
-
         return {
             ...voucher.toObject(),
-            neo4jStats: stats,
+            // neo4jStats: stats, // Removed Neo4j stats
         };
     };
 
@@ -120,8 +121,11 @@ class VoucherAdminService {
         // 1. Soft delete in MongoDB
         await voucherRepository.delete(voucherId);
 
-        // 2. Delete node and relationships in Neo4j
-        await neo4jVoucherRepository.deleteVoucherNode(voucherId);
+        // 2. Delete from Supabase (or soft delete if you prefer)
+        await supabase.from('voucher').delete().eq('id', voucherId);
+        // Also delete related voucher_user records? Supabase FK cascade should handle it if configured.
+        // Or if soft delete:
+        // await supabase.from('voucher').update({ deleted_at: new Date() }).eq('id', voucherId);
 
         return { message: 'Voucher deleted successfully' };
     };
@@ -140,16 +144,30 @@ class VoucherAdminService {
             throw new NotFoundRequestError('Voucher not found');
         }
 
-        // 2. Grant in Neo4j
-        const count = await neo4jVoucherRepository.grantVoucherToUsers(
-            userIds,
-            voucherId,
-            grantedBy
-        );
+        // 2. Grant in Supabase
+        const records = userIds.map(userId => ({
+            id: crypto.randomUUID(),
+            customer_id: userId,
+            voucher_id: voucherId,
+            metadata: { granted_by: grantedBy },
+            created_at: new Date(),
+            updated_at: new Date(),
+        }));
+
+        const { data, error } = await supabase
+            .from('voucher_user')
+            .insert(records)
+            .select();
+
+        if (error) {
+            throw new BadRequestError(
+                'Failed to grant vouchers: ' + error.message
+            );
+        }
 
         return {
             voucherCode: voucher.code,
-            grantedCount: count,
+            grantedCount: data.length,
         };
     };
 
@@ -163,15 +181,23 @@ class VoucherAdminService {
             throw new NotFoundRequestError('Voucher not found');
         }
 
-        // 2. Revoke in Neo4j
-        const count = await neo4jVoucherRepository.revokeVoucherFromUsers(
-            userIds,
-            voucherId
-        );
+        // 2. Revoke in Supabase (Soft delete or Hard delete)
+        // Assuming hard delete for revoke as per Neo4j logic usually implies removing the relationship
+        const { error } = await supabase
+            .from('voucher_user')
+            .delete()
+            .eq('voucher_id', voucherId)
+            .in('customer_id', userIds);
+
+        if (error) {
+            throw new BadRequestError(
+                'Failed to revoke vouchers: ' + error.message
+            );
+        }
 
         return {
             voucherCode: voucher.code,
-            revokedCount: count,
+            revokedCount: userIds.length, // Supabase delete doesn't return count easily without select
         };
     };
 
@@ -185,8 +211,21 @@ class VoucherAdminService {
             throw new NotFoundRequestError('Voucher not found');
         }
 
-        // 2. Get users from Neo4j
-        const users = await neo4jVoucherRepository.getVoucherUsers(voucherId);
+        // 2. Get users from Supabase
+        const { data: voucherUsers, error } = await supabase
+            .from('voucher_user')
+            .select('customer_id')
+            .eq('voucher_id', voucherId)
+            .is('deleted_at', null);
+
+        if (error) {
+            throw new BadRequestError(error.message);
+        }
+
+        // We might need to fetch user details from MongoDB if we only have IDs
+        // But the original code returned what Neo4j returned (likely IDs or basic info).
+        // Let's assume we return IDs for now.
+        const users = voucherUsers.map((v: any) => v.customer_id);
 
         return {
             voucher: {
@@ -201,8 +240,18 @@ class VoucherAdminService {
      * Get user's vouchers
      */
     getUserVouchers = async (userId: string) => {
-        // Get voucher IDs from Neo4j
-        const voucherIds = await neo4jVoucherRepository.getUserVouchers(userId);
+        // Get voucher IDs from Supabase
+        const { data: userVouchers, error } = await supabase
+            .from('voucher_user')
+            .select('voucher_id')
+            .eq('customer_id', userId)
+            .is('deleted_at', null);
+
+        if (error) {
+            throw new BadRequestError(error.message);
+        }
+
+        const voucherIds = userVouchers.map((v: any) => v.voucher_id);
 
         if (voucherIds.length === 0) {
             return { vouchers: [] };

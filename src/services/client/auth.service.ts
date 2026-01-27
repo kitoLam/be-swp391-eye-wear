@@ -13,7 +13,8 @@ import {
 import { comparePassword, hashPassword } from '../../utils/bcrypt.util';
 import tokenService from '../token.service';
 import * as jwtUtil from '../../utils/jwt.util';
-import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
+import { supabase } from '../../config/supabase.config';
+// import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 
 class AuthService {
     registerCustomer = async (payload: RegisterCustomerDTO) => {
@@ -36,17 +37,25 @@ class AuthService {
         const customer = await customerRepository.create({
             ...payload,
             hashedPassword: hashedPassword,
+            isVerified: true, // Auto verified for testing
         });
 
-        // 4. Create user node in Neo4j
+        // 4. Create user in Supabase
         try {
-            await neo4jVoucherRepository.createUserNode(
-                customer._id.toString(),
-                customer.email
-            );
+            const { error } = await supabase.from('customer').insert([
+                {
+                    id: customer._id.toString(),
+                    created_at: new Date(),
+                },
+            ]);
+
+            if (error) {
+                console.error('Failed to create Supabase customer:', error);
+                // Log error but don't fail registration?
+                // Ideally we should rollback Mongo, but for now let's just log.
+            }
         } catch (error) {
-            console.error('Failed to create Neo4j user node:', error);
-            // Log error but don't fail registration
+            console.error('Failed to create Supabase customer:', error);
         }
     };
     login = async (

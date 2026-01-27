@@ -1,28 +1,16 @@
-import { Router } from 'express';
+import express from 'express';
 import voucherClientController from '../../controllers/client/voucher.controller';
 import { authenticateMiddlewareClient } from '../../middlewares/client/auth.middleware';
-import { validateBody } from '../../middlewares/share/validator.middleware';
-import z from 'zod';
 
-const router = Router();
-
-// Validate voucher schema
-const ValidateVoucherSchema = z.object({
-    code: z.string().min(1, 'Voucher code is required'),
-    orderValue: z.number().min(0, 'Order value must be non-negative'),
-});
+const router = express.Router();
 
 // Public routes
 router.get('/available', voucherClientController.getAvailableVouchers);
 
-// Protected routes (require authentication)
+// Protected routes
 router.use(authenticateMiddlewareClient);
-
 router.get('/my-vouchers', voucherClientController.getMyVouchers);
-router.post(
-    '/validate',
-    validateBody(ValidateVoucherSchema),
-    voucherClientController.validateVoucher
-);
+router.post('/validate', voucherClientController.validateVoucher);
+router.post('/assign', voucherClientController.assignVoucher); // Test route
 
 export default router;

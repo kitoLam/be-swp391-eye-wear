@@ -2,6 +2,7 @@ import { httpServer, io } from './app';
 import { config } from './config/env.config';
 import { connectMongoDB } from './config/database/mongodb.config';
 import { redisClient } from './config/database/redis.config';
+import { checkSupabaseConnection } from './config/supabase.config';
 // import { neo4jClient } from './config/database/neo4j.config';
 import './queues/invoice.worker';
 const startServer = async () => {
@@ -9,6 +10,7 @@ const startServer = async () => {
         // Connect to databases
         await connectMongoDB();
         await redisClient.connect();
+        await checkSupabaseConnection();
         // Neo4j connects automatically on initialization
 
         // Socket.IO connection handler
@@ -48,6 +50,6 @@ const startServer = async () => {
 //     )();
 // });
 
-void(async () => {
-  await startServer();
+void (async () => {
+    await startServer();
 })();

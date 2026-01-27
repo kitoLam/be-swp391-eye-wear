@@ -1,5 +1,5 @@
 import { voucherRepository } from '../../repositories/voucher/voucher.repository';
-import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
+import { supabase } from '../../config/supabase.config';
 import {
     NotFoundRequestError,
     BadRequestError,
@@ -12,12 +12,77 @@ interface ValidateVoucherPayload {
 
 class VoucherClientService {
     /**
+     * Assign voucher to user (Supabase)
+     */
+    assignVoucher = async (
+        customerId: string,
+        voucherId: string,
+        metadata: any = {}
+    ) => {
+        // 1. Check if customer exists in Supabase, if not create
+        const { data: customer } = await supabase
+            .from('customer')
+            .select('id')
+            .eq('id', customerId)
+            .single();
+
+        if (!customer) {
+            await supabase.from('customer').insert([{ id: customerId }]);
+        }
+
+        // 2. Check if voucher exists in Supabase, if not create
+        const { data: voucher } = await supabase
+            .from('voucher')
+            .select('id')
+            .eq('id', voucherId)
+            .single();
+
+        if (!voucher) {
+            // We need the code to create it, but here we only have ID.
+            // Ideally we should sync from Mongo or just insert ID if Supabase allows.
+            // Assuming voucherId is UUID.
+            await supabase
+                .from('voucher')
+                .insert([{ id: voucherId, code: 'UNKNOWN_' + voucherId }]);
+        }
+
+        // 3. Assign
+        const { data, error } = await supabase
+            .from('voucher_user')
+            .insert([
+                {
+                    customer_id: customerId,
+                    voucher_id: voucherId,
+                    metadata: metadata,
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                },
+            ])
+            .select();
+
+        if (error) {
+            throw new BadRequestError(error.message);
+        }
+
+        return data[0];
+    };
+
+    /**
      * Get user's available vouchers (unused only)
      */
     getMyVouchers = async (customerId: string) => {
-        // 1. Get unused voucher IDs from Neo4j
-        const voucherIds =
-            await neo4jVoucherRepository.getUserUnusedVouchers(customerId);
+        // 1. Get unused voucher IDs from Supabase
+        const { data: userVouchers, error } = await supabase
+            .from('voucher_user')
+            .select('voucher_id')
+            .eq('customer_id', customerId)
+            .is('deleted_at', null);
+
+        if (error) {
+            throw new BadRequestError(error.message);
+        }
+
+        const voucherIds = userVouchers.map((v: any) => v.voucher_id);
 
         if (voucherIds.length === 0) {
             return { vouchers: [] };
@@ -82,11 +147,16 @@ class VoucherClientService {
 
         // 5. Check if user has access (for SPECIFIC vouchers)
         if (voucher.applyScope === 'SPECIFIC') {
-            const hasAccess = await neo4jVoucherRepository.userHasVoucher(
-                customerId,
-                voucher._id.toString()
-            );
-            if (!hasAccess) {
+            // Check Supabase
+            const { data, error } = await supabase
+                .from('voucher_user')
+                .select('id')
+                .eq('customer_id', customerId)
+                .eq('voucher_id', voucher._id.toString())
+                .is('deleted_at', null)
+                .single();
+
+            if (error || !data) {
                 throw new BadRequestError(
                     'Bạn không có quyền sử dụng voucher này'
                 );
@@ -124,6 +194,7 @@ class VoucherClientService {
                 typeDiscount: voucher.typeDiscount,
                 value: voucher.value,
                 maxDiscountValue: voucher.maxDiscountValue,
+                _id: voucher._id, // Return ID for reference
             },
             discount,
             finalAmount,

@@ -40,6 +40,19 @@ class VoucherClientController {
             )
         );
     };
+
+    /**
+     * Assign voucher (Test)
+     */
+    assignVoucher = async (req: Request, res: Response) => {
+        const { customerId, voucherId, metadata } = req.body;
+        const result = await voucherClientService.assignVoucher(
+            customerId,
+            voucherId,
+            metadata
+        );
+        res.json(ApiResponse.success('Assign voucher success', result));
+    };
 }
 
 export default new VoucherClientController();
