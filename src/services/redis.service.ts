@@ -4,6 +4,13 @@ class RedisService {
         const data = await redisClient.client.get(key);
         return data ? (JSON.parse(data) as T) : null;
     }
+    /**
+     * Set data with expired time in redis
+     * @param key - key of data
+     * @param value - value of data
+     * @param ttl - time to live in second
+     * @returns Promise<boolean> - true if data saved successfully, false otherwise
+     */
     async setDataWithExpiredTime(
         key: string,
         value: any,

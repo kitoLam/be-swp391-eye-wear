@@ -4,5 +4,5 @@ export const redisPrefix = {
     productLockRace: 'productLockRace', // `productLockRace:${productId}:${sku}` = stock number
     productLockOnline: 'productLockOnline', // `productLockOnline:${productId}:${sku}` = stock num
     invoiceProducts: 'invoice-products', // `invoice-products:${invoiceId}` = JSON array of products
-    checkoutSession: 'checkoutSession', // checkoutSession:${customerId}:${checkoutSessionId} = 
+    checkoutSession: 'checkoutSession', // checkoutSession:${checkoutSessionId}:${checkoutSessionId} = mảng products giống lúc gửi lên khi create invoice, lưu trong 5p
 };
