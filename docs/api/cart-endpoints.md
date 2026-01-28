@@ -1,470 +1,281 @@
-# Cart API - Complete Reference
+# Cart API Documentation (Client)
 
-**Base URL:** `http://localhost:5000/api/v1/client`
-
-**Authentication:** Required (Customer token)
+Tài liệu này mô tả chi tiết các API liên quan đến **giỏ hàng (/cart)** để team Frontend tích hợp.
 
 ---
 
-## 📋 Cart Endpoints
+## Tổng quan
 
-All cart endpoints require customer authentication.
+* **Base URL**: `/cart`
+* **Authentication**: Bắt buộc (Bearer Token)
+* Tất cả API đều thao tác trên **giỏ hàng của user hiện tại** (lấy từ access token)
 
-### Headers (All Endpoints)
+---
 
-```
-Authorization: Bearer {{customer_token}}
-Content-Type: application/json
+## Cart Model (Response)
+
+```ts
+Cart {
+  _id: string
+  owner: string
+  products: CartItem[]
+  totalProduct: number
+  createdAt: string
+  updatedAt: string
+}
+
+CartItem {
+  product?: {
+    product_id: string
+    sku: string
+  }
+  lens?: {
+    lens_id: string
+    sku: string
+    parameters: LensParameters
+  }
+  quantity: number
+  addAt: string
+}
+
+LensParameters {
+  left: {
+    SPH: number
+    CYL: number
+    AXIS: number
+  }
+  right: {
+    SPH: number
+    CYL: number
+    AXIS: number
+  }
+  PD: number
+}
 ```
 
 ---
 
-## 1. Get Cart
+## 1. Lấy giỏ hàng
 
-**Method:** `GET`  
-**URL:** `/api/v1/client/cart`
+**GET** `/cart`
 
-### Description
-
-Lấy giỏ hàng hiện tại của customer đang login.
-
-### Headers
-
-```
-Authorization: Bearer {{customer_token}}
-```
-
-### Response (200 OK)
+### Response
 
 ```json
 {
-  "success": true,
   "message": "Lấy giỏ hàng thành công!",
   "data": {
-    "cart": {
-      "_id": "cart123",
-      "owner": "customer123",
-      "products": [
-        {
-          "product_id": "FR-GKTP-A1B2C3D4-C-GLD-S-M",
-          "quantity": 2,
-          "addAt": "2026-01-18T00:00:00.000Z"
-        },
-        {
-          "product_id": "SG-RBWC-X7Y8Z9W0-C-BLK",
-          "quantity": 1,
-          "addAt": "2026-01-18T00:05:00.000Z"
-        }
-      ],
-      "totalProduct": 3,
-      "createdAt": "2026-01-15T10:00:00.000Z",
-      "updatedAt": "2026-01-18T00:05:00.000Z"
-    }
+    "cart": { /* Cart */ }
   }
 }
 ```
 
-### Response (404 Not Found) - Cart doesn't exist
+### Notes
 
-```json
-{
-  "success": false,
-  "message": "Giỏ hàng không tồn tại!"
-}
-```
+* Nếu user chưa có cart → trả lỗi `404 Giỏ hàng không tồn tại`
 
 ---
 
-## 2. Add to Cart
+## 2. Thêm sản phẩm vào giỏ hàng
 
-**Method:** `POST`  
-**URL:** `/api/v1/client/cart/add`
+**POST** `/cart/add-product`
 
-### Description
-
-Thêm sản phẩm vào giỏ hàng. Nếu sản phẩm đã tồn tại, tăng số lượng.
-
-### Headers
-
-```
-Authorization: Bearer {{customer_token}}
-Content-Type: application/json
-```
-
-### Request Body
+### Body
 
 ```json
 {
-  "product_id": "FR-GKTP-A1B2C3D4-C-GLD-S-M",
-  "quantity": 2
-}
-```
-
-### Field Descriptions
-
-| Field        | Type   | Required | Description                      |
-| ------------ | ------ | -------- | -------------------------------- |
-| `product_id` | string | Yes      | Variant SKU (auto-generated SKU) |
-| `quantity`   | number | Yes      | Số lượng (≥ 1)                   |
-
-### Response (200 OK)
-
-```json
-{
-  "success": true,
-  "message": "Thêm sản phẩm vào giỏ hàng thành công!",
-  "data": {
-    "cart": {
-      "_id": "cart123",
-      "owner": "customer123",
-      "products": [
-        {
-          "product_id": "FR-GKTP-A1B2C3D4-C-GLD-S-M",
-          "quantity": 2,
-          "addAt": "2026-01-18T00:00:00.000Z"
-        }
-      ],
-      "totalProduct": 2
+  "item": {
+    "product": {
+      "product_id": "string",
+      "sku": "string"
+    },
+    "lens": {
+      "lens_id": "string",
+      "sku": "string",
+      "parameters": { /* LensParameters */ }
     }
-  }
-}
-```
-
-### Response (400 Bad Request) - Validation Error
-
-```json
-{
-  "success": false,
-  "message": "Quantity must be at least 1"
-}
-```
-
----
-
-## 3. Update Cart Item Quantity
-
-**Method:** `PATCH`  
-**URL:** `/api/v1/client/cart/update`
-
-### Description
-
-Cập nhật số lượng của một sản phẩm trong giỏ hàng.
-
-### Headers
-
-```
-Authorization: Bearer {{customer_token}}
-Content-Type: application/json
-```
-
-### Request Body
-
-```json
-{
-  "product_id": "FR-GKTP-A1B2C3D4-C-GLD-S-M",
-  "quantity": 5
-}
-```
-
-### Field Descriptions
-
-| Field        | Type   | Required | Description        |
-| ------------ | ------ | -------- | ------------------ |
-| `product_id` | string | Yes      | Variant SKU        |
-| `quantity`   | number | Yes      | Số lượng mới (≥ 1) |
-
-### Response (200 OK)
-
-```json
-{
-  "success": true,
-  "message": "Cập nhật số lượng thành công!",
-  "data": {
-    "cart": {
-      "_id": "cart123",
-      "owner": "customer123",
-      "products": [
-        {
-          "product_id": "FR-GKTP-A1B2C3D4-C-GLD-S-M",
-          "quantity": 5,
-          "addAt": "2026-01-18T00:00:00.000Z"
-        }
-      ],
-      "totalProduct": 5
-    }
-  }
-}
-```
-
-### Response (404 Not Found) - Product not in cart
-
-```json
-{
-  "success": false,
-  "message": "Sản phẩm không có trong giỏ hàng!"
-}
-```
-
----
-
-## 4. Remove Item from Cart
-
-**Method:** `DELETE`  
-**URL:** `/api/v1/client/cart/remove/:product_id`
-
-### Description
-
-Xóa một sản phẩm khỏi giỏ hàng.
-
-### Headers
-
-```
-Authorization: Bearer {{customer_token}}
-```
-
-### Path Parameters
-
-| Parameter    | Type   | Required | Description         |
-| ------------ | ------ | -------- | ------------------- |
-| `product_id` | string | Yes      | Variant SKU cần xóa |
-
-### Example URLs
-
-```
-DELETE /api/v1/client/cart/remove/FR-GKTP-A1B2C3D4-C-GLD-S-M
-DELETE /api/v1/client/cart/remove/{{product_id}}
-```
-
-### Response (200 OK)
-
-```json
-{
-  "success": true,
-  "message": "Xóa sản phẩm khỏi giỏ hàng thành công!",
-  "data": {
-    "cart": {
-      "_id": "cart123",
-      "owner": "customer123",
-      "products": [],
-      "totalProduct": 0
-    }
-  }
-}
-```
-
----
-
-## 5. Clear Cart
-
-**Method:** `DELETE`  
-**URL:** `/api/v1/client/cart/clear`
-
-### Description
-
-Xóa tất cả sản phẩm trong giỏ hàng.
-
-### Headers
-
-```
-Authorization: Bearer {{customer_token}}
-```
-
-### Response (200 OK)
-
-```json
-{
-  "success": true,
-  "message": "Xóa toàn bộ giỏ hàng thành công!",
-  "data": {
-    "cart": {
-      "_id": "cart123",
-      "owner": "customer123",
-      "products": [],
-      "totalProduct": 0
-    }
-  }
-}
-```
-
----
-
-## 📊 Endpoint Summary
-
-| #   | Method | Endpoint                          | Description     |
-| --- | ------ | --------------------------------- | --------------- |
-| 1   | GET    | `/client/cart`                    | Get cart        |
-| 2   | POST   | `/client/cart/add`                | Add to cart     |
-| 3   | PATCH  | `/client/cart/update`             | Update quantity |
-| 4   | DELETE | `/client/cart/remove/:product_id` | Remove item     |
-| 5   | DELETE | `/client/cart/clear`              | Clear cart      |
-
----
-
-## 🎯 Testing Flow
-
-### 1. Login Customer
-
-```bash
-POST /api/v1/client/auth/login
-{
-  "email": "customer@example.com",
-  "password": "password123"
-}
-```
-
-→ Save `customer_token`
-
-### 2. Get Cart (Initially Empty)
-
-```bash
-GET /api/v1/client/cart
-Authorization: Bearer {{customer_token}}
-```
-
-### 3. Add Product to Cart
-
-```bash
-POST /api/v1/client/cart/add
-Authorization: Bearer {{customer_token}}
-{
-  "product_id": "FR-GKTP-A1B2C3D4-C-GLD-S-M",
-  "quantity": 2
-}
-```
-
-### 4. Add Another Product
-
-```bash
-POST /api/v1/client/cart/add
-{
-  "product_id": "SG-RBWC-X7Y8Z9W0-C-BLK",
+  },
   "quantity": 1
 }
 ```
 
-### 5. Update Quantity
+### Rules
 
-```bash
-PATCH /api/v1/client/cart/update
+* `product` hoặc `lens` **ít nhất 1 trong 2 phải tồn tại**
+* nếu cái nào không tồn tại sẽ không truyền lên
+* `quantity >= 1`
+* Nếu item đã tồn tại trong cart → **tăng số lượng**
+* Nếu chưa tồn tại → **thêm mới**
+
+### Response
+
+```json
 {
-  "product_id": "FR-GKTP-A1B2C3D4-C-GLD-S-M",
-  "quantity": 5
+  "message": "Thêm sản phẩm vào giỏ hàng thành công!",
+  "data": null
 }
-```
-
-### 6. Get Cart (See Changes)
-
-```bash
-GET /api/v1/client/cart
-```
-
-### 7. Remove One Item
-
-```bash
-DELETE /api/v1/client/cart/remove/SG-RBWC-X7Y8Z9W0-C-BLK
-```
-
-### 8. Clear Cart
-
-```bash
-DELETE /api/v1/client/cart/clear
 ```
 
 ---
 
-## 💡 Important Notes
+## 3. Cập nhật số lượng sản phẩm
 
-### Product ID Format
+**PATCH** `/cart/update-quantity`
 
-- Sử dụng **Variant SKU** (auto-generated)
-- Format: `{TYPE}-{INITIALS}-{UUID}-{OPTION_CODES}`
-- Example: `FR-GKTP-A1B2C3D4-C-GLD-S-M`
+### Body
 
-### Cart Behavior
+```json
+{
+  "item": {
+    "product": {
+      "product_id": "string",
+      "sku": "string"
+    },
+    "lens": {
+      "lens_id": "string",
+      "sku": "string"
+    }
+  },
+  "quantity": 2
+}
+```
 
-- **Auto-create**: Cart tự động tạo khi customer đăng ký
-- **Unique products**: Không thể thêm duplicate product_id
-- **Quantity update**: Nếu product đã tồn tại, add sẽ cộng dồn quantity
-- **Total calculation**: `totalProduct` tự động tính từ sum của quantities
+### Rules
 
-### Authentication
+* `item` có thể chứa `product`, `lens` hoặc **cả hai** (đúng theo data đã add)
+* Item phải tồn tại trong cart
+* `quantity >= 1`
 
-- Tất cả endpoints cần customer token
-- Token lấy từ login response
-- Owner ID tự động lấy từ token (không cần gửi trong body)
+### Response
+
+```json
+{
+  "message": "Cập nhật số lượng thành công!",
+  "data": null
+}
+```
 
 ---
 
-## 🔄 Postman Collection Setup
+## 4. Cập nhật đơn kính (Prescription)
 
-### Environment Variables
+**PATCH** `/cart/update-prescription`
 
-```
-customer_token: (auto-filled from login)
-product_id: (manual or auto-filled)
-```
+### Body
 
-### Login Script (Save Token)
-
-```javascript
-const response = pm.response.json();
-if (response.success && response.data && response.data.accessToken) {
-  pm.environment.set("customer_token", response.data.accessToken);
-  console.log("✅ Customer token saved");
+```json
+{
+  "item": {
+    "product": {
+      "product_id": "string",
+      "sku": "string"
+    },
+    "lens": {
+      "lens_id": "string",
+      "sku": "string"
+    }
+  },
+  "parameters": {
+    "left": {
+      "SPH": 0,
+      "CYL": 0,
+      "AXIS": 0
+    },
+    "right": {
+      "SPH": 0,
+      "CYL": 0,
+      "AXIS": 0
+    },
+    "PD": 62
+  }
 }
 ```
 
-### Collection Authorization
+### Rules
 
-- Type: `Bearer Token`
-- Token: `{{customer_token}}`
+* `item` phải **match đúng cấu trúc đã add vào cart** (product + lens nếu có)
+* Prescription chỉ được update cho item có `lens`
+* Item phải tồn tại trong cart
+
+### Response
+
+```json
+{
+  "message": "Cập nhật số lượng thành công!",
+  "data": null
+}
+```
 
 ---
 
-## 🚨 Error Handling
+## 5. Xóa sản phẩm khỏi giỏ hàng
 
-### Common Errors
+**DELETE** `/cart/remove-product`
 
-**401 Unauthorized**
-
-```json
-{
-  "success": false,
-  "message": "Unauthorized"
-}
-```
-
-→ Token missing or invalid
-
-**404 Not Found**
+### Body
 
 ```json
 {
-  "success": false,
-  "message": "Giỏ hàng không tồn tại!"
+  "item": {
+    "product": {
+      "product_id": "string",
+      "sku": "string"
+    },
+    "lens": {
+      "lens_id": "string",
+      "sku": "string"
+    }
+  }
 }
 ```
 
-→ Cart doesn't exist for customer
+### Rules
 
-**400 Bad Request**
+* `item` có thể gồm `product`, `lens` hoặc cả hai
+* Cấu trúc item phải **giống lúc add vào cart**
+* Item phải tồn tại trong cart
+
+### Response
 
 ```json
 {
-  "success": false,
-  "message": "Quantity must be at least 1"
+  "message": "Xóa sản phẩm khỏi giỏ hàng thành công!",
+  "data": null
 }
 ```
 
-→ Validation error
+---
 
-**409 Conflict**
+## 6. Xóa toàn bộ giỏ hàng
+
+**DELETE** `/cart/clear`
+
+### Response
 
 ```json
 {
-  "success": false,
-  "message": "Cannot add duplicate products to cart"
+  "message": "Xóa toàn bộ giỏ hàng thành công!",
+  "data": null
 }
 ```
 
-→ Trying to add duplicate product (should use update instead)
+---
+
+## Error Format (Common)
+
+```json
+{
+  "message": "Giỏ hàng không tồn tại!",
+}
+```
+
+---
+
+## Ghi chú cho FE
+
+* Backend **không trả cart mới** sau khi add/update/remove → FE nên **gọi lại GET /cart** để sync state
+* Hiện tại **chưa check stock** khi add/update quantity
+* Item được định danh bằng cặp `(product | lens) + sku`
+
+---
+
