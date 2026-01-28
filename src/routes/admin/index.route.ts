@@ -5,6 +5,7 @@ import categoryRouter from './category.route';
 import productRouter from './product.route';
 import voucherRouter from './voucher.route';
 import invoiceRouter from './invoice.route';
+import customerRouter from './customer.route';
 
 const router = Router();
 
@@ -14,4 +15,5 @@ router.use('/categories', categoryRouter);
 router.use('/products', productRouter);
 router.use('/vouchers', voucherRouter);
 router.use('/invoices', invoiceRouter);
+router.use('/customers', customerRouter);
 export default router;
