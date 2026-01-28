@@ -1,6 +1,5 @@
 import { voucherRepository } from '../../repositories/voucher/voucher.repository';
 import { supabase } from '../../config/supabase.config';
-// import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 import { CreateVoucher, UpdateVoucher } from '../../types/voucher/voucher';
 import {
     NotFoundRequestError,
