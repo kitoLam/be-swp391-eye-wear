@@ -5,7 +5,7 @@ import {
     OrderStatus,
     OrderType,
 } from '../../config/enums/order.enum';
-import { LensParametersSchema } from './lens-parameters';
+import { LensParametersSchema } from '../lens-parameters/lens-parameters';
 
 // Order Schema
 export const OrderSchema = z.object({

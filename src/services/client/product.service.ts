@@ -7,6 +7,7 @@ import {
 import { productRepository } from '../../repositories/product/product.repository';
 import { OrderProductClientCreate } from '../../types/order/order-product';
 import { ProductConfigManufacturing } from '../../types/product/product/product.dto';
+import cartService from './cart.service';
 
 class ProductService {
     
@@ -81,10 +82,6 @@ class ProductService {
                     'Vui lòng chọn thêm gọng hoặc tròng!'
                 );
             }
-        }
-
-        if (payload.source === CheckoutSource.CART) {
-            //  loại item trong cart, add item mới vào
         }
         return productFinal;
     }

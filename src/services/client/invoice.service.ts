@@ -2,7 +2,6 @@ import { invoiceRepository } from '../../repositories/invoice/invoice.repository
 import { orderRepository } from '../../repositories/order/order.repository';
 import { voucherRepository } from '../../repositories/voucher/voucher.repository';
 import { supabase } from '../../config/supabase.config';
-// import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 import { productRepository } from '../../repositories/product/product.repository';
 import { OrderProduct } from '../../types/order/order-product';
 import {
@@ -428,21 +427,14 @@ class InvoiceClientService {
 
                 createdOrders.push(mfgOrder._id.toString());
             }
-            // SAU NÀY CÓ LẠI CÁI MONGO VOUCHER SẼ SỬA LẠI LOGIC VOUCHER
 
             // Apply Voucher
-            // const { discount: totalDiscount, voucherId } =
-            //     await this.calculateVoucherDiscount(
-            //         payload.voucher,
-            //         totalPrice,
-            //         customerId
-            //     );
-            const { discount: totalDiscount, voucherId } = {
-                discount: 0,
-                voucherId: null,
-            };
-
-            // END SAU NÀY CÓ LẠI CÁI MONGO VOUCHER SẼ SỬA LẠI
+            const { discount: totalDiscount, voucherId } =
+                await this.calculateVoucherDiscount(
+                    payload.voucher,
+                    totalPrice,
+                    customerId
+                );
 
             // Create Invoice
             const invoiceData: any = {
