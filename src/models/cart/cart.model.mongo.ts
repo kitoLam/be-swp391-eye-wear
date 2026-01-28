@@ -1,5 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Cart } from '../../types/cart/cart';
+import {
+    BadRequestError,
+    ConflictRequestError,
+} from '../../errors/apiError/api-error';
 
 export type ICartDocument = Cart & Document;
 
@@ -7,32 +11,69 @@ export type ICartDocument = Cart & Document;
 const CartSchema = new Schema<ICartDocument>(
     {
         owner: {
-            type: String,
+            type: mongoose.Schema.Types.ObjectId,
             required: [true, 'Owner ID is required'],
         },
-        products: [
-            {
-                product_id: {
-                    type: String,
-                    required: [true, 'Product ID (SKU) is required'],
-                    trim: true,
+        products: {
+            type: [
+                {
+                    product: {
+                        type: new Schema(
+                            {
+                                product_id: {
+                                    type: String,
+                                    required: true,
+                                },
+                                sku: String,
+                            },
+                            { _id: false }
+                        ),
+                        required: [true, 'Product ID (SKU) is required'],
+                        default: null,
+                    },
+                    lens: {
+                        type: new Schema({
+                            lens_id: {
+                                type: String,
+                                required: [true, 'Lens ID is required'],
+                                trim: true,
+                            },
+                            sku: {
+                                type: String,
+                                required: [true, 'SKU is required'],
+                                trim: true,
+                            },
+                            parameters: {
+                                left: {
+                                    SPH: { type: Number, required: true },
+                                    CYL: { type: Number, required: true },
+                                    AXIS: { type: Number, required: true },
+                                },
+                                right: {
+                                    SPH: { type: Number, required: true },
+                                    CYL: { type: Number, required: true },
+                                    AXIS: { type: Number, required: true },
+                                },
+                                PD: { type: Number, required: true },
+                            },
+                        }),
+                    },
+                    quantity: {
+                        type: Number,
+                        required: [true, 'Quantity is required'],
+                        min: [1, 'Quantity must be at least 1'],
+                    },
+                    addAt: {
+                        type: Date,
+                        required: [true, 'Add date is required'],
+                        default: Date.now,
+                    },
                 },
-                quantity: {
-                    type: Number,
-                    required: [true, 'Quantity is required'],
-                    min: [1, 'Quantity must be at least 1'],
-                },
-                addAt: {
-                    type: Date,
-                    required: [true, 'Add date is required'],
-                    default: Date.now,
-                },
-            },
-        ],
+            ],
+            default: [],
+        },
         totalProduct: {
             type: Number,
-            required: [true, 'Total product is required'],
-            min: [0, 'Total product must be non-negative'],
             default: 0,
         },
         deletedAt: {
@@ -61,13 +102,20 @@ CartSchema.pre('save', function (next) {
     next();
 });
 
-// Custom validation to ensure unique product_id in cart
+// Custom validation to ensure unique item in cart
 CartSchema.pre('save', function (next) {
     if (this.products && this.products.length > 0) {
-        const productIds = this.products.map(item => item.product_id);
+        const productIds = this.products.map(
+            item =>
+                (item.product
+                    ? item.product.product_id + item.product.sku
+                    : '') + (item.lens ? item.lens.lens_id + item.lens.sku : '')
+        );
         const uniqueProductIds = new Set(productIds);
         if (productIds.length !== uniqueProductIds.size) {
-            return next(new Error('Cannot add duplicate products to cart'));
+            return next(
+                new BadRequestError('Cannot add duplicate product item to cart')
+            );
         }
     }
     next();

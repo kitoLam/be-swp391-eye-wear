@@ -1,8 +1,7 @@
 import cartService from '../../services/client/cart.service';
 import { Request, Response } from 'express';
 import { ApiResponse } from '../../utils/api-response';
-import { AddToCart, UpdateCartItem } from '../../types/cart/cart';
-
+import { AddItemToCart, UpdateCartItemPrescription, UpdateCartItemQuantity } from '../../types/cart/cart.request';
 class CartController {
     /**
      * Get customer's cart
@@ -22,26 +21,35 @@ class CartController {
      */
     addToCart = async (req: Request, res: Response) => {
         const customerId = req.customer!.id;
-        const payload = req.body as AddToCart;
-        const cart = await cartService.addToCart(customerId, payload);
+        const payload = req.body as AddItemToCart;
+        await cartService.addToCart(customerId, payload);
         res.json(
-            ApiResponse.success('Thêm sản phẩm vào giỏ hàng thành công!', {
-                cart,
-            })
+            ApiResponse.success('Thêm sản phẩm vào giỏ hàng thành công!', null)
         );
     };
 
     /**
      * Update cart item quantity
      */
-    updateCartItem = async (req: Request, res: Response) => {
+    updateCartItemQuantity = async (req: Request, res: Response) => {
         const customerId = req.customer!.id;
-        const payload = req.body as UpdateCartItem;
-        const cart = await cartService.updateCartItem(customerId, payload);
+        const payload = req.body as UpdateCartItemQuantity;
+        await cartService.updateCartItemQuantity(customerId, payload);
         res.json(
-            ApiResponse.success('Cập nhật số lượng thành công!', {
-                cart,
-            })
+            ApiResponse.success('Cập nhật số lượng thành công!', null)
+        );
+    };
+    /**
+     * Update prescription for manufacturing item
+     * @param req 
+     * @param res 
+     */
+    updateCartItemPrescription = async (req: Request, res: Response) => {
+        const customerId = req.customer!.id;
+        const payload = req.body as UpdateCartItemPrescription;
+        await cartService.updateCartItemPrescription(customerId, payload);
+        res.json(
+            ApiResponse.success('Cập nhật số lượng thành công!', null)
         );
     };
 
@@ -50,12 +58,9 @@ class CartController {
      */
     removeFromCart = async (req: Request, res: Response) => {
         const customerId = req.customer!.id;
-        const productId = req.params.product_id as string;
-        const cart = await cartService.removeFromCart(customerId, productId);
+        await cartService.removeFromCart(customerId, req.body);
         res.json(
-            ApiResponse.success('Xóa sản phẩm khỏi giỏ hàng thành công!', {
-                cart,
-            })
+            ApiResponse.success('Xóa sản phẩm khỏi giỏ hàng thành công!', null)
         );
     };
 
@@ -64,11 +69,9 @@ class CartController {
      */
     clearCart = async (req: Request, res: Response) => {
         const customerId = req.customer!.id;
-        const cart = await cartService.clearCart(customerId);
+        await cartService.clearCart(customerId);
         res.json(
-            ApiResponse.success('Xóa toàn bộ giỏ hàng thành công!', {
-                cart,
-            })
+            ApiResponse.success('Xóa toàn bộ giỏ hàng thành công!', null)
         );
     };
 }

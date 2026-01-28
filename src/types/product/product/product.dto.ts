@@ -3,7 +3,7 @@ import { FrameSpecSchema } from '../frame-spec/frame-spec';
 import { LenSpecSchema } from '../len-spec/len-spec';
 import { VariantSchema } from '../variant/variant';
 import { CheckoutSource } from '../../../config/enums/checkout.enum';
-import { LensParametersSchema } from '../../order/lens-parameters';
+import { LensParametersSchema } from '../../lens-parameters/lens-parameters';
 
 /**
  * Schema cho việc tạo mới Product (Frame)
@@ -132,7 +132,6 @@ export type ProductCreateDTO = z.infer<typeof ProductCreateSchema>;
 export type ProductUpdateDTO = z.infer<typeof ProductUpdateSchema>;
 
 export const ProductConfigManufacturingSchema = z.object({
-    source: z.enum(CheckoutSource, { error:  "Source is CART or BUY_NOW" }),
     cartProductId: z.string().optional(), // chỉ gửi nếu source = CART
     products: z.array(z.object({
         id: z.string().nonempty("Product ID is required"),

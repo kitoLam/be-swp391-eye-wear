@@ -1,5 +1,5 @@
 import z from 'zod';
-import { LensParametersSchema } from './lens-parameters';
+import { LensParametersSchema } from '../lens-parameters/lens-parameters';
 
 // Order Product Lens Schema
 export const OrderProductLensSchema = z.object({

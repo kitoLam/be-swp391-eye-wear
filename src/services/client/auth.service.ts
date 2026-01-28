@@ -14,6 +14,7 @@ import { comparePassword, hashPassword } from '../../utils/bcrypt.util';
 import tokenService from '../token.service';
 import * as jwtUtil from '../../utils/jwt.util';
 import { supabase } from '../../config/supabase.config';
+import { cartRepository } from '../../repositories/cart/cart.repository';
 // import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
 
 class AuthService {
@@ -40,6 +41,10 @@ class AuthService {
             isVerified: true, // Auto verified for testing
         });
 
+        // create cart for customer
+        await cartRepository.create({
+            owner: customer._id.toString(),
+        });
         // 4. Create user in Supabase
         try {
             const { error } = await supabase.from('customer').insert([

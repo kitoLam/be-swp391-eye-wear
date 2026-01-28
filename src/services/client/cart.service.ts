@@ -1,6 +1,6 @@
 import { cartRepository } from '../../repositories/cart/cart.repository';
 import { NotFoundRequestError } from '../../errors/apiError/api-error';
-import { AddToCart, UpdateCartItem } from '../../types/cart/cart';
+import { AddItemToCart, RemoveCartItem, UpdateCartItemPrescription, UpdateCartItemQuantity } from '../../types/cart/cart.request';
 
 class CartService {
     /**
@@ -21,51 +21,47 @@ class CartService {
         return cart;
     };
 
-    /**
-     * Add product to cart
+     /**
+     * Add item to cart
      * @param customerId - Customer ID from auth token
-     * @param payload - Product ID and quantity
-     * @returns Updated cart
+     * @param payload - Item details and quantity
+     * @throws NotFoundRequestError if cart does not exist
      */
-    addToCart = async (customerId: string, payload: AddToCart) => {
+    addToCart = async (customerId: string, payload: AddItemToCart) => {
         // Find or create cart
         let cart = await cartRepository.findOne({
             owner: customerId,
             deletedAt: null,
-        } as any);
+        });
 
         if (!cart) {
             // Create new cart if doesn't exist
-            cart = await cartRepository.create({
+            await cartRepository.create({
                 owner: customerId,
                 products: [],
                 totalProduct: 0,
-            } as any);
+            });
         }
+        // =========== TODO: sau này a Thắng muốn check stock lúc thêm luôn thì check thêm ===========
 
-        // Add product using repository method
-        const updatedCart = await cartRepository.addProduct(
-            customerId,
-            payload.product_id,
-            payload.quantity
-        );
+        // =========== End sau này a Thắng muốn check stock luôn thì check thêm ===========
 
-        if (!updatedCart) {
-            throw new NotFoundRequestError(
-                'Không thể thêm sản phẩm vào giỏ hàng!'
-            );
+        if((await cartRepository.isExistItemInCart(customerId, payload.item)) == true) {
+            // cập nhật số lượng thôi nếu nó xuất hiện rồi
+            await cartRepository.increaseProductQuantity(customerId, payload.item, payload.quantity);
         }
-
-        return updatedCart;
+        else {
+            // push item mới vào
+            await cartRepository.addProduct(customerId, payload.item, payload.quantity);
+        }
     };
-
     /**
-     * Update product quantity in cart
+     * Update cart item quantity
      * @param customerId - Customer ID from auth token
-     * @param payload - Product ID and new quantity
-     * @returns Updated cart
+     * @param payload - Item ID and new quantity
+     * @throws NotFoundRequestError if cart or item does not exist
      */
-    updateCartItem = async (customerId: string, payload: UpdateCartItem) => {
+    updateCartItemQuantity = async (customerId: string, payload: UpdateCartItemQuantity) => {
         const cart = await cartRepository.findOne({
             owner: customerId,
             deletedAt: null,
@@ -76,35 +72,19 @@ class CartService {
         }
 
         // Check if product exists in cart
-        const productExists = cart.products.some(
-            p => p.product_id === payload.product_id
-        );
+        const productExists = await cartRepository.isExistItemInCart(customerId, payload.item);
 
         if (!productExists) {
             throw new NotFoundRequestError('Sản phẩm không có trong giỏ hàng!');
         }
+        // =========== TODO: sau này a Thắng muốn check stock lúc thêm luôn thì check thêm ===========
 
+        // =========== End sau này a Thắng muốn check stock luôn thì check thêm ===========
         // Update quantity
-        const updatedCart = await cartRepository.updateProductQuantity(
-            customerId,
-            payload.product_id,
-            payload.quantity
-        );
-
-        if (!updatedCart) {
-            throw new NotFoundRequestError('Không thể cập nhật số lượng!');
-        }
-
-        return updatedCart;
+        await cartRepository.updateProductQuantity(customerId, payload.item, payload.quantity);
     };
 
-    /**
-     * Remove product from cart
-     * @param customerId - Customer ID from auth token
-     * @param productId - Product ID (SKU) to remove
-     * @returns Updated cart
-     */
-    removeFromCart = async (customerId: string, productId: string) => {
+    updateCartItemPrescription = async (customerId: string, payload: UpdateCartItemPrescription) => {
         const cart = await cartRepository.findOne({
             owner: customerId,
             deletedAt: null,
@@ -115,25 +95,38 @@ class CartService {
         }
 
         // Check if product exists in cart
-        const productExists = cart.products.some(
-            p => p.product_id === productId
-        );
+        const productExists = await cartRepository.isExistItemInCart(customerId, payload.item);
+
+        if (!productExists) {
+            throw new NotFoundRequestError('Sản phẩm không có trong giỏ hàng!');
+        }
+        // Update prescription
+        await cartRepository.updateProductPrescription(customerId, payload.item, payload.parameters);
+    };
+
+    
+    removeFromCart = async (customerId: string, payload: RemoveCartItem) => {
+        const cart = await cartRepository.findOne({
+            owner: customerId,
+            deletedAt: null,
+        } as any);
+
+        if (!cart) {
+            throw new NotFoundRequestError('Giỏ hàng không tồn tại!');
+        }
+
+        // Check if product exists in cart
+        const productExists = await cartRepository.isExistItemInCart(customerId, payload.item);
 
         if (!productExists) {
             throw new NotFoundRequestError('Sản phẩm không có trong giỏ hàng!');
         }
 
         // Remove product
-        const updatedCart = await cartRepository.removeProduct(
+        await cartRepository.removeProduct(
             customerId,
-            productId
+            payload.item
         );
-
-        if (!updatedCart) {
-            throw new NotFoundRequestError('Không thể xóa sản phẩm!');
-        }
-
-        return updatedCart;
     };
 
     /**

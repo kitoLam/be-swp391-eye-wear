@@ -1,4 +1,9 @@
 import { CartModel, ICartDocument } from '../../models/cart/cart.model.mongo';
+import {
+    CartItemBaseRequest,
+    CartItemCreate,
+} from '../../types/cart/cart.request';
+import { LensParameters } from '../../types/lens-parameters/lens-parameters';
 import { BaseRepository } from '../base.repository';
 
 export class CartRepository extends BaseRepository<ICartDocument> {
@@ -9,57 +14,140 @@ export class CartRepository extends BaseRepository<ICartDocument> {
     // Add product to cart
     async addProduct(
         ownerId: string,
-        productId: string,
+        cartItem: CartItemCreate,
         quantity: number
-    ): Promise<ICartDocument | null> {
-        const cart = await this.findOne({ owner: ownerId } as any);
-        if (!cart) return null;
-
-        const existingProduct = cart.products.find(
-            p => p.product_id === productId
+    ): Promise<void> {
+        await CartModel.updateOne(
+            {
+                owner: ownerId,
+            },
+            {
+                $push: {
+                    products: {
+                        product: cartItem.product,
+                        lens: cartItem.lens,
+                        quantity,
+                    },
+                },
+            }
         );
-
-        if (existingProduct) {
-            existingProduct.quantity += quantity;
-        } else {
-            cart.products.push({
-                product_id: productId,
-                quantity,
-                addAt: new Date(),
-            });
-        }
-
-        return await cart.save();
     }
 
     // Remove product from cart
     async removeProduct(
         ownerId: string,
-        productId: string
-    ): Promise<ICartDocument | null> {
-        const cart = await this.findOne({ owner: ownerId } as any);
-        if (!cart) return null;
+        cartItem: CartItemBaseRequest
+    ): Promise<void> {
+        // Tạo filter cho phần tử cần xóa
+        const itemMatch: any = {};
 
-        cart.products = cart.products.filter(p => p.product_id !== productId);
+        if (cartItem.product) {
+            itemMatch['product.product_id'] = cartItem.product.product_id;
+            itemMatch['product.sku'] = cartItem.product.sku;
+        } else itemMatch['product'] = undefined;
 
-        return await cart.save();
+        if (cartItem.lens) {
+            itemMatch['lens.lens_id'] = cartItem.lens.lens_id;
+            itemMatch['lens.sku'] = cartItem.lens.sku;
+        } else itemMatch['lens'] = undefined;
+
+        await CartModel.updateOne(
+            { owner: ownerId },
+            {
+                $pull: {
+                    products: itemMatch,
+                },
+            }
+        );
     }
 
     // Update product quantity
     async updateProductQuantity(
         ownerId: string,
-        productId: string,
+        cartItem: CartItemBaseRequest,
         quantity: number
-    ): Promise<ICartDocument | null> {
-        const cart = await this.findOne({ owner: ownerId } as any);
-        if (!cart) return null;
-
-        const product = cart.products.find(p => p.product_id === productId);
-        if (product) {
-            product.quantity = quantity;
+    ): Promise<void> {
+        // Xây dựng điều kiện tìm kiếm phần tử trong mảng products
+        const itemMatch: any = {};
+        if (cartItem.product) {
+            itemMatch['product.product_id'] = cartItem.product.product_id;
+            itemMatch['product.sku'] = cartItem.product.sku;
+        }
+        if (cartItem.lens) {
+            itemMatch['lens.lens_id'] = cartItem.lens.lens_id;
+            itemMatch['lens.sku'] = cartItem.lens.sku;
         }
 
-        return await cart.save();
+        await CartModel.updateOne(
+            {
+                owner: ownerId,
+                products: { $elemMatch: itemMatch },
+            },
+            {
+                $set: {
+                    'products.$.quantity': quantity,
+                },
+            }
+        );
+    }
+    // Update product quantity
+    async increaseProductQuantity(
+        ownerId: string,
+        cartItem: CartItemBaseRequest,
+        quantity: number
+    ): Promise<void> {
+        // Xây dựng điều kiện tìm kiếm phần tử trong mảng products
+        const itemMatch: any = {};
+        if (cartItem.product) {
+            itemMatch['product.product_id'] = cartItem.product.product_id;
+            itemMatch['product.sku'] = cartItem.product.sku;
+        } else itemMatch['product'] = undefined;
+        if (cartItem.lens) {
+            itemMatch['lens.lens_id'] = cartItem.lens.lens_id;
+            itemMatch['lens.sku'] = cartItem.lens.sku;
+        } else itemMatch['lens'] = undefined;
+
+        await CartModel.updateOne(
+            {
+                owner: ownerId,
+                products: { $elemMatch: itemMatch },
+            },
+            {
+                $inc: {
+                    'products.$.quantity': quantity,
+                },
+            }
+        );
+    }
+    async updateProductPrescription(
+        ownerId: string,
+        cartItem: CartItemBaseRequest,
+        prescription: LensParameters
+    ): Promise<void> {
+        const itemMatch: any = {};
+
+        if (cartItem.product) {
+            itemMatch['product.product_id'] = cartItem.product.product_id;
+            itemMatch['product.sku'] = cartItem.product.sku;
+        } else itemMatch['product'] = undefined;
+
+        if (cartItem.lens) {
+            itemMatch['lens.lens_id'] = cartItem.lens.lens_id;
+            itemMatch['lens.sku'] = cartItem.lens.sku;
+        } else itemMatch['lens'] = undefined;
+
+        await CartModel.updateOne(
+            {
+                owner: ownerId,
+                products: { $elemMatch: itemMatch },
+            },
+            {
+                $set: {
+                    // Giả sử cấu trúc lưu trữ là products[index].lens.parameters
+                    'products.$.lens.parameters': prescription,
+                },
+            }
+        );
     }
 
     // Clear cart
@@ -69,6 +157,31 @@ export class CartRepository extends BaseRepository<ICartDocument> {
 
         cart.products = [];
         return await cart.save();
+    }
+
+    async isExistItemInCart(
+        ownerId: string,
+        cartItem: CartItemBaseRequest
+    ): Promise<boolean> {
+        const queryElementMatch: any = {};
+
+        if (cartItem.product) {
+            queryElementMatch['product.product_id'] =
+                cartItem.product.product_id;
+            queryElementMatch['product.sku'] = cartItem.product.sku;
+        } else queryElementMatch['product'] = undefined;
+
+        if (cartItem.lens) {
+            queryElementMatch['lens.lens_id'] = cartItem.lens.lens_id;
+            queryElementMatch['lens.sku'] = cartItem.lens.sku;
+        } else queryElementMatch['lens'] = undefined;
+        const existCartItem = await CartModel.findOne({
+            owner: ownerId,
+            products: {
+                $elemMatch: queryElementMatch,
+            },
+        });
+        return existCartItem ? true : false;
     }
 }
 
