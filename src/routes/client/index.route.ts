@@ -6,6 +6,7 @@ import invoiceRouter from './invoice.route';
 import paymentRouter from './payment.route';
 import voucherRouter from './voucher.route';
 import checkoutRouter from './checkout.route';
+import customerRouter from './customer.route';
 const router = Router();
 
 router.use('/auth', authRouter);
@@ -15,4 +16,5 @@ router.use('/invoices', invoiceRouter);
 router.use('/payments', paymentRouter);
 router.use('/vouchers', voucherRouter);
 router.use('/checkout', checkoutRouter);
+router.use('/customer', customerRouter);
 export default router;
