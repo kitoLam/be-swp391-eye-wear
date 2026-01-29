@@ -8,15 +8,11 @@ export enum OrderType {
 // Order Status Enum
 export enum OrderStatus {
     PENDING = 'PENDING', // Chờ xác minh
+    WAITING_ASSIGN = 'WAITING_ASSIGN', // Chờ phân công
     ASSIGNED = 'ASSIGNED', // Đã phân công
     MAKING = 'MAKING', // Đang sản xuất
-    PACKAGED = 'PACKAGED', // Đã đóng gói
-}
-
-// Assignment Status Enum
-export enum AssignmentOrderStatus {
-    PENDING = 'PENDING', // Chưa phân công
-    ASSIGNED = 'ASSIGNED', // Đã phân công
-    IN_PROGRESS = 'IN_PROGRESS', // Đang xử lý
-    COMPLETED = 'COMPLETED', // Hoàn thành
+    PACKAGING = 'PACKAGING', // Đã đóng gói
+    COMPLETED = "COMPLETED",
+    REJECTED = "REJECTED",
+    CANCELED = "CANCEL"
 }

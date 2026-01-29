@@ -61,9 +61,9 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
             trim: true,
             default: null,
         },
-        manager_onboard: {
+        managerOnboard: {
             type: String,
-            required: false,
+            default: null
         },
         deletedAt: {
             type: Date,

@@ -3,7 +3,6 @@ import { ApiResponse } from '../../utils/api-response';
 import invoiceService from '../../services/admin/invoice.service';
 import { InvoiceListQuery } from '../../types/invoice/invoice.query';
 import { formatDateToString, formatNumberToVND } from '../../utils/formatter';
-import { InvoiceVerifyParams } from '../../types/invoice/invoice.params';
 
 class InvoiceController {
     getListInvoice = async (req: Request, res: Response) => {
@@ -39,6 +38,13 @@ class InvoiceController {
       const invoiceId = req.params.id as string;
       await invoiceService.rejectInvoice(invoiceId, adminContext);
       res.json(ApiResponse.success('Reject invoice success', null));
+    }
+
+    onboardInvoice = async (req: Request, res: Response) => {
+      const adminContext = req.adminAccount!;
+      const invoiceId = req.params.id as string;
+      await invoiceService.onboardInvoice(invoiceId, adminContext);
+      res.json(ApiResponse.success('Onboard invoice success', null));
     }
 }
 export default new InvoiceController();

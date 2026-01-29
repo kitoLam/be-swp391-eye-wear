@@ -107,6 +107,10 @@ export class BaseRepository<T extends Document> {
             runValidators: true,
         });
     }
+
+    async updateMany(filter: FilterQuery<T>, data: Partial<T>) {
+        await this.model.updateMany(filter, data);
+    }
     /**
      * Update by ID
      */

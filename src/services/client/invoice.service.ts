@@ -27,7 +27,7 @@ import {
     ClientCreateInvoice,
     ClientUpdateInvoice,
 } from '../../types/invoice/client-invoice';
-import { generateInvoiceCode } from '../../utils/generate.util';
+import { generateInvoiceCode, generateOrderCode } from '../../utils/generate.util';
 import { AuthCustomerContext } from '../../types/context/context';
 import productService from './product.service';
 
@@ -325,6 +325,7 @@ class InvoiceClientService {
                 }
 
                 const normalOrder = await orderRepository.create({
+                    orderCode: generateOrderCode(),
                     type: [OrderType.NORMAL],
                     products: normalProducts,
                     status: OrderStatus.PENDING,
@@ -340,6 +341,7 @@ class InvoiceClientService {
                 for (let i = 0; i < item.quantity; i++){
                     let mfgOrderPrice = item.product.pricePerUnit + item.lens!.pricePerUnit;
                     const mfgOrder = await orderRepository.create({
+                        orderCode: generateOrderCode(),
                         type: [OrderType.MANUFACTURING],
                         products: [{
                             ...item,

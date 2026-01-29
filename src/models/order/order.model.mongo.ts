@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Order } from '../../types/order/order';
 import {
-    AssignmentOrderStatus,
     OrderStatus,
     OrderType,
 } from '../../config/enums/order.enum';
@@ -11,6 +10,11 @@ export type IOrderDocument = Order & Document;
 // Main Order Schema
 const OrderSchema = new Schema<IOrderDocument>(
     {
+        orderCode: {
+            type: String,
+            required: true,
+            unique: true,
+        },
         type: {
             type: [String],
             enum: Object.values(OrderType),
@@ -83,13 +87,12 @@ const OrderSchema = new Schema<IOrderDocument>(
             },
         ],
 
-        // Assignment fields (flattened)
-        staffId: {
+        assignerStaff: {
             type: String,
             trim: true,
             default: null,
         },
-        assignStaff: {
+        assignedStaff: {
             type: String,
             trim: true,
             default: null,
@@ -105,11 +108,6 @@ const OrderSchema = new Schema<IOrderDocument>(
         completedAt: {
             type: Date,
             default: null,
-        },
-        assignmentStatus: {
-            type: String,
-            enum: AssignmentOrderStatus,
-            default: AssignmentOrderStatus.PENDING,
         },
 
         price: {

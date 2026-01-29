@@ -19,7 +19,7 @@ export const InvoiceSchema = z
             .number()
             .min(0, 'Total discount must be non-negative')
             .default(0),
-        manager_onboard: z.string().nullable(), // Manager ID when status is ONBOARD
+        managerOnboard: z.string().nullable(), // Manager ID when status is ONBOARD
         staffVerified: z.string().nullable(),
         createdAt: z.date(),
         updatedAt: z.date(),
