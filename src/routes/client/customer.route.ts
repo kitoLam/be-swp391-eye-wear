@@ -5,5 +5,5 @@ import { authenticateMiddlewareClient as authMiddleware } from '../../middleware
 const router = Router();
 
 router.get('/', authMiddleware, customerController.getCustomerProfile);
-
+router.patch('/profile', authMiddleware, customerController.updateCustomerProfile);
 export default router;
