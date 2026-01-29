@@ -1,5 +1,6 @@
 // Import the Nodemailer library
 import nodemailer from 'nodemailer';
+import { config } from '../config/env.config';
 
 export const sendMail = (to : string, subject: string, html: string) => {
   // Create a transporter object
@@ -8,14 +9,14 @@ export const sendMail = (to : string, subject: string, html: string) => {
     port: 587,
     secure: false, // use false for STARTTLS; true for SSL on port 465
     auth: {
-      user: `${process.env.MAIL_SENDER}`,
-      pass: `${process.env.MAIL_PASS}`,
+      user: `${config.mail.sender}`,
+      pass: `${config.mail.pass}`,
     }
   });
 
   // Configure the mailoptions object
   const mailOptions = {
-    from: `${process.env.MAIL_SENDER}`,
+    from: `${config.mail.sender}`,
     to: to,
     subject: subject,
     html: html, 

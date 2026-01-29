@@ -14,7 +14,7 @@ class AuthController {
     registerCustomerAccount = async (req: Request, res: Response) => {
         const body = req.body as RegisterCustomerDTO;
         await authService.registerCustomer(body);
-        res.json(ApiResponse.success('Register successfully', {}));
+        res.json(ApiResponse.success('Register successfully', null));
     };
     login = async (req: Request, res: Response) => {
         const body = req.body as LoginCustomerDTO;
@@ -41,7 +41,7 @@ class AuthController {
         await authService.logout(customerId, accessToken, refreshToken);
         // xóa refreshToken lưu trong cookie
         res.clearCookie('refreshTokenClient');
-        res.json(ApiResponse.success('Logout successfully', {}));
+        res.json(ApiResponse.success('Logout successfully', null));
     };
     refreshAccessToken = async (req: Request, res: Response): Promise<void> => {
         // lấy deviceId (đã kiểm tra ở middleware)
@@ -70,14 +70,14 @@ class AuthController {
     verifyOTP = async (req: Request, res: Response) => {
         const body = req.body as VerifyOTP;
         const resetPasswordToken = await authService.verifyOTP(body.email, body.otp);
-        res.json(ApiResponse.success('Forgot password successfully', {
+        res.json(ApiResponse.success('Verify OTP success', {
             resetPasswordToken: resetPasswordToken,
         }));
     };
     resetPassword = async (req: Request, res: Response) => {
         const body = req.body as ResetPassword;
         await authService.resetPassword(req.customer!, body.password);
-        res.json(ApiResponse.success('Forgot password successfully', null));
+        res.json(ApiResponse.success('Reset password success', null));
     };
 }
 
