@@ -12,9 +12,14 @@ export type IOrderDocument = Order & Document;
 const OrderSchema = new Schema<IOrderDocument>(
     {
         type: {
-            type: String,
-            enum: OrderType,
-            required: [true, 'Order type is required'],
+            type: [String],
+            enum: Object.values(OrderType),
+            validate: {
+                validator: function(v: string[]) {
+                    return v && v.length > 0;
+                },
+                message: 'Phải có ít nhất một loại đơn hàng (Order Type).'
+            }
         },
         status: {
             type: String,

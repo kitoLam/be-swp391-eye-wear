@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { OrderProductSchema } from '../order/order-product';
+import { OrderProductClientCreateSchema, OrderProductSchema } from '../order/order-product';
 import { AddressSchema } from '../customer/address';
 import { PaymentMethodType } from '../../config/enums/payment.enum';
 
@@ -15,7 +15,7 @@ import { PaymentMethodType } from '../../config/enums/payment.enum';
 export const ClientCreateInvoiceSchema = z.object({
     // Products to checkout
     products: z
-        .array(OrderProductSchema)
+        .array(OrderProductClientCreateSchema)
         .min(1, 'At least one product is required'),
 
     // Payment method (required for inventory logic)

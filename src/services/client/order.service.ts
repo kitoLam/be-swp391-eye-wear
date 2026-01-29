@@ -1,5 +1,5 @@
 import { orderRepository } from '../../repositories/order/order.repository';
-import { ClientUpdateOrder } from '../../types/order/order';
+import { ClientUpdateOrder } from '../../types/order/order.request';
 import {
     ConflictRequestError,
     NotFoundRequestError,

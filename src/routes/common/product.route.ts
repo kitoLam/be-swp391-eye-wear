@@ -18,11 +18,11 @@ router.get(
     productController.getProductList
 );
 
-router.post(
-    '/config-manufacturing',
-    validateBody(ProductConfigManufacturingSchema),
-    productController.configProductManufacturing
-);
+// router.post(
+//     '/config-manufacturing',
+//     validateBody(ProductConfigManufacturingSchema),
+//     productController.configProductManufacturing
+// );
 
 router.get(
     '/:id',

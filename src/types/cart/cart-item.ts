@@ -6,7 +6,7 @@ export const CartItemSchema = z.object({
     product: z.object({
         product_id: z.string().min(1, 'Product ID is required'),
         sku: z.string().min(1, 'Product SKU is required'),
-    }).optional(),
+    }),
     lens: z.object({
         lens_id: z.string().min(1, 'Lens ID is required'),
         sku: z.string().min(1, 'Lens SKU is required'),

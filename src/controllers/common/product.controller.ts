@@ -30,13 +30,13 @@ class ProductController {
         );
     };
   
-    configProductManufacturing = async (req: Request, res: Response) => {
-        const payload = req.body as ProductConfigManufacturing;
-        const data = await clientProductService.configProductManufacturing(payload);
-        res.json(ApiResponse.success("Get success", {
-            productManufacturing: data,
-        }));
-    }
+    // configProductManufacturing = async (req: Request, res: Response) => {
+    //     const payload = req.body as ProductConfigManufacturing;
+    //     const data = await clientProductService.configProductManufacturing(payload);
+    //     res.json(ApiResponse.success("Get success", {
+    //         productManufacturing: data,
+    //     }));
+    // }
 }
 
 export default new ProductController();

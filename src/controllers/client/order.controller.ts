@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import orderClientService from '../../services/client/order.service';
 import { ApiResponse } from '../../utils/api-response';
-
+import { ClientUpdateOrder } from '../../types/order/order.request';
 class OrderController {
 
     getOrderDetail = async (req: Request, res: Response) => {
@@ -19,7 +19,7 @@ class OrderController {
     updateOrderPrescription = async (req: Request, res: Response) => {
         const customer = req.customer!;
         const orderId = req.params.orderId;
-        const payload = req.body;
+        const payload = req.body as ClientUpdateOrder;
         const order = await orderClientService.updateOrderPrescription(
             customer,
             orderId as string,

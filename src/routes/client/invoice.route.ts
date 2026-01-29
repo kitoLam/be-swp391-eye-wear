@@ -3,7 +3,6 @@ import invoiceController from '../../controllers/client/invoice.controller';
 import { authenticateMiddlewareClient } from '../../middlewares/client/auth.middleware';
 import { validateBody } from '../../middlewares/share/validator.middleware';
 import { ClientCreateInvoiceSchema, ClientUpdateInvoiceSchema } from '../../types/invoice/client-invoice';
-import { UpdateInvoiceSchema } from '../../types/invoice/invoice';
 
 const router = Router();
 

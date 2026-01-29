@@ -10,6 +10,7 @@ import {
 } from '../../errors/apiError/api-error';
 import { orderRepository } from '../../repositories/order/order.repository';
 import { productRepository } from '../../repositories/product/product.repository';
+import { OrderStatus } from '../../config/enums/order.enum';
 
 class InvoiceService {
     /**
