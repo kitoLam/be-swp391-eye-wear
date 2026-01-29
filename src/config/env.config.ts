@@ -69,6 +69,15 @@ interface Config {
         url: string;
         key: string;
     };
+
+    mail: {
+        sender: string;
+        pass: string;
+    },
+
+    otp: {
+        waitingMinute: number;
+    }
 }
 
 // =====================================================
@@ -149,6 +158,17 @@ export const config: Config = {
         url: process.env.SUPABASE_URL || '',
         key: process.env.SUPABASE_KEY || '',
     },
+
+    mail: {
+        pass: process.env.MAIL_PASS || '',
+        sender: process.env.MAIL_SENDER || '',
+    },
+
+    otp: {
+        waitingMinute: process.env.OTP_WAITING_MINUTE
+            ? Number(process.env.OTP_WAITING_MINUTE)
+            : 5
+    }
 };
 
 // =====================================================

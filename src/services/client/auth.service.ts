@@ -15,7 +15,13 @@ import tokenService from '../token.service';
 import * as jwtUtil from '../../utils/jwt.util';
 import { supabase } from '../../config/supabase.config';
 import { cartRepository } from '../../repositories/cart/cart.repository';
-// import { neo4jVoucherRepository } from '../../repositories/neo4j/voucher.neo4j.repository';
+import { AuthCustomerContext } from '../../types/context/context';
+import { redisPrefix } from '../../config/constants/redis.constant';
+import { generateOTPCode } from '../../utils/generate.util';
+import * as mailUtil from '../../utils/mail.util';
+import redisService from '../redis.service';
+import { config } from '../../config/env.config';
+import { JwtPayload } from '../../types/jwt/jwt';
 
 class AuthService {
     registerCustomer = async (payload: RegisterCustomerDTO) => {
@@ -115,7 +121,7 @@ class AuthService {
      */
     verifyUserByAccessToken = async (
         token: string
-    ): Promise<{ userId: string }> => {
+    ): Promise<JwtPayload> => {
         // check in blacklist
         if (await tokenService.isInBlackList(token)) {
             throw new UnauthorizedRequestError(
@@ -136,7 +142,28 @@ class AuthService {
         if (foundCustomer.isVerified == false) {
             throw new ForbiddenRequestError('Please verify your account first');
         }
-        return { userId: payload.userId };
+        return payload;
+    };
+    /**
+     * Hàm giúp xác thực user cần đổi mk
+     * @param token
+     * @returns
+     */
+    verifyUserByResetPasswordToken = async (
+        token: string
+    ): Promise<JwtPayload> => {
+        // decode token
+        const payload = jwtUtil.verifyAccessToken(token);
+        const userId = payload.userId;
+        // check user is exist in the system and is verify
+        const foundCustomer = await customerRepository.findOne({
+            _id: userId,
+            deletedAt: null,
+        });
+        if (!foundCustomer) {
+            throw new NotFoundRequestError('Not found customer');
+        }
+        return payload;
     };
     /**
      * Hàm giúp kiểm tra xem user có đủ xác thực được bản thân để vào lấy token mới không
@@ -146,7 +173,7 @@ class AuthService {
      */
     verifyUserByRefreshToken = async (
         token: string
-    ): Promise<{ userId: string }> => {
+    ): Promise<JwtPayload> => {
         // check token có trong db ko
         const payload = jwtUtil.verifyRefreshToken(token);
         const userId = payload.userId;
@@ -161,7 +188,7 @@ class AuthService {
         if (foundCustomer.isVerified == false) {
             throw new ForbiddenRequestError('Please verify your account first');
         }
-        return { userId: payload.userId };
+        return payload;
     };
     /**
      * Logic nghiệp vụ xử lí việc tạo mới accessToken cho user
@@ -210,5 +237,45 @@ class AuthService {
         // xóa refreshToken hiện tại
         await tokenService.deleteRefreshToken(userId, refreshToken, 'client');
     };
+
+    forgotPassword = async (email: string) => {
+        // Nếu gửi rồi thì override cái cũ
+        const existAccount = await customerRepository.findOne({email: email, deletedAt: null});
+        if(!existAccount){
+            throw new NotFoundRequestError("Email is not exist in system");
+        }
+        const key = `${redisPrefix.mailForgotPass}:${email}`;
+        const otp = generateOTPCode();
+        await redisService.setDataWithExpiredTime(key, otp, config.otp.waitingMinute * 60);
+        const subject = "Reset password OTP";
+        mailUtil.sendMail(email, subject, `<p >YOUR OTP TO RESET PASSWORD: <b>${otp}</b></p>`);
+    }
+
+    verifyOTP = async (email: string, otp: string) => {
+        const existAccount = await customerRepository.findOne({email: email, deletedAt: null});
+        if(!existAccount){
+            throw new NotFoundRequestError("Email is not exist in system");
+        }
+        const key = `${redisPrefix.mailForgotPass}:${email}`;
+        const existingOtpCode = await redisService.getDataByKey<string>(key);
+        if(!existingOtpCode){
+            throw new NotFoundRequestError("You don't have request to reset password");
+        }
+        if(existingOtpCode != otp){
+            throw new BadRequestError("OTP is not correct");
+        }
+        await redisService.deleteDataByKey(key);
+        return tokenService.getNewResetPasswordToken(existAccount._id.toString());
+    }
+
+    resetPassword = async (customer: AuthCustomerContext, passwordRaw: string) => {
+        // Hash password
+        const hashedPassword = hashPassword(passwordRaw);
+
+        // Update in MongoDB
+        await customerRepository.update(customer.id, {
+            hashedPassword: hashedPassword,
+        });
+    }
 }
 export default new AuthService();

@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
 import {
+    ForgetPasswordDTO,
     LoginCustomerDTO,
     RegisterCustomerDTO,
+    ResetPassword,
+    VerifyOTP,
 } from '../../types/auth/client/auth';
 import authService from '../../services/client/auth.service';
 import { ApiResponse } from '../../utils/api-response';
@@ -57,6 +60,24 @@ class AuthController {
         res.json(
             ApiResponse.success('Get new refresh token successfully', dataFinal)
         );
+    };
+
+    forgotPassword = async (req: Request, res: Response) => {
+        const body = req.body as ForgetPasswordDTO;
+        await authService.forgotPassword(body.email);
+        res.json(ApiResponse.success('Send OTP to mail success', null));
+    };
+    verifyOTP = async (req: Request, res: Response) => {
+        const body = req.body as VerifyOTP;
+        const resetPasswordToken = await authService.verifyOTP(body.email, body.otp);
+        res.json(ApiResponse.success('Forgot password successfully', {
+            resetPasswordToken: resetPasswordToken,
+        }));
+    };
+    resetPassword = async (req: Request, res: Response) => {
+        const body = req.body as ResetPassword;
+        await authService.resetPassword(req.customer!, body.password);
+        res.json(ApiResponse.success('Forgot password successfully', null));
     };
 }
 

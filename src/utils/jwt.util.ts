@@ -10,7 +10,8 @@ import { JwtPayload } from '../types/jwt/jwt';
 // generated access token
 export const generateAccessToken = (userId: string): string => {
     const payload: JwtPayload = {
-        userId
+        userId,
+        type: "ACCESS",
         // JWT tự động thêm iat và exp khi sign
     };
 
@@ -28,10 +29,28 @@ export const generateRefreshToken = (
     userId: string
 ): string => {
     const payload: JwtPayload = {
-        userId
+        userId,
+        type: "REFRESH"
     };
     return jwt.sign(payload, config.jwt.refreshSecret, {
         expiresIn: config.jwt.refreshExpiresIn, // VD: '30d'
+    } as jwt.SignOptions);
+};
+/**
+ * =====================================================
+ * GENERATE RESET_PASSWORD TOKEN
+ * =====================================================
+ * Tạo refresh token với expiration time dài hơn
+ */
+export const generateResetPasswordToken = (
+    userId: string
+): string => {
+    const payload: JwtPayload = {
+        userId,
+        type: "RESET_PASSWORD"
+    };
+    return jwt.sign(payload, config.jwt.secret, {
+        expiresIn: config.jwt.expiresIn, // VD: '30d'
     } as jwt.SignOptions);
 };
 /**

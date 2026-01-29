@@ -13,7 +13,34 @@ const authenticateMiddlewareClient = async (
             throw new UnauthorizedRequestError('Please login to get resources');
         }
         const accessToken = authorization[1].trim();
-        const { userId } = await authService.verifyUserByAccessToken(accessToken);
+        const { userId, type } = await authService.verifyUserByAccessToken(accessToken);
+        if(type != 'ACCESS'){
+            throw new UnauthorizedRequestError('Please use the correct token');
+        }
+        req.customer = {
+            id: userId,
+        };
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+export const verifyResetPasswordTokenMiddleware = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        // split Bearer token
+        const authorization = req.headers.authorization?.split(' ');
+        if (!authorization || authorization.length != 2) {
+            throw new UnauthorizedRequestError('Please login to get resources');
+        }
+        const resetPassToken = authorization[1].trim();
+        const { userId, type } = await authService.verifyUserByAccessToken(resetPassToken);
+        if(type != 'RESET_PASSWORD'){
+            throw new UnauthorizedRequestError('Please use the correct token');
+        }
         req.customer = {
             id: userId,
         };
@@ -39,7 +66,10 @@ const verifyRefreshTokenMiddlewareClient = async (
             throw new UnauthorizedRequestError('Invalid refresh token');
         }
         // get payload
-        const { userId } = await authService.verifyUserByRefreshToken(refreshToken);
+        const { userId, type } = await authService.verifyUserByRefreshToken(refreshToken);
+        if(type != 'REFRESH'){
+            throw new UnauthorizedRequestError('Please use the correct token');
+        }
         req.adminAccount = {
             id: userId,
         };
