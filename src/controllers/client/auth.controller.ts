@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
 import {
+    ForgetPasswordDTO,
     LoginCustomerDTO,
     RegisterCustomerDTO,
+    ResetPassword,
+    VerifyOTP,
 } from '../../types/auth/client/auth';
 import authService from '../../services/client/auth.service';
 import { ApiResponse } from '../../utils/api-response';
@@ -11,7 +14,7 @@ class AuthController {
     registerCustomerAccount = async (req: Request, res: Response) => {
         const body = req.body as RegisterCustomerDTO;
         await authService.registerCustomer(body);
-        res.json(ApiResponse.success('Register successfully', {}));
+        res.json(ApiResponse.success('Register successfully', null));
     };
     login = async (req: Request, res: Response) => {
         const body = req.body as LoginCustomerDTO;
@@ -38,7 +41,7 @@ class AuthController {
         await authService.logout(customerId, accessToken, refreshToken);
         // xóa refreshToken lưu trong cookie
         res.clearCookie('refreshTokenClient');
-        res.json(ApiResponse.success('Logout successfully', {}));
+        res.json(ApiResponse.success('Logout successfully', null));
     };
     refreshAccessToken = async (req: Request, res: Response): Promise<void> => {
         // lấy deviceId (đã kiểm tra ở middleware)
@@ -57,6 +60,24 @@ class AuthController {
         res.json(
             ApiResponse.success('Get new refresh token successfully', dataFinal)
         );
+    };
+
+    forgotPassword = async (req: Request, res: Response) => {
+        const body = req.body as ForgetPasswordDTO;
+        await authService.forgotPassword(body.email);
+        res.json(ApiResponse.success('Send OTP to mail success', null));
+    };
+    verifyOTP = async (req: Request, res: Response) => {
+        const body = req.body as VerifyOTP;
+        const resetPasswordToken = await authService.verifyOTP(body.email, body.otp);
+        res.json(ApiResponse.success('Verify OTP success', {
+            resetPasswordToken: resetPasswordToken,
+        }));
+    };
+    resetPassword = async (req: Request, res: Response) => {
+        const body = req.body as ResetPassword;
+        await authService.resetPassword(req.customer!, body.password);
+        res.json(ApiResponse.success('Reset password success', null));
     };
 }
 

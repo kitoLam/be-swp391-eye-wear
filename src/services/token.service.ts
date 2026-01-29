@@ -8,6 +8,11 @@ class TokenService {
         const accessToken = jwtUtil.generateAccessToken( userId );
         return accessToken;
     };
+    getNewResetPasswordToken = (userId: string) => {
+        // generate token from jwtUtil
+        const token = jwtUtil.generateResetPasswordToken( userId );
+        return token;
+    };
     getNewRefreshToken = async (
         payload: { userId: string; },
         deviceId: string,

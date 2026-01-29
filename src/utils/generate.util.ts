@@ -23,3 +23,10 @@ export const generateSessionId = () => {
   SID += new Date().getTime();
   return SID;
 }
+export const generateOTPCode = () => {
+  let OTP = "";
+  for (let i = 0; i < 4; i++) {
+    OTP += numberStr[Math.floor(Math.random() * numberStr.length)];
+  }
+  return OTP;
+}

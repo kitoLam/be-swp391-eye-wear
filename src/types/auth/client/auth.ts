@@ -15,5 +15,20 @@ export const RegisterCustomerSchema = z.object({
     gender: z.enum(['F', 'M', 'N'], "Please choose a gender!"),
 }).strict();
 
+export const ForgetPasswordSchema = z.object({
+    email: z.string().email('Invalid email format'),
+});
+
+export const VerifyOTPSchema = z.object({
+    email: z.string().email('Invalid email format'),
+    otp: z.string().length(4, 'OTP must be 4 characters'),
+});
+
+export const ResetPasswordSchema = z.object({
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+});
 export type LoginCustomerDTO = z.infer<typeof LoginCustomerSchema>;
 export type RegisterCustomerDTO = z.infer<typeof RegisterCustomerSchema>;
+export type ForgetPasswordDTO = z.infer<typeof ForgetPasswordSchema>;
+export type VerifyOTP = z.infer<typeof VerifyOTPSchema>;
+export type ResetPassword = z.infer<typeof ResetPasswordSchema>;
