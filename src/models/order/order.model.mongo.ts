@@ -15,11 +15,11 @@ const OrderSchema = new Schema<IOrderDocument>(
             type: [String],
             enum: Object.values(OrderType),
             validate: {
-                validator: function(v: string[]) {
+                validator: function (v: string[]) {
                     return v && v.length > 0;
                 },
-                message: 'Phải có ít nhất một loại đơn hàng (Order Type).'
-            }
+                message: 'Phải có ít nhất một loại đơn hàng (Order Type).',
+            },
         },
         status: {
             type: String,
@@ -84,6 +84,11 @@ const OrderSchema = new Schema<IOrderDocument>(
         ],
 
         // Assignment fields (flattened)
+        assigneeId: {
+            type: String,
+            trim: true,
+            default: null,
+        },
         staffId: {
             type: String,
             trim: true,

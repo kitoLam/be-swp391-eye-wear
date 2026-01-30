@@ -16,6 +16,7 @@ export const OrderSchema = z.object({
     status: z.enum(OrderStatus),
 
     // Assignment fields (flattened from assignment)
+    assigneeId: z.string().nullable(),
     staffId: z.string().nullable(),
     assignStaff: z.string().nullable(),
     assignedAt: z.date().nullable(),
