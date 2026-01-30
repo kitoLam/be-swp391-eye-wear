@@ -2,8 +2,7 @@ import mongoose, { Schema } from 'mongoose';
 import { ImportProduct } from '../../types/import-product/import-product';
 
 export interface IImportProductDocument
-    extends mongoose.Document,
-        ImportProduct {}
+    extends mongoose.Document, ImportProduct {}
 
 const ImportProductSchema = new Schema<IImportProductDocument>(
     {
@@ -20,6 +19,11 @@ const ImportProductSchema = new Schema<IImportProductDocument>(
         staffResponsible: {
             type: String,
             required: [true, 'Staff responsible is required'],
+            trim: true,
+        },
+        preOrderImportId: {
+            type: String,
+            required: [true, 'Pre-order import ID is required'],
             trim: true,
         },
         deletedAt: {
