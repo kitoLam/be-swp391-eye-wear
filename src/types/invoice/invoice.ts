@@ -7,7 +7,6 @@ export const InvoiceSchema = z
     .object({
         _id: z.string(),
         invoiceCode: z.string(),
-        orders: z.array(z.string()).min(1, 'At least one order is required'),
         owner: z.string().min(1, 'Owner ID is required'),
         totalPrice: z.number().min(0, 'Total price must be non-negative'),
         voucher: z.array(z.string()).min(0).default([]),
@@ -19,11 +18,12 @@ export const InvoiceSchema = z
             .number()
             .min(0, 'Total discount must be non-negative')
             .default(0),
-        manager_onboard: z.string().nullable(), // Manager ID when status is ONBOARD
+        managerOnboard: z.string().nullable(), // Manager ID when status is ONBOARD
         staffVerified: z.string().nullable(),
         createdAt: z.date(),
         updatedAt: z.date(),
         deletedAt: z.date().nullable(),
+        note: z.string(),
     })
     .refine(data => data.totalDiscount <= data.totalPrice, {
         message: 'Total discount cannot exceed total price',

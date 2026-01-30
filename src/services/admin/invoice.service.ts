@@ -45,11 +45,14 @@ class InvoiceService {
     };
     /**
      * Hàm xử lí nghiệp vụ duyệt đơn cùa sale staff
-     * @param invoiceId 
-     * @param adminContext 
-     * @returns 
+     * @param invoiceId
+     * @param adminContext
+     * @returns
      */
-    approveInvoice = async (invoiceId: string, adminContext: AuthAdminContext) => {
+    approveInvoice = async (
+        invoiceId: string,
+        adminContext: AuthAdminContext
+    ) => {
         const invoiceDetail = await invoiceRepository.findById(invoiceId);
         if (!invoiceDetail) {
             throw new NotFoundRequestError('Invoice not found');
@@ -69,6 +72,15 @@ class InvoiceService {
                 'You can not approve invoice if current status is not DEPOSITED'
             );
         }
+        // Cập nhật các order trong invoice này thành waiting assign
+        await orderRepository.updateMany(
+            {
+                invoiceId: invoiceDetail._id,
+            },
+            {
+                status: OrderStatus.WAITING_ASSIGN,
+            }
+        );
         // Cập nhật trạng thái approve
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.APPROVED,
@@ -78,9 +90,9 @@ class InvoiceService {
     };
     /**
      * Hàm xử lí nghiệp vụ từ chối đơn của sale staff
-     * @param invoiceId 
-     * @param adminContext 
-     * @returns 
+     * @param invoiceId
+     * @param adminContext
+     * @returns
      */
     rejectInvoice = async (
         invoiceId: string,
@@ -101,8 +113,10 @@ class InvoiceService {
         }
         // cập nhật lại kho
         // Cập nhật lại stock của từng order trong đơn về lại kho
-        for (const orderId of invoiceDetail.orders) {
-            const orderDetail = await orderRepository.findById(orderId);
+        const orderList = await orderRepository.findAllNoPagination({
+            invoiceId: invoiceDetail._id,
+        });
+        for (const orderDetail of orderList) {
             if (orderDetail) {
                 for (const orderProduct of orderDetail.products) {
                     if (orderProduct.product) {
@@ -134,6 +148,15 @@ class InvoiceService {
                 }
             }
         }
+        // Nếu 1 invoice bị reject => all trạng thái order là cancelled
+        await orderRepository.updateMany(
+            {
+                invoiceId: invoiceDetail._id,
+            },
+            {
+                status: OrderStatus.CANCELED,
+            }
+        )
         // Cập nhật trạng thái rejected
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.REJECTED,
@@ -141,6 +164,24 @@ class InvoiceService {
         });
         return updatedInvoice;
     };
+
+    /**
+     * Assign a manager to an invoice
+     * @param invoiceId - ID of the invoice
+     * @param adminContext - Context of the admin user
+     */
+
+    onboardInvoice = async (
+        invoiceId: string,
+        adminContext: AuthAdminContext
+    ) => {
+        await invoiceRepository.update(invoiceId, {
+            status: InvoiceStatus.ONBOARD,
+            managerOnboard: adminContext.id,
+        });
+    };
+
+    
 }
 
 export default new InvoiceService();

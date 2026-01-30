@@ -7,7 +7,6 @@ import voucherRouter from './voucher.route';
 import invoiceRouter from './invoice.route';
 import customerRouter from './customer.route';
 import orderRouter from './order.route';
-
 const router = Router();
 
 router.use('/auth', authRouter);

@@ -11,12 +11,6 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
             required: true,
             unique: true,
         },
-        orders: [
-            {
-                type: String,
-                required: true,
-            },
-        ],
         owner: {
             type: String,
             required: [true, 'Owner ID is required'],
@@ -61,9 +55,14 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
             trim: true,
             default: null,
         },
-        manager_onboard: {
+        managerOnboard: {
             type: String,
-            required: false,
+            default: null
+        },
+        note: {
+            type: String,
+            trim: true,
+            default: '',
         },
         deletedAt: {
             type: Date,

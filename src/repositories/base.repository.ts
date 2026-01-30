@@ -1,4 +1,4 @@
-import { Model, Document, FilterQuery, SortOrder, UpdateQuery } from 'mongoose';
+import { Model, Document, FilterQuery, SortOrder, UpdateQuery, Types } from 'mongoose';
 
 export interface PaginationOptions {
     page?: number;
@@ -92,6 +92,15 @@ export class BaseRepository<T extends Document> {
     }
 
     /**
+     * Find all with pagination
+     */
+    async findAllNoPagination(
+        filter: FilterQuery<T>,
+    ): Promise<T[]> {
+        return await this.model.find(filter);
+    }
+
+    /**
      * Create
      */
     async create(data: Partial<T>): Promise<T> {
@@ -101,11 +110,15 @@ export class BaseRepository<T extends Document> {
     /**
      * Update by ID
      */
-    async update(id: string, data: Partial<T>): Promise<T | null> {
+    async update(id: string | Types.ObjectId, data: Partial<T>): Promise<T | null> {
         return await this.model.findByIdAndUpdate(id, data, {
             new: true,
             runValidators: true,
         });
+    }
+
+    async updateMany(filter: FilterQuery<T>, data: Partial<T>) {
+        await this.model.updateMany(filter, data);
     }
     /**
      * Update by ID
@@ -154,5 +167,9 @@ export class BaseRepository<T extends Document> {
             deletedAt: null,
         } as FilterQuery<T>);
         return count > 0;
+    }
+
+    async insertMany(data: Partial<T>[]) {
+        return await this.model.insertMany(data);
     }
 }
