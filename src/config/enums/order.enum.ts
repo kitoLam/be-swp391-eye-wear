@@ -3,6 +3,7 @@ export enum OrderType {
     NORMAL = 'NORMAL',
     PRE_ORDER = 'PRE-ORDER',
     MANUFACTURING = 'MANUFACTURING',
+    RETURN = 'RETURN',
 }
 
 // Order Status Enum
@@ -12,6 +13,7 @@ export enum OrderStatus {
     ASSIGNED = 'ASSIGNED', // Đã phân công
     MAKING = 'MAKING', // Đang sản xuất
     PACKAGING = 'PACKAGING', // Đã đóng gói
-    COMPLETED = "COMPLETED",
-    CANCELED = "CANCELED"
+    COMPLETED = 'COMPLETED',
+    CANCELED = 'CANCELED',
+    REFUNDED = 'REFUNDED',
 }
