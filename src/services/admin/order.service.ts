@@ -159,5 +159,16 @@ class OrderService {
             });
         }
     };
+  
+    getOrdersByStaffAndAdmin = async (adminId: string, staffId: string) => {
+        const orders = await orderRepository.find({
+            deletedAt: null,
+            staffId,
+            assigneeId: adminId,
+            assignmentStatus: AssignmentOrderStatus.ASSIGNED,
+        });
+
+        return orders;
+    };
 }
 export default new OrderService();

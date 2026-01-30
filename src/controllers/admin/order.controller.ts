@@ -41,7 +41,25 @@ class OrderController {
     await orderService.completeOrder(adminContext, orderId);
     res.json(ApiResponse.success('Tag complete successfully', null));
   }
+  getOrdersByStaff = async (req: Request, res: Response) => {
+        const adminContext = req.adminAccount!;
+        const staffId = req.query.staffId;
 
+        if (!staffId || typeof staffId !== 'string') {
+            throw new BadRequestError('staffId is required');
+        }
+
+        const orders = await orderAdminService.getOrdersByStaffAndAdmin(
+            adminContext.id,
+            staffId
+        );
+
+        res.json(
+            ApiResponse.success('Lấy danh sách order thành công!', {
+                orders,
+            })
+        );
+    };
 
 }
 

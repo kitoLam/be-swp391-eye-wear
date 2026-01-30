@@ -6,8 +6,8 @@ import { AssignOrderSchema } from "../../types/order/order.request";
 import { ObjectIdSchema } from "../../types/common/objectId";
 const router = Router();
 router.use(authenticateMiddleware);
-// api lấy danh sách order
-// router.get('/');
+// api lấy danh sách order theo staffId và admin đang đăng nhập
+router.get('/', orderController.getOrdersByStaff);
 // ============== MANAGER ================
 router.patch('/:id/status/assign', validateParams(ObjectIdSchema), validateBody(AssignOrderSchema), orderController.assignOrder);
 // ============== END MANAGER ================
