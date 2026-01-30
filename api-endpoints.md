@@ -1319,35 +1319,282 @@ import { Types } from 'mongoose';
 ### 6.1 POST `/invoices/`
 
 -   **Auth**: Có
-
+-   **Body**: Có
+```json
+{
+    "products": [
+        {
+            "product": {
+                "product_id": "6965c4bc979f1a2fb5e329ec",
+                "sku": "LENS-024-01"
+            },
+            "quantity": 1
+        }
+    ],
+    "address": {
+        "street": "Le van viet",
+        "ward": "Phuong Thu Duc",
+        "city": "Thanh pho Ho Chi Minh"
+    },
+    "fullName": "Minh Lâm",
+    "phone": "0812345678",
+    "voucher": [],
+    "paymentMethod": "COD",
+    "note": "Giao ngoài giờ hành chánh dùm"
+}
+```
+-   **Response**:
+```json
+{
+    "success": true,
+    "message": "Tạo hóa đơn thành công!",
+    "data": {
+        "invoice": {
+            "invoiceCode": "HD_8628731769758761060",
+            "owner": "697b12821628f3af05995358",
+            "totalPrice": 267,
+            "voucher": [],
+            "address": {
+                "street": "Le van viet",
+                "ward": "Phuong Thu Duc",
+                "city": "Thanh pho Ho Chi Minh"
+            },
+            "status": "DEPOSITED",
+            "fullName": "Minh Lâm",
+            "phone": "0812345678",
+            "totalDiscount": 0,
+            "staffVerified": null,
+            "managerOnboard": null,
+            "note": "Giao ngoài giờ hành chánh dùm",
+            "deletedAt": null,
+            "_id": "697c6029c91b4e7cd04688f6",
+            "createdAt": "2026-01-30T07:39:21.070Z",
+            "updatedAt": "2026-01-30T07:39:21.070Z",
+            "__v": 0
+        },
+        "payment": {
+            "ownerId": "697b12821628f3af05995358",
+            "invoiceId": "697c6029c91b4e7cd04688f6",
+            "paymentMethod": "COD",
+            "status": "UNPAID",
+            "note": "",
+            "price": 267,
+            "deletedAt": null,
+            "_id": "697c6029c91b4e7cd04688fb",
+            "createdAt": "2026-01-30T07:39:21.120Z",
+            "updatedAt": "2026-01-30T07:39:21.120Z",
+            "__v": 0
+        }
+    }
+}
+```
 ### 6.2 GET `/invoices/`
 
 -   **Auth**: Có
-
+-   **Response**:
+```json
+{
+    "success": true,
+    "message": "Lấy danh sách hóa đơn thành công!",
+    "data": {
+        "data": [
+            {
+                "address": {
+                    "street": "Le van viet",
+                    "ward": "Phuong Thu Duc",
+                    "city": "Thanh pho Ho Chi Minh"
+                },
+                "_id": "697c6029c91b4e7cd04688f6",
+                "invoiceCode": "HD_8628731769758761060",
+                "owner": "697b12821628f3af05995358",
+                "totalPrice": 267,
+                "voucher": [],
+                "status": "DEPOSITED",
+                "fullName": "Minh Lâm",
+                "phone": "0812345678",
+                "totalDiscount": 0,
+                "staffVerified": null,
+                "managerOnboard": null,
+                "note": "Giao ngoài giờ hành chánh dùm",
+                "deletedAt": null,
+                "createdAt": "2026-01-30T07:39:21.070Z",
+                "updatedAt": "2026-01-30T07:39:21.070Z",
+                "__v": 0
+            },
+            {
+                "address": {
+                    "street": "Le van viet",
+                    "ward": "Phuong Thu Duc",
+                    "city": "Thanh pho Ho Chi Minh"
+                },
+                "_id": "697c33f4b355f094556170f5",
+                "invoiceCode": "HD_7537241769747444612",
+                "owner": "697b12821628f3af05995358",
+                "totalPrice": 60000,
+                "voucher": [],
+                "status": "REJECTED",
+                "fullName": "Minh Lâm",
+                "phone": "0812345678",
+                "totalDiscount": 0,
+                "staffVerified": "69785b78cb02b6ef2f922573",
+                "managerOnboard": null,
+                "note": "Giao ngoài giờ hành chánh dùm",
+                "deletedAt": null,
+                "createdAt": "2026-01-30T04:30:44.619Z",
+                "updatedAt": "2026-01-30T04:31:29.004Z",
+                "__v": 0
+            },
+            {
+                "address": {
+                    "street": "Le van viet",
+                    "ward": "Phuong Thu Duc",
+                    "city": "Thanh pho Ho Chi Minh"
+                },
+                "_id": "697c2fa8c2401405c3a8bc21",
+                "invoiceCode": "HD_1398091769746344268",
+                "owner": "697b12821628f3af05995358",
+                "totalPrice": 60000,
+                "voucher": [],
+                "status": "COMPLETED",
+                "fullName": "Minh Lâm",
+                "phone": "0812345678",
+                "totalDiscount": 0,
+                "staffVerified": "69673933660b94516a038b6c",
+                "managerOnboard": "69673933660b94516a038b6c",
+                "note": "Giao ngoài giờ hành chánh dùm",
+                "deletedAt": null,
+                "createdAt": "2026-01-30T04:12:24.274Z",
+                "updatedAt": "2026-01-30T04:28:55.287Z",
+                "__v": 0
+            }
+        ],
+        "total": 3,
+        "page": 1,
+        "limit": 10,
+        "totalPages": 1
+    }
+}
+```
 ### 6.3 GET `/invoices/:invoiceId`
 
 -   **Auth**: Có
-
+-   **Response**:
+```json
+{
+    "success": true,
+    "message": "Lấy chi tiết hóa đơn thành công!",
+    "data": {
+        "invoice": {
+            "address": {
+                "street": "Le van viet",
+                "ward": "Phuong Thu Duc",
+                "city": "Thanh pho Ho Chi Minh"
+            },
+            "_id": "697c6029c91b4e7cd04688f6",
+            "invoiceCode": "HD_8628731769758761060",
+            "owner": "697b12821628f3af05995358",
+            "totalPrice": 267,
+            "voucher": [],
+            "status": "DEPOSITED",
+            "fullName": "Minh Lâm",
+            "phone": "0812345678",
+            "totalDiscount": 0,
+            "staffVerified": null,
+            "managerOnboard": null,
+            "note": "Giao ngoài giờ hành chánh dùm",
+            "deletedAt": null,
+            "createdAt": "2026-01-30T07:39:21.070Z",
+            "updatedAt": "2026-01-30T07:39:21.070Z",
+            "__v": 0
+        },
+        "orderList": [
+            {
+                "_id": "697c6029c91b4e7cd04688f8",
+                "orderCode": "OD_7349041769758761090",
+                "invoiceId": "697c6029c91b4e7cd04688f6",
+                "type": [
+                    "NORMAL"
+                ],
+                "status": "PENDING",
+                "products": [
+                    {
+                        "product": {
+                            "product_id": "6965c4bc979f1a2fb5e329ec",
+                            "sku": "LENS-024-01",
+                            "pricePerUnit": 267
+                        },
+                        "quantity": 1,
+                        "_id": "697c6029c91b4e7cd04688f9"
+                    }
+                ],
+                "assignerStaff": null,
+                "assignedStaff": null,
+                "assignedAt": null,
+                "startedAt": null,
+                "completedAt": null,
+                "price": 267,
+                "deletedAt": null,
+                "__v": 0,
+                "createdAt": "2026-01-30T07:39:21.095Z",
+                "updatedAt": "2026-01-30T07:39:21.095Z"
+            }
+        ]
+    }
+}
+```
 ### 6.4 PATCH `/invoices/:id`
 
 -   **Auth**: Có
-
+-   **Body**:
+```json
+{
+  "address": {
+    "street": "456 Le Loi",
+    "ward": "Ben Thanh",
+    "city": "Ho Chi Minh City"
+  },
+  "fullName": "Tran Thi B",
+  "phone": "0912345678",
+  "note": "Giao hàng buổi sáng"
+}
+```
+-   **Response**:
+-   **Response**
+```json
+{
+    "success": true,
+    "message": "Update success",
+    "data": null
+}
+```
 ### 6.5 PATCH `/invoices/:id/cancel`
 
 -   **Auth**: Có
-
+-   **Response**
+```json
+{
+    "success": true,
+    "message": "Cancel success",
+    "data": null
+}
+```
 ---
 
 ## 7) Payments (`/payments`)
 
-### 7.1 POST `/payments/zalopay/result-callback`
-
--   **Auth**: Không
-
-### 7.2 GET `/payments/zalopay/url/:invoiceId/:paymentId`
+### 7.1 GET `/payments/zalopay/url/:invoiceId/:paymentId`
 
 -   **Auth**: Có
-
+-   **Response**:
+```json
+{
+    "success": true,
+    "message": "Cancel success",
+    "data": {
+        "url": "string"
+    }
+}
+```
 ---
 
 ## 8) Vouchers (`/vouchers`)
@@ -1379,7 +1626,156 @@ Prefix: `/api/v1`
 ### 1.1 GET `/products/`
 
 -   **Auth**: Không
-
+-   **Response**:
+```json
+{
+    "success": true,
+    "message": "Lấy danh sách sản phẩm thành công!",
+    "data": {
+        "productList": [
+            {
+                "id": "6965c4bc979f1a2fb5e329ec",
+                "nameBase": "Kodak Anti-Blue Light + Anti-Scratch Lens 24",
+                "slugBase": "kodak-anti-blue-light--anti-scratch-lens-24",
+                "skuBase": "LENS-024",
+                "type": "lens",
+                "brand": "Kodak",
+                "categories": [
+                    "6965c4bc979f1a2fb5e32807",
+                    "6965c4bc979f1a2fb5e3280a"
+                ],
+                "defaultVariantPrice": 297,
+                "defaultVariantFinalPrice": 267,
+                "defaultVariantImage": "https://picsum.photos/seed/lens24v0a/400/400",
+                "totalVariants": 3,
+                "createdAt": "04:06:20 13/01/2026"
+            }
+        ],
+        "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 3,
+            "totalPages": 1
+        }
+    }
+}
+```
 ### 1.2 GET `/products/:id`
 
 -   **Auth**: Không
+-   **Respons**:
+```json
+{
+    "success": true,
+    "message": "Láy sản phẩm thành công!",
+    "data": {
+        "product": {
+            "nameBase": "Kodak Anti-Blue Light + Anti-Scratch Lens 24",
+            "slugBase": "kodak-anti-blue-light--anti-scratch-lens-24",
+            "skuBase": "LENS-024",
+            "brand": "Kodak",
+            "categories": [
+                "6965c4bc979f1a2fb5e32807",
+                "6965c4bc979f1a2fb5e3280a"
+            ],
+            "variants": [
+                {
+                    "sku": "LENS-024-01",
+                    "name": "Kodak Anti-Blue Light + Anti-Scratch Lens 24 - 1.74 - Premium",
+                    "slug": "kodak-anti-blue-light--anti-scratch-lens-24-174-premium",
+                    "options": [
+                        {
+                            "attributeId": "69658896e8bf7da827177ac1",
+                            "attributeName": "Thickness",
+                            "label": "1.74",
+                            "showType": "text",
+                            "value": "1.74"
+                        },
+                        {
+                            "attributeId": "69658896e8bf7da827177ac2",
+                            "attributeName": "Coating",
+                            "label": "Premium",
+                            "showType": "text",
+                            "value": "Premium"
+                        }
+                    ],
+                    "price": 297,
+                    "finalPrice": 267,
+                    "stock": 53,
+                    "imgs": [
+                        "https://picsum.photos/seed/lens24v0a/400/400",
+                        "https://picsum.photos/seed/lens24v0b/400/400"
+                    ],
+                    "isDefault": true
+                },
+                {
+                    "sku": "LENS-024-02",
+                    "name": "Kodak Anti-Blue Light + Anti-Scratch Lens 24 - 1.74 - Ultra",
+                    "slug": "kodak-anti-blue-light--anti-scratch-lens-24-174-ultra",
+                    "options": [
+                        {
+                            "attributeId": "69658896e8bf7da827177ac1",
+                            "attributeName": "Thickness",
+                            "label": "1.74",
+                            "showType": "text",
+                            "value": "1.74"
+                        },
+                        {
+                            "attributeId": "69658896e8bf7da827177ac2",
+                            "attributeName": "Coating",
+                            "label": "Ultra",
+                            "showType": "text",
+                            "value": "Ultra"
+                        }
+                    ],
+                    "price": 120,
+                    "finalPrice": 94,
+                    "stock": 67,
+                    "imgs": [
+                        "https://picsum.photos/seed/lens24v1a/400/400",
+                        "https://picsum.photos/seed/lens24v1b/400/400"
+                    ],
+                    "isDefault": false
+                },
+                {
+                    "sku": "LENS-024-03",
+                    "name": "Kodak Anti-Blue Light + Anti-Scratch Lens 24 - 1.61 - Ultra",
+                    "slug": "kodak-anti-blue-light--anti-scratch-lens-24-161-ultra",
+                    "options": [
+                        {
+                            "attributeId": "69658896e8bf7da827177ac1",
+                            "attributeName": "Thickness",
+                            "label": "1.61",
+                            "showType": "text",
+                            "value": "1.61"
+                        },
+                        {
+                            "attributeId": "69658896e8bf7da827177ac2",
+                            "attributeName": "Coating",
+                            "label": "Ultra",
+                            "showType": "text",
+                            "value": "Ultra"
+                        }
+                    ],
+                    "price": 291,
+                    "finalPrice": 291,
+                    "stock": 61,
+                    "imgs": [
+                        "https://picsum.photos/seed/lens24v2a/400/400",
+                        "https://picsum.photos/seed/lens24v2b/400/400"
+                    ],
+                    "isDefault": false
+                }
+            ],
+            "type": "lens",
+            "spec": {
+                "feature": [
+                    "Anti-Blue Light",
+                    "Anti-Scratch"
+                ],
+                "origin": "Japan"
+            }
+        }
+    }
+}
+```
