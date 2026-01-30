@@ -59,7 +59,7 @@ class OrderService {
      * @throws NotFoundRequestError if order not found
      * @throws ConflictRequestError if order is not manufacturing order
      * @throws ForbiddenRequestError if order is not assigned to current operation staff
-    */
+     */
 
     makingOrder = async (adminContext: AuthAdminContext, orderId: string) => {
         const foundOrder = await orderRepository.findOne({
@@ -75,12 +75,8 @@ class OrderService {
             );
         }
         // chỉ cho staff đc phân chỉnh sửa
-        if(
-            foundOrder.assignedStaff !== adminContext.id
-        ){
-            throw new ForbiddenRequestError(
-                'This order is not assign to you'
-            );
+        if (foundOrder.assignedStaff !== adminContext.id) {
+            throw new ForbiddenRequestError('This order is not assign to you');
         }
         await orderRepository.update(orderId, {
             status: OrderStatus.MAKING,
@@ -105,12 +101,8 @@ class OrderService {
             throw new NotFoundRequestError('Order not found');
         }
         // chỉ cho staff đc phân chỉnh sửa
-        if(
-            foundOrder.assignedStaff !== adminContext.id
-        ){
-            throw new ForbiddenRequestError(
-                'This order is not assign to you'
-            );
+        if (foundOrder.assignedStaff !== adminContext.id) {
+            throw new ForbiddenRequestError('This order is not assign to you');
         }
         await orderRepository.update(orderId, {
             status: OrderStatus.PACKAGING,
@@ -135,12 +127,8 @@ class OrderService {
             throw new NotFoundRequestError('Order not found');
         }
         // chỉ cho staff đc phân chỉnh sửa
-        if(
-            foundOrder.assignedStaff !== adminContext.id
-        ){
-            throw new ForbiddenRequestError(
-                'This order is not assign to you'
-            );
+        if (foundOrder.assignedStaff !== adminContext.id) {
+            throw new ForbiddenRequestError('This order is not assign to you');
         }
         await orderRepository.update(orderId, {
             status: OrderStatus.COMPLETED,
@@ -149,22 +137,26 @@ class OrderService {
         const countCompletedOrder = await orderRepository.count({
             invoice: foundOrder.invoiceId,
             status: OrderStatus.COMPLETED,
-        })
-        const countAllOrder = await orderRepository.count({
-            invoice: foundOrder.invoiceId,    
         });
-        if(countCompletedOrder === countAllOrder){
+        const countAllOrder = await orderRepository.count({
+            invoice: foundOrder.invoiceId,
+        });
+        if (countCompletedOrder === countAllOrder) {
             await invoiceRepository.update(foundOrder.invoiceId, {
                 status: InvoiceStatus.COMPLETED,
             });
         }
     };
-  
-    getOrdersByStaffAndAdmin = async (adminId: string, staffId: string) => {
+
+    /**
+     * Lấy danh sách order được giao cho staff
+     * @param staffId - ID của staff (lấy từ JWT token)
+     * @returns Danh sách order được giao cho staff này
+     */
+    getOrdersByStaffAssigned = async (staffId: string) => {
         const orders = await orderRepository.find({
             deletedAt: null,
-            assignerStaff: staffId,
-            assignedStaff: adminId,
+            assignedStaff: staffId, // Lấy các order được giao CHO staff này
         });
 
         return orders;
