@@ -75,7 +75,7 @@ class InvoiceService {
         // Cập nhật các order trong invoice này thành waiting assign
         await orderRepository.updateMany(
             {
-                _id: { $in: invoiceDetail.orders },
+                invoiceId: invoiceDetail._id,
             },
             {
                 status: OrderStatus.WAITING_ASSIGN,
@@ -113,8 +113,10 @@ class InvoiceService {
         }
         // cập nhật lại kho
         // Cập nhật lại stock của từng order trong đơn về lại kho
-        for (const orderId of invoiceDetail.orders) {
-            const orderDetail = await orderRepository.findById(orderId);
+        const orderList = await orderRepository.findAllNoPagination({
+            invoiceId: invoiceDetail._id,
+        });
+        for (const orderDetail of orderList) {
             if (orderDetail) {
                 for (const orderProduct of orderDetail.products) {
                     if (orderProduct.product) {
@@ -147,11 +149,14 @@ class InvoiceService {
             }
         }
         // Nếu 1 invoice bị reject => all trạng thái order là cancelled
-        for (const orderId of invoiceDetail.orders) {
-            await orderRepository.update(orderId, {
+        await orderRepository.updateMany(
+            {
+                invoiceId: invoiceDetail._id,
+            },
+            {
                 status: OrderStatus.CANCELED,
-            })
-        }
+            }
+        )
         // Cập nhật trạng thái rejected
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.REJECTED,

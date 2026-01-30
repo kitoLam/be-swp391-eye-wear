@@ -4,10 +4,12 @@ import {
     OrderStatus,
     OrderType,
 } from '../../config/enums/order.enum';
+import { Types } from 'mongoose';
 
 // Order Schema
 export const OrderSchema = z.object({
     _id: z.string(),
+    invoiceId: z.string().or(z.instanceof(Types.ObjectId)),
     orderCode: z.string(),
     type: z.array(z.enum(OrderType)),
     products: z

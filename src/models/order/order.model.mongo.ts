@@ -15,6 +15,11 @@ const OrderSchema = new Schema<IOrderDocument>(
             required: true,
             unique: true,
         },
+        invoiceId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Invoice',
+            required: true,
+        },
         type: {
             type: [String],
             enum: Object.values(OrderType),

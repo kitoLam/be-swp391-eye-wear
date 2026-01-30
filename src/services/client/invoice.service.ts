@@ -315,43 +315,6 @@ class InvoiceClientService {
                 totalPrice += itemPrice;
             }
 
-            // Create Orders with proper grouping
-            // 1. Create ONE order for all NORMAL products
-            if (normalProducts.length > 0) {
-                let normalOrderPrice = 0;
-                for (const item of normalProducts) {
-                    normalOrderPrice += item.product.pricePerUnit * item.quantity;
-                }
-
-                const normalOrder = await orderRepository.create({
-                    orderCode: generateOrderCode(),
-                    type: [OrderType.NORMAL],
-                    products: normalProducts,
-                    status: OrderStatus.PENDING,
-                    price: normalOrderPrice
-                });
-
-                createdOrders.push(normalOrder._id.toString());
-            }
-
-            // 2. Create separate MANUFACTURING order for each product with lens
-            for (const item of manufacturingProducts) {
-                for (let i = 0; i < item.quantity; i++){
-                    let mfgOrderPrice = item.product.pricePerUnit + item.lens!.pricePerUnit;
-                    const mfgOrder = await orderRepository.create({
-                        orderCode: generateOrderCode(),
-                        type: [OrderType.MANUFACTURING],
-                        products: [{
-                            ...item,
-                            quantity: 1,
-                        }],
-                        status: OrderStatus.PENDING,
-                        price: mfgOrderPrice,
-                    });
-                    createdOrders.push(mfgOrder._id.toString());
-                }
-            }
-
             // Apply Voucher
             const { discount: totalDiscount, voucherId } =
                 await this.calculateVoucherDiscount(
@@ -359,10 +322,8 @@ class InvoiceClientService {
                     totalPrice,
                     customerId
                 );
-
             // Create Invoice
-            const invoiceData: any = {
-                orders: createdOrders,
+            const invoiceData = {
                 owner: customerId,
                 totalPrice,
                 totalDiscount,
@@ -375,10 +336,48 @@ class InvoiceClientService {
                 fullName: payload.fullName,
                 phone: payload.phone,
                 invoiceCode: generateInvoiceCode(),
+                note: payload.note
             };
 
             const newInvoice = await invoiceRepository.create(invoiceData);
+            const insertedOrders = [];
+            // Create Orders with proper grouping
+            // 1. Create ONE order for all NORMAL products
+            if (normalProducts.length > 0) {
+                let normalOrderPrice = 0;
+                for (const item of normalProducts) {
+                    normalOrderPrice += item.product.pricePerUnit * item.quantity;
+                }
 
+                insertedOrders.push({
+                    invoiceId: newInvoice._id,
+                    orderCode: generateOrderCode(),
+                    type: [OrderType.NORMAL],
+                    products: normalProducts,
+                    status: OrderStatus.PENDING,
+                    price: normalOrderPrice
+                });
+            }
+
+            // 2. Create separate MANUFACTURING order for each product with lens
+            for (const item of manufacturingProducts) {
+                for (let i = 0; i < item.quantity; i++){
+                    let mfgOrderPrice = item.product.pricePerUnit + item.lens!.pricePerUnit;
+                    insertedOrders.push({
+                        invoiceId: newInvoice._id,
+                        orderCode: generateOrderCode(),
+                        type: [OrderType.MANUFACTURING],
+                        products: [{
+                            ...item,
+                            quantity: 1,
+                        }],
+                        status: OrderStatus.PENDING,
+                        price: mfgOrderPrice,
+                    });
+                }
+            }
+
+            await orderRepository.insertMany(insertedOrders);
             // If ONLINE payment, acquire online locks and add to timeout queue
             if (payload.paymentMethod !== PaymentMethodType.COD) {
                 // Acquire online locks
@@ -422,12 +421,6 @@ class InvoiceClientService {
                 payment: newPayment,
             };
         } catch (error) {
-
-            // Rollback: Delete created orders
-            for (const orderId of createdOrders) {
-                await orderRepository.hardDelete(orderId);
-            }
-
             throw error;
         } finally {
             // Release race locks
@@ -477,18 +470,13 @@ class InvoiceClientService {
             throw new NotFoundRequestError('Invoice not found');
         }
 
-        // Populate orders - fetch all and filter
-        const allOrders = await orderRepository.findAll({
-            page: 1,
-            limit: 100,
+        // Get all orders of invoiceId
+        const orderList = await orderRepository.findAllNoPagination({
+            invoiceId: invoiceId,
         });
-        const ordersDetail = allOrders.data.filter(order =>
-            invoice.orders.includes(order._id.toString())
-        );
-
         return {
             invoice,
-            ordersDetail,
+            orderList,
         };
     };
 
@@ -520,8 +508,10 @@ class InvoiceClientService {
             );
         }
         // Cập nhật lại stock của từng order trong đơn về lại kho
-        for (const orderId of existInvoice.orders) {
-            const orderDetail = await orderRepository.findById(orderId);
+        const orderList = await orderRepository.findAllNoPagination({
+            invoiceId: invoiceId,
+        })
+        for (const orderDetail of orderList) {
             if (orderDetail) {
                 for (const orderProduct of orderDetail.products) {
                     if (orderProduct.product) {
@@ -554,11 +544,11 @@ class InvoiceClientService {
             }
         }
         // Nếu 1 invoice bị hủy => tất cả order trong invoice đó đều trở thành cancelled
-        for (const orderId of existInvoice.orders) {
-            await orderRepository.update(orderId, {
-                status: OrderStatus.CANCELED,
-            })
-        }
+        await orderRepository.updateMany({
+            _id: { $in: orderList.map((order) => order._id) }
+        }, {
+            status: OrderStatus.CANCELED
+        });
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.CANCELED,
         });

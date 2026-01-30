@@ -6,7 +6,7 @@ import productRouter from './product.route';
 import voucherRouter from './voucher.route';
 import invoiceRouter from './invoice.route';
 import customerRouter from './customer.route';
-
+import orderRouter from './order.route';
 const router = Router();
 
 router.use('/auth', authRouter);
@@ -16,4 +16,5 @@ router.use('/products', productRouter);
 router.use('/vouchers', voucherRouter);
 router.use('/invoices', invoiceRouter);
 router.use('/customers', customerRouter);
+router.use('/orders', orderRouter);
 export default router;

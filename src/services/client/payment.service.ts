@@ -213,10 +213,10 @@ class PaymentClientService {
                         sku: string;
                         qty: number;
                     }[] = [];
-                    for (const orderId of invoiceDetail.orders) {
-                        const orderDetail = await orderRepository.findOne({
-                            _id: orderId,
-                        });
+                    const orderList = await orderRepository.findAllNoPagination({
+                        invoiceId: invoiceDetail._id,
+                    })
+                    for (const orderDetail of orderList) {
                         if (orderDetail) {
                             for (const item of orderDetail.products) {
                                 if (item.lens) {

@@ -146,26 +146,17 @@ class OrderService {
             status: OrderStatus.COMPLETED,
         });
         // nếu các order đều Complete => invoice cũng complete
-        const foundInvoice = await invoiceRepository.findOne({
-            orders: orderId,
+        const countCompletedOrder = await orderRepository.count({
+            invoice: foundOrder.invoiceId,
+            status: OrderStatus.COMPLETED,
+        })
+        const countAllOrder = await orderRepository.count({
+            invoice: foundOrder.invoiceId,    
         });
-        if (foundInvoice) {
-            let isCompleteAll = true;
-            for (const orderId of foundInvoice.orders) {
-                const itemDetail = await orderRepository.findOne({
-                    _id: orderId,
-                    status: OrderStatus.COMPLETED,
-                });
-                if (!itemDetail) {
-                    isCompleteAll = false;
-                    break;
-                }
-            }
-            if (isCompleteAll) {
-                await invoiceRepository.update(foundInvoice._id, {
-                    status: InvoiceStatus.COMPLETED,
-                });
-            }
+        if(countCompletedOrder === countAllOrder){
+            await invoiceRepository.update(foundOrder.invoiceId, {
+                status: InvoiceStatus.COMPLETED,
+            });
         }
     };
 }
