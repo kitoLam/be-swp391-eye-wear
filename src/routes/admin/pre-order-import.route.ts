@@ -32,4 +32,10 @@ router.post(
     preOrderImportController.createPreOrderImport
 );
 
+router.patch(
+    '/:id/cancel',
+    authenticateMiddleware,
+    preOrderImportController.cancelPreOrderImport
+);
+
 export default router;

@@ -24,6 +24,28 @@ class PreOrderImportController {
             next(error);
         }
     };
+
+    cancelPreOrderImport = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { id } = req.params;
+            const result = await preOrderImportService.cancelPreOrderImport(
+                id as string,
+                req.adminAccount!
+            );
+            res.json(
+                ApiResponse.success(
+                    'Pre-order import cancelled successfully',
+                    result
+                )
+            );
+        } catch (error) {
+            next(error);
+        }
+    };
 }
 
 export default new PreOrderImportController();
