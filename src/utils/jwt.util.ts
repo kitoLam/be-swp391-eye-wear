@@ -8,10 +8,18 @@ import {
 import { JwtPayload } from '../types/jwt/jwt';
 
 // generated access token
-export const generateAccessToken = (userId: string): string => {
+export const generateAccessToken = (
+    userId: string,
+    role:
+        | 'SALE_STAFF'
+        | 'OPERATION_STAFF'
+        | 'MANAGER'
+        | 'SYSTEM_ADMIN' = 'SALE_STAFF'
+): string => {
     const payload: JwtPayload = {
         userId,
-        type: "ACCESS",
+        role,
+        type: 'ACCESS',
         // JWT tự động thêm iat và exp khi sign
     };
 
@@ -26,11 +34,17 @@ export const generateAccessToken = (userId: string): string => {
  * Tạo refresh token với expiration time dài hơn
  */
 export const generateRefreshToken = (
-    userId: string
+    userId: string,
+    role:
+        | 'SALE_STAFF'
+        | 'OPERATION_STAFF'
+        | 'MANAGER'
+        | 'SYSTEM_ADMIN' = 'SALE_STAFF'
 ): string => {
     const payload: JwtPayload = {
         userId,
-        type: "REFRESH"
+        role,
+        type: 'REFRESH',
     };
     return jwt.sign(payload, config.jwt.refreshSecret, {
         expiresIn: config.jwt.refreshExpiresIn, // VD: '30d'
@@ -43,11 +57,17 @@ export const generateRefreshToken = (
  * Tạo refresh token với expiration time dài hơn
  */
 export const generateResetPasswordToken = (
-    userId: string
+    userId: string,
+    role:
+        | 'SALE_STAFF'
+        | 'OPERATION_STAFF'
+        | 'MANAGER'
+        | 'SYSTEM_ADMIN' = 'SALE_STAFF'
 ): string => {
     const payload: JwtPayload = {
         userId,
-        type: "RESET_PASSWORD"
+        role,
+        type: 'RESET_PASSWORD',
     };
     return jwt.sign(payload, config.jwt.secret, {
         expiresIn: config.jwt.expiresIn, // VD: '30d'
@@ -70,13 +90,13 @@ export const verifyAccessToken = (token: string): JwtPayload => {
             const tokenExpiredError = jwtError as jwt.TokenExpiredError;
             throw new TokenExpiredError(
                 `Access token expired at ${new Date(
-                    tokenExpiredError.expiredAt,
-                ).toISOString()}`,
+                    tokenExpiredError.expiredAt
+                ).toISOString()}`
             );
         }
         if (jwtError.name === 'JsonWebTokenError') {
             throw new TokenInvalidError(
-                `Invalid access token: ${jwtError.message}`,
+                `Invalid access token: ${jwtError.message}`
             );
         }
         // Lỗi khác
