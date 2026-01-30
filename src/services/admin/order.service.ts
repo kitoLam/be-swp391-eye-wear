@@ -51,6 +51,15 @@ class OrderService {
             assignedAt: new Date(),
         });
     };
+    /**
+     * Hàm xử lí logic tiến hành gia công cho order
+     * @param adminContext
+     * @param orderId
+     * @returns Promise<void>
+     * @throws NotFoundRequestError if order not found
+     * @throws ConflictRequestError if order is not manufacturing order
+     * @throws ForbiddenRequestError if order is not assigned to current operation staff
+    */
 
     makingOrder = async (adminContext: AuthAdminContext, orderId: string) => {
         const foundOrder = await orderRepository.findOne({
@@ -77,6 +86,14 @@ class OrderService {
             status: OrderStatus.MAKING,
         });
     };
+    /**
+     * Xử lý logic đóng gói cho order
+     * @param adminContext - staff hiện tại
+     * @param orderId - id của order cần đóng gói
+     * @throws NotFoundRequestError - nếu order không tồn tại
+     * @throws ForbiddenRequestError - nếu order không được phân công cho staff hiện tại
+     */
+
     packagingOrder = async (
         adminContext: AuthAdminContext,
         orderId: string
@@ -99,6 +116,17 @@ class OrderService {
             status: OrderStatus.PACKAGING,
         });
     };
+    /**
+     * Xử lý logic hoàn thành cho order
+     * @param adminContext - staff hiện tại
+     * @param orderId - id của order cần hoàn thành
+     * @throws NotFoundRequestError - nếu order không tồn tại
+     * @throws ForbiddenRequestError - nếu order không được phân công cho staff hiện tại
+     * @description Logic này sẽ thay đổi trạng thái của order sang COMPLETED,
+     * sau đó sẽ kiểm tra các order khác trong invoice có trạng thái COMPLETED
+     * hay không. Nếu tất cả các order đều COMPLETED thì sẽ thay đổi trạng thái
+     * của invoice thành COMPLETED
+     */
     completeOrder = async (adminContext: AuthAdminContext, orderId: string) => {
         const foundOrder = await orderRepository.findOne({
             _id: orderId,

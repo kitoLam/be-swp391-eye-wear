@@ -146,6 +146,12 @@ class InvoiceService {
                 }
             }
         }
+        // Nếu 1 invoice bị reject => all trạng thái order là cancelled
+        for (const orderId of invoiceDetail.orders) {
+            await orderRepository.update(orderId, {
+                status: OrderStatus.CANCELED,
+            })
+        }
         // Cập nhật trạng thái rejected
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.REJECTED,
@@ -153,6 +159,12 @@ class InvoiceService {
         });
         return updatedInvoice;
     };
+
+    /**
+     * Assign a manager to an invoice
+     * @param invoiceId - ID of the invoice
+     * @param adminContext - Context of the admin user
+     */
 
     onboardInvoice = async (
         invoiceId: string,

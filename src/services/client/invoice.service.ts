@@ -12,7 +12,6 @@ import {
 import {
     OrderType,
     OrderStatus,
-    AssignmentOrderStatus,
 } from '../../config/enums/order.enum';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 import {
@@ -329,8 +328,7 @@ class InvoiceClientService {
                     type: [OrderType.NORMAL],
                     products: normalProducts,
                     status: OrderStatus.PENDING,
-                    price: normalOrderPrice,
-                    assignmentStatus: AssignmentOrderStatus.PENDING,
+                    price: normalOrderPrice
                 });
 
                 createdOrders.push(normalOrder._id.toString());
@@ -349,7 +347,6 @@ class InvoiceClientService {
                         }],
                         status: OrderStatus.PENDING,
                         price: mfgOrderPrice,
-                        assignmentStatus: AssignmentOrderStatus.PENDING,
                     });
                     createdOrders.push(mfgOrder._id.toString());
                 }
@@ -555,6 +552,12 @@ class InvoiceClientService {
                     }
                 }
             }
+        }
+        // Nếu 1 invoice bị hủy => tất cả order trong invoice đó đều trở thành cancelled
+        for (const orderId of existInvoice.orders) {
+            await orderRepository.update(orderId, {
+                status: OrderStatus.CANCELED,
+            })
         }
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.CANCELED,

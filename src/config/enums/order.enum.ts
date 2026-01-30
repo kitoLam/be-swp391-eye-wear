@@ -13,6 +13,5 @@ export enum OrderStatus {
     MAKING = 'MAKING', // Đang sản xuất
     PACKAGING = 'PACKAGING', // Đã đóng gói
     COMPLETED = "COMPLETED",
-    REJECTED = "REJECTED",
-    CANCELED = "CANCEL"
+    CANCELED = "CANCELED"
 }

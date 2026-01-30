@@ -14,19 +14,27 @@ class OrderController {
     await orderService.assignOrderToOperationStaff(adminContext, orderId, payload);
     res.json(ApiResponse.success('Assign successfully', null));
   }
-
+  /**
+   * [POST] /:id/status/making
+   */
   makingOrder = async (req: Request, res: Response) => {
     const adminContext = req.adminAccount!;
     const orderId = req.params.id as string;
     await orderService.makingOrder(adminContext, orderId);
     res.json(ApiResponse.success('Tag Making successfully', null));
   }
+  /**
+   * [POST] /:id/status/packaging
+   */
   packagingOrder = async (req: Request, res: Response) => {
     const adminContext = req.adminAccount!;
     const orderId = req.params.id as string;
     await orderService.packagingOrder(adminContext, orderId);
     res.json(ApiResponse.success('Tag Packaging successfully', null));
   }
+  /**
+   * [POST] /:id/status/complete
+   */
   completeOrder = async (req: Request, res: Response) => {
     const adminContext = req.adminAccount!;
     const orderId = req.params.id as string;
