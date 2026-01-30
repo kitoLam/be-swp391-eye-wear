@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AssignOrderDTO } from "../../types/order/order.request";
 import { ApiResponse } from "../../utils/api-response";
 import orderService from "../../services/admin/order.service";
+import { BadRequestError } from "../../errors/apiError/api-error";
 
 class OrderController {
   /**
@@ -43,15 +44,15 @@ class OrderController {
   }
   getOrdersByStaff = async (req: Request, res: Response) => {
         const adminContext = req.adminAccount!;
-        const staffId = req.query.staffId;
+        const assignerStaffId = req.query.assignerStaffId;
 
-        if (!staffId || typeof staffId !== 'string') {
-            throw new BadRequestError('staffId is required');
+        if (!assignerStaffId || typeof assignerStaffId !== 'string') {
+            throw new BadRequestError('assignerStaffId is required');
         }
 
-        const orders = await orderAdminService.getOrdersByStaffAndAdmin(
+        const orders = await orderService.getOrdersByStaffAndAdmin(
             adminContext.id,
-            staffId
+            assignerStaffId
         );
 
         res.json(

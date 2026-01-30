@@ -163,9 +163,8 @@ class OrderService {
     getOrdersByStaffAndAdmin = async (adminId: string, staffId: string) => {
         const orders = await orderRepository.find({
             deletedAt: null,
-            staffId,
-            assigneeId: adminId,
-            assignmentStatus: AssignmentOrderStatus.ASSIGNED,
+            assignerStaff: staffId,
+            assignedStaff: adminId,
         });
 
         return orders;
