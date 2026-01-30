@@ -425,35 +425,83 @@ Prefix: `/api/v1/admin`
 }
 ```
 
-### 5.2 PATCH `/invoices/:id/status/approve`
+### 5.2) PATCH `/invoices/:id/status/approve`
 
--   **Auth**: Có
--   **Params**: `id` (ObjectId)
--   **Response**:
+Approve invoice
 
-```json
-{
-    "success": true,
-    "message": "Approve invoice success",
-    "data": null
-}
-```
+### Params
 
-### 5.3 PATCH `/invoices/:id/status/reject`
+| Field | Type     | Required |
+| ----- | -------- | -------- |
+| id    | ObjectId | ✅        |
 
--   **Auth**: Có
--   **Params**: `id` (ObjectId)
--   **Response**:
+### Response
 
 ```json
 {
-    "success": true,
-    "message": "Reject invoice success",
-    "data": null
+  "success": true,
+  "message": "Approve invoice success",
+  "data": null
 }
 ```
 
 ---
+
+### 5.3) PATCH `/invoices/:id/status/reject`
+
+Reject invoice
+
+### Params
+
+| Field | Type     | Required |
+| ----- | -------- | -------- |
+| id    | ObjectId | ✅        |
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Reject invoice success",
+  "data": null
+}
+```
+
+---
+
+### 5.4) PATCH `/invoices/:id/status/onboard`
+
+Manager onboard invoice (chuyển invoice sang trạng thái xử lý nội bộ)
+
+### Auth
+
+* Required (Admin - MANAGER)
+
+### Params
+
+| Field | Type     | Required |
+| ----- | -------- | -------- |
+| id    | ObjectId | ✅        |
+
+### Business Rules
+
+* Invoice phải ở trạng thái hợp lệ theo flow (sau approve)
+* Chỉ role **MANAGER** được phép thực hiện
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Onboard invoice success",
+  "data": null
+{
+  "success": true,
+  "message": "Reject invoice success",
+  "data": null
+}
+```
+
 
 ## 6) Orders (`/orders`)
 
@@ -516,6 +564,103 @@ Prefix: `/api/v1/admin`
             "totalPages": 0
         }
     }
+}
+```
+### 6.2) PATCH `/orders/:id/status/assign`
+
+Manager assign order cho operation staff
+
+### Auth
+
+* Required (Admin - MANAGER)
+
+### Params
+
+| Field | Type     | Required |
+| ----- | -------- | -------- |
+| id    | ObjectId | ✅        |
+
+### Body
+
+```json
+{
+  "assignedStaff": "string(ObjectId)"
+}
+```
+
+### Business Rules
+
+* Order chưa được assign
+* assignedStaff phải có role `OPERATION_STAFF`
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Assign successfully",
+  "data": null
+}
+```
+
+---
+
+### 6.3) PATCH `/orders/:id/status/making`
+
+Operation staff bắt đầu gia công order
+
+### Conditions
+
+* Order type phải chứa `MANUFACTURING`
+* Order được assign cho staff hiện tại
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Tag Making successfully",
+  "data": null
+}
+```
+
+---
+
+### 6.4) PATCH `/orders/:id/status/packaging`
+
+Operation staff đóng gói order
+
+### Conditions
+
+* Order được assign cho staff hiện tại
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Tag Packaging successfully",
+  "data": null
+}
+```
+
+---
+
+### 6.5) PATCH `/orders/:id/status/complete`
+
+Hoàn thành order
+
+### Side Effect
+
+* Nếu **tất cả order trong invoice đều COMPLETED** → invoice sẽ được set `COMPLETED`
+
+### Response
+
+```json
+{
+  "success": true,
+  "message": "Tag complete successfully",
+  "data": null
 }
 ```
 
@@ -1105,10 +1250,67 @@ Prefix: `/api/v1/`
 ### 5.1 GET `/orders/:orderId`
 
 -   **Auth**: Có
+-   **Response**
+Chào bạn! Việc chuyển đổi từ Zod Schema sang TypeScript Interface là một bước rất phổ biến để giúp code tường minh và tối ưu hiệu suất (vì interface không cần tính toán lúc runtime như schema).
+
+Dưới đây là Interface tương ứng cho OrderSchema của bạn:
+
+TypeScript
+import { Types } from 'mongoose';
+
+```ts
+{
+    _id: string;
+    invoiceId: string | Types.ObjectId;
+    orderCode: string;
+    type: OrderType[]; // Giả định OrderType là một enum hoặc union type đã định nghĩa
+    products: IOrderProduct[]; // Giả định OrderProductSchema chuyển thành IOrderProduct
+    status: OrderStatus; // Giả định OrderStatus là một enum hoặc union type
+
+    assignerStaff: string | null;
+    assignedStaff: string | null;
+    assignedAt: Date | null;
+    startedAt: Date | null;
+    completedAt: Date | null;
+
+    price: number;
+
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt: Date | null;
+}
+```
 
 ### 5.2 PATCH `/orders/:orderId`
 
 -   **Auth**: Có
+-   **Body**
+```json
+{
+    "invoiceId": "69783ba082c907b7851fecf6",
+    "lensParameter": {
+        "left": {
+        "SPH": -2.50,
+        "CYL": -0.75,
+        "AXIS": 180
+        },
+        "right": {
+        "SPH": -3.00,
+        "CYL": -0.50,
+        "AXIS": 175
+        },
+        "PD": 64
+    }
+}
+```
+-   **Response**
+```json
+{
+    "success": true,
+    "message": "Update success",
+    "data": null
+}
+```
 
 ---
 
