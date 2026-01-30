@@ -1,3 +1,4 @@
+import { FilterQuery } from 'mongoose';
 import { RoleType } from '../../config/enums/admin-account';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 import { OrderStatus, OrderType } from '../../config/enums/order.enum';
@@ -10,7 +11,9 @@ import { adminAccountRepository } from '../../repositories/admin-account/admin-a
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { orderRepository } from '../../repositories/order/order.repository';
 import { AuthAdminContext } from '../../types/context/context';
+import { OrderListAdminQuery } from '../../types/order/order.query';
 import { AssignOrderDTO } from '../../types/order/order.request';
+import { IOrderDocument } from '../../models/order/order.model.mongo';
 
 class OrderService {
     /**
@@ -153,13 +156,40 @@ class OrderService {
      * @param staffId - ID của staff (lấy từ JWT token)
      * @returns Danh sách order được giao cho staff này
      */
-    getOrdersByStaffAssigned = async (staffId: string) => {
+    getOrdersByStaffAssigned = async (staffId: string, query: OrderListAdminQuery) => {
+        const filter : FilterQuery<IOrderDocument> = {};
+        if(query.orderCode){
+            filter.orderCode = new RegExp(query.orderCode, 'gi');
+        }
+        if(query.status){
+            filter.status = query.status;
+        }
         const orders = await orderRepository.find({
+            ...filter,
             deletedAt: null,
             assignedStaff: staffId, // Lấy các order được giao CHO staff này
+        }, {
+            limit: query.limit,
+            page: query.page
         });
 
         return orders;
     };
+    
+    /**
+     * Lấy chi tiết đơn hàng theo id
+     * @param id - ID của đơn hàng
+     * @returns Chi tiết đơn hàng
+     * @throws {NotFoundRequestError} Nếu đơn hàng không tồn tại
+     */
+    getOrderDetail = async (id: string) => {
+        const order = await orderRepository.findOne({
+            _id: id,
+        });
+        if (!order) {
+            throw new NotFoundRequestError('Order not found');
+        }
+        return order;
+    }
 }
 export default new OrderService();
