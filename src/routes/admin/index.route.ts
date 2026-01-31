@@ -9,6 +9,7 @@ import customerRouter from './customer.route';
 import orderRouter from './order.route';
 import importProductRouter from './import-product.route';
 import preOrderImportRouter from './pre-order-import.route';
+import staffRouter from './staff.route';
 const router = Router();
 
 router.use('/auth', authRouter);
@@ -21,4 +22,5 @@ router.use('/customers', customerRouter);
 router.use('/orders', orderRouter);
 router.use('/import-products', importProductRouter);
 router.use('/pre-order-imports', preOrderImportRouter);
+router.use('/staff', staffRouter);
 export default router;
