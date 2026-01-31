@@ -7,5 +7,8 @@ export const OrderListAdminQuerySchema = z.object({
   status: z.enum(OrderStatus).optional().catch(undefined),
   orderCode: z.string().optional().catch(undefined),
 });
-
+export const OrderStatsQuerySchema = z.object({
+  staffId: z.string().min(1, 'Staff ID is required'),
+})
 export type OrderListAdminQuery = z.infer<typeof OrderListAdminQuerySchema>;
+export type OrderStatsQuery = z.infer<typeof OrderStatsQuerySchema>

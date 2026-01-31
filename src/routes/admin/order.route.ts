@@ -4,7 +4,7 @@ import { authenticateMiddleware } from "../../middlewares/admin/auth.middleware"
 import { validateBody, validateParams, validateQuery } from "../../middlewares/share/validator.middleware";
 import { AssignOrderSchema } from "../../types/order/order.request";
 import { ObjectIdSchema } from "../../types/common/objectId";
-import { OrderListAdminQuerySchema } from "../../types/order/order.query";
+import { OrderListAdminQuerySchema, OrderStatsQuerySchema } from "../../types/order/order.query";
 const router = Router();
 router.use(authenticateMiddleware);
 // api lấy danh sách order theo staffId và admin đang đăng nhập
@@ -20,4 +20,6 @@ router.patch('/:id/status/packaging', validateParams(ObjectIdSchema), orderContr
 router.patch('/:id/status/complete', validateParams(ObjectIdSchema), orderController.completeOrder);
 // ============== END OPERATION ================
 
+router.get('/stats/summary', validateQuery(OrderStatsQuerySchema), orderController.getOrderSummary);
+router.get('/stats/pending-breakdown', validateQuery(OrderStatsQuerySchema), orderController.getOrderPendingBreakdown);
 export default router;
