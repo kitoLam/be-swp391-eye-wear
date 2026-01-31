@@ -3,7 +3,7 @@ import { config } from './config/env.config';
 import { connectMongoDB } from './config/database/mongodb.config';
 import { redisClient } from './config/database/redis.config';
 import { checkSupabaseConnection } from './config/supabase.config';
-import './queues/invoice.worker';
+// import './queues/invoice.worker';
 const startServer = async () => {
     try {
         // Connect to databases
