@@ -1,12 +1,11 @@
-import { Router } from 'express';
-import {
-    validateParams,
-    validateQuery,
-} from '../../middlewares/share/validator.middleware';
-import { InvoiceListQuerySchema } from '../../types/invoice/invoice.query';
-import invoiceController from '../../controllers/admin/invoice.controller';
-import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware';
-import { ObjectIdSchema } from '../../types/common/objectId';
+import { Router } from "express";
+import { validateParams, validateQuery } from "../../middlewares/share/validator.middleware";
+import { InvoiceListQuerySchema } from "../../types/invoice/invoice.query";
+import invoiceController from "../../controllers/admin/invoice.controller";
+import { authenticateMiddleware } from "../../middlewares/admin/auth.middleware";
+import { ObjectIdSchema } from "../../types/common/objectId";
+import { requireAdminRoles } from "../../middlewares/admin/authorization.middleware";
+import { RoleType } from "../../config/enums/admin-account";
 const router = Router();
 router.use(authenticateMiddleware);
 // api lấy danh sách hóa đơn
@@ -16,6 +15,9 @@ router.get(
     invoiceController.getListInvoice
 );
 // api lấy danh sách hóa đơn có status DEPOSITED với order types
+
+// =============== MANAGER ROLE =============
+router.get('/manager', requireAdminRoles([RoleType.MANAGER]), validateQuery(InvoiceListQuerySchema), invoiceController.getListInvoice);
 
 // =============== SALE ROLE ===============
 router.get('/deposited', invoiceController.getDepositedInvoices);

@@ -27,6 +27,9 @@ class InvoiceService {
         if (query.status) {
             filter.status = query.status;
         }
+        if (query.statuses?.length) {
+            filter.status = { $in: query.statuses };
+        }
         const result = await invoiceRepository.find(filter, {
             limit: query.limit,
             page: query.page,
