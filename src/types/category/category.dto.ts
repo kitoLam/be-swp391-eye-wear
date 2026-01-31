@@ -12,7 +12,7 @@ export const CreateCategorySchema = z.object({
         .or(z.literal('null'))
         .transform(value => value == 'null' ? null : value)
         .nullable(),
-    thumbnail: z.string().url().or(z.literal('')).optional()
+    thumbnail: z.string().url().or(z.literal('')),
 }).strict();
 
 /**
@@ -26,7 +26,7 @@ export const UpdateCategorySchema = z.object({
         .or(z.literal('null'))
         .transform(value => value == 'null' ? null : value)
         .nullable(),
-    thumbnail: z.string().url().or(z.literal('')).optional()
+    thumbnail: z.string().url().or(z.literal('')),
 }).strict();
 
 export type CreateCategoryDTO = z.infer<typeof CreateCategorySchema>;

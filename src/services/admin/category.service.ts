@@ -18,13 +18,8 @@ class CategoryService {
      */
     createCategory = async (
         payload: CreateCategoryDTO,
-        file: Express.Multer.File | undefined,
         context: AuthAdminContext
     ) => {
-        // handle file
-        if(file){
-            payload.thumbnail = file.path;
-        }
         if (payload.parentId != null) {
             // check parentCate exist
             const foundParentCate = await categoryRepository.findOne({
@@ -53,10 +48,7 @@ class CategoryService {
      * @param id
      * @param payload
      */
-    updateCategory = async (id: string, payload: UpdateCategoryDTO, file: Express.Multer.File | undefined) => {
-        if(file){
-            payload.thumbnail = file.path;
-        }
+    updateCategory = async (id: string, payload: UpdateCategoryDTO) => {
         // check category exist
         const foundCategory = await categoryRepository.findOne({
             _id: id,
