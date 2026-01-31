@@ -9,42 +9,81 @@ class InvoiceController {
         const query = req.validatedQuery as InvoiceListQuery;
         const data = await invoiceService.getInvoiceList(query);
         const invoiceListFinal = data.invoiceList.map(item => {
-          return {
-            id: item._id.toString(),
-            invoiceCode: item.invoiceCode,
-            fullName: item.fullName,
-            phone: item.phone,
-            finalPrice: formatNumberToVND(item.totalPrice - item.totalDiscount),
-            status: item.status,
-            createdAt: formatDateToString(item.createdAt),
-            address: [item.address.street, item.address.ward, item.address.city].join(', ')
-          }
-        })
-        res.json(ApiResponse.success('Get invoice list success', {
-            pagination: data.pagination,
-            invoiceList: invoiceListFinal,
-        }));
+            return {
+                id: item._id.toString(),
+                invoiceCode: item.invoiceCode,
+                fullName: item.fullName,
+                phone: item.phone,
+                finalPrice: formatNumberToVND(
+                    item.totalPrice - item.totalDiscount
+                ),
+                status: item.status,
+                createdAt: formatDateToString(item.createdAt),
+                address: [
+                    item.address.street,
+                    item.address.ward,
+                    item.address.city,
+                ].join(', '),
+            };
+        });
+        res.json(
+            ApiResponse.success('Get invoice list success', {
+                pagination: data.pagination,
+                invoiceList: invoiceListFinal,
+            })
+        );
     };
 
     approveInvoice = async (req: Request, res: Response) => {
-      const adminContext = req.adminAccount!;
-      const invoiceId = req.params.id as string;
-      await invoiceService.approveInvoice(invoiceId, adminContext);
-      res.json(ApiResponse.success('Approve invoice success', null));
-    }
+        const adminContext = req.adminAccount!;
+        const invoiceId = req.params.id as string;
+        await invoiceService.approveInvoice(invoiceId, adminContext);
+        res.json(ApiResponse.success('Approve invoice success', null));
+    };
 
     rejectInvoice = async (req: Request, res: Response) => {
-      const adminContext = req.adminAccount!;
-      const invoiceId = req.params.id as string;
-      await invoiceService.rejectInvoice(invoiceId, adminContext);
-      res.json(ApiResponse.success('Reject invoice success', null));
-    }
+        const adminContext = req.adminAccount!;
+        const invoiceId = req.params.id as string;
+        await invoiceService.rejectInvoice(invoiceId, adminContext);
+        res.json(ApiResponse.success('Reject invoice success', null));
+    };
 
     onboardInvoice = async (req: Request, res: Response) => {
-      const adminContext = req.adminAccount!;
-      const invoiceId = req.params.id as string;
-      await invoiceService.onboardInvoice(invoiceId, adminContext);
-      res.json(ApiResponse.success('Onboard invoice success', null));
-    }
+        const adminContext = req.adminAccount!;
+        const invoiceId = req.params.id as string;
+        await invoiceService.onboardInvoice(invoiceId, adminContext);
+        res.json(ApiResponse.success('Onboard invoice success', null));
+    };
+
+    /**
+     * Get deposited invoices with order types
+     * Endpoint: GET /admin/invoices/deposited
+     */
+    getDepositedInvoices = async (req: Request, res: Response) => {
+        const data = await invoiceService.getDepositedInvoicesWithOrderTypes();
+
+        // Format response data
+        const formattedData = data.map(invoice => ({
+            id: invoice._id.toString(),
+            invoiceCode: invoice.invoiceCode,
+            fullName: invoice.fullName,
+            phone: invoice.phone,
+            finalPrice: formatNumberToVND(
+                invoice.totalPrice - invoice.totalDiscount
+            ),
+            status: invoice.status,
+            address: [
+                invoice.address.street,
+                invoice.address.ward,
+                invoice.address.city,
+            ].join(', '),
+            orders: invoice.orders, // Already formatted by aggregation: [{id, type}]
+            createdAt: formatDateToString(invoice.createdAt),
+        }));
+
+        res.json(
+            ApiResponse.success('Get deposited invoices success', formattedData)
+        );
+    };
 }
 export default new InvoiceController();

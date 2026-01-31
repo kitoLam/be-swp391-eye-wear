@@ -1,3 +1,4 @@
+import { FilterQuery } from 'mongoose';
 import {
     BadRequestError,
     ConflictRequestError,
@@ -8,7 +9,9 @@ import {
     CreateCategoryDTO,
     UpdateCategoryDTO,
 } from '../../types/category/category.dto';
+import { CategoryListQuery } from '../../types/category/category.query';
 import { AuthAdminContext } from '../../types/context/context';
+import { ICategoryDocument } from '../../models/categories/categories.model.mongo';
 
 class CategoryService {
     /**
@@ -18,13 +21,8 @@ class CategoryService {
      */
     createCategory = async (
         payload: CreateCategoryDTO,
-        file: Express.Multer.File | undefined,
         context: AuthAdminContext
     ) => {
-        // handle file
-        if(file){
-            payload.thumbnail = file.path;
-        }
         if (payload.parentId != null) {
             // check parentCate exist
             const foundParentCate = await categoryRepository.findOne({
@@ -53,10 +51,7 @@ class CategoryService {
      * @param id
      * @param payload
      */
-    updateCategory = async (id: string, payload: UpdateCategoryDTO, file: Express.Multer.File | undefined) => {
-        if(file){
-            payload.thumbnail = file.path;
-        }
+    updateCategory = async (id: string, payload: UpdateCategoryDTO) => {
         // check category exist
         const foundCategory = await categoryRepository.findOne({
             _id: id,
@@ -104,6 +99,13 @@ class CategoryService {
         }
     };
 
+    /**
+     * Delete a category
+     * @param {string} id - id of category
+     * @param {AuthAdminContext} context - authentication context
+     * @throws {NotFoundRequestError} - if category not found
+     * @throws {ConflictRequestError} - if category still has sub category
+     */
     deleteCategory = async (id: string, context: AuthAdminContext) => {
         // check category exist
         const foundCategory = await categoryRepository.findOne({
@@ -128,5 +130,46 @@ class CategoryService {
             deletedBy: context.id,
         });
     };
+    /**
+     * Get category detail
+     * @param {string} id - id of category
+     * @throws {NotFoundRequestError} - if category not found
+     * @returns {Promise<IAttributeDocument>} - category detail
+     */
+    getCategoryDetail = async (id: string) => {
+        const foundCategory = await categoryRepository.findOne({
+            _id: id,
+            deletedAt: null,
+        });
+        if(!foundCategory) throw new NotFoundRequestError('Category not found');
+        return foundCategory;
+    }
+
+    /**
+     * Get list of categories
+     * @param {CategoryListQuery} query - query options
+     * @returns {Promise<{categoryList: ICategoryDocument[], pagination: {page: number, limit: number, total: number, pages: number}}>}
+     */
+    getCategoryList = async (query: CategoryListQuery) => {
+        const filter : FilterQuery<ICategoryDocument> = {};
+        if(query.parentId !== undefined){
+            filter.parentCate = query.parentId;
+        }
+        if(query.search){
+            filter.name = new RegExp(query.search, 'gi');
+        }
+        const pageResult = await categoryRepository.find(filter, {
+            page: query.page,
+            limit: query.limit,
+        });
+        const categoryList = pageResult.data;
+        const pagination = {
+            page: pageResult.page,
+            limit: pageResult.limit,
+            total: pageResult.total,
+            pages: pageResult.totalPages,
+        };
+        return {categoryList, pagination};
+    }
 }
 export default new CategoryService();

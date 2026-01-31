@@ -20,7 +20,7 @@ import {
 } from '../../config/enums/payment.enum';
 import redisService from '../redis.service';
 import { redisPrefix } from '../../config/constants/redis.constant';
-import { addInvoiceToTimeoutQueue } from '../../queues/invoice.queue';
+// import { addInvoiceToTimeoutQueue } from '../../queues/invoice.queue';
 import { paymentRepository } from '../../repositories/payment/payment.repository';
 import {
     ClientCreateInvoice,
@@ -395,9 +395,9 @@ class InvoiceClientService {
                 );
 
                 // Add to timeout queue
-                await addInvoiceToTimeoutQueue({
-                    invoiceId: newInvoice._id.toString(),
-                });
+                // await addInvoiceToTimeoutQueue({
+                //     invoiceId: newInvoice._id.toString(),
+                // });
             }
             // Create new payment
             const newPayment = await paymentRepository.create({

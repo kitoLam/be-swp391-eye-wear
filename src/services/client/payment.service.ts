@@ -8,7 +8,7 @@ import { orderRepository } from '../../repositories/order/order.repository';
 import * as objectUtil from '../../utils/object.util';
 import { createHmac } from 'node:crypto';
 import axios from 'axios';
-import { removeJobFromQueue } from '../../queues/invoice.queue';
+// import { removeJobFromQueue } from '../../queues/invoice.queue';
 import { redisPrefix } from '../../config/constants/redis.constant';
 import {
     PaymentMethodType,
@@ -192,9 +192,9 @@ class PaymentClientService {
                     : {};
                 const { invoiceId, paymentId } = embedData;
                 // xóa timeout job
-                removeJobFromQueue({
-                    invoiceId: invoiceId,
-                });
+                // removeJobFromQueue({
+                //     invoiceId: invoiceId,
+                // });
                 const invoiceDetail = await invoiceRepository.findOne({
                     _id: invoiceId,
                     deletedAt: null,

@@ -159,7 +159,7 @@ class InvoiceService {
             {
                 status: OrderStatus.CANCELED,
             }
-        )
+        );
         // Cập nhật trạng thái rejected
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.REJECTED,
@@ -184,7 +184,16 @@ class InvoiceService {
         });
     };
 
-    
+    /**
+     * Lấy danh sách invoices có status DEPOSITED với thông tin order types
+     * Sử dụng aggregation pipeline để tối ưu performance
+     * @returns Danh sách invoices với orders được map theo format {id, type}
+     */
+    getDepositedInvoicesWithOrderTypes = async () => {
+        const result =
+            await invoiceRepository.getDepositedInvoicesWithOrderTypes();
+        return result;
+    };
 }
 
 export default new InvoiceService();
