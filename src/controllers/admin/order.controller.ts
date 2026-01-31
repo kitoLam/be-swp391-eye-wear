@@ -3,7 +3,7 @@ import { AssignOrderDTO } from '../../types/order/order.request';
 import { ApiResponse } from '../../utils/api-response';
 import orderService from '../../services/admin/order.service';
 import { BadRequestError } from '../../errors/apiError/api-error';
-import { OrderListAdminQuery } from '../../types/order/order.query';
+import { OrderListAdminQuery, OrderStatsQuery } from '../../types/order/order.query';
 
 class OrderController {
     /**
@@ -63,10 +63,19 @@ class OrderController {
     getOrderDetail = async (req: Request, res: Response) => {
         const orderId = req.params.id as string;
         const order = await orderService.getOrderDetail(orderId);
-        if (!order) {
-            throw new BadRequestError('Order not found');
-        }
         res.json(ApiResponse.success('Lấy chi tiết đơn hàng!', { order }));
+    }
+
+    getOrderSummary = async (req: Request, res: Response) => {
+        const query = req.validatedQuery as OrderStatsQuery;
+        const data = await orderService.getOrderSummary(query);
+        res.json(ApiResponse.success('Get order stats summary success', data));
+    }
+
+    getOrderPendingBreakdown = async (req: Request, res: Response) => {
+        const query = req.validatedQuery as OrderStatsQuery;
+        const data = await orderService.getOrderSummary(query);
+        res.json(ApiResponse.success('Get order pending breakdown success', data));
     }
 }
 

@@ -11,7 +11,7 @@ import { adminAccountRepository } from '../../repositories/admin-account/admin-a
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { orderRepository } from '../../repositories/order/order.repository';
 import { AuthAdminContext } from '../../types/context/context';
-import { OrderListAdminQuery } from '../../types/order/order.query';
+import { OrderListAdminQuery, OrderStatsQuery } from '../../types/order/order.query';
 import { AssignOrderDTO } from '../../types/order/order.request';
 import { IOrderDocument } from '../../models/order/order.model.mongo';
 
@@ -190,6 +190,71 @@ class OrderService {
             throw new NotFoundRequestError('Order not found');
         }
         return order;
+    }
+
+    /**
+     * Lấy thống kê đơn hàng của staff
+     * @param query.staffId - ID của staff
+     * @returns Thống kê đơn hàng của staff này
+     * @property {number} totalAssigned - Tổng số đơn hàng được giao cho staff (nhưng chưa xử lí)
+     * @property {number} totalMaking - Tổng số đơn hàng đang được sản xuất
+     * @property {number} totalPackaging - Tổng số đơn hàng đang được đóng gói
+     * @property {number} totalCompleted - Tổng số đơn hàng đang được đóng gói
+     * @property {number} totalPreOrder - Tổng số đơn hàng trước khi được sản xuất
+     * @throws {NotFoundRequestError} Nếu staff không tồn tại
+     */
+    getOrderSummary = async (query: OrderStatsQuery) => {
+        const foundStaff = await adminAccountRepository.findOne({
+            _id: query.staffId
+        });
+        if(!foundStaff){
+            throw new NotFoundRequestError('Staff not found');
+        }
+        const totalASSIGNED = await orderRepository.count({ deletedAt: null, status: OrderStatus.ASSIGNED, assignedStaff: query.staffId });
+        const totalMAKING = await orderRepository.count({ deletedAt: null, status: OrderStatus.MAKING, assignedStaff: query.staffId });
+        const totalPACKAGING = await orderRepository.count({ deletedAt: null, status: OrderStatus.PACKAGING, assignedStaff: query.staffId });
+        const totalWaitingPreOrder = 0 //await orderRepository.count({ deletedAt: null, status: OrderStatus.PACKAGING, assignedStaff: query.staffId });
+
+        return {
+            totalAssigned: totalASSIGNED,
+            totalMaking: totalMAKING,
+            totalPackaging: totalPACKAGING,
+            totalWaitingPreOrder: totalWaitingPreOrder
+        }
+    }
+
+    getOrderPendingBreakdown = async (query: OrderStatsQuery) => {
+        const foundStaff = await adminAccountRepository.findOne({
+            _id: query.staffId
+        });
+        if(!foundStaff){
+            throw new NotFoundRequestError('Staff not found');
+        }
+        const totalInProcessingOrders = await orderRepository.count({ deletedAt: null, $or: [{ status: OrderStatus.ASSIGNED }, { status: OrderStatus.MAKING }, { status: OrderStatus.PACKAGING }], assignedStaff: query.staffId });
+        const totalASSIGNED = await orderRepository.count({ deletedAt: null, status: OrderStatus.ASSIGNED, assignedStaff: query.staffId });
+        const totalMAKING = await orderRepository.count({ deletedAt: null, status: OrderStatus.MAKING, assignedStaff: query.staffId });
+        const totalPACKAGING = await orderRepository.count({ deletedAt: null, status: OrderStatus.PACKAGING, assignedStaff: query.staffId });
+        const totalWaitingPreOrder = 0 //await orderRepository.count({ deletedAt: null, status: OrderStatus.PACKAGING, assignedStaff: query.staffId });
+
+        return {
+            total: totalInProcessingOrders,
+            assigned: {
+                total: totalASSIGNED,
+                percentage: Math.round((totalASSIGNED / totalInProcessingOrders) * 100)
+            },
+            making: {
+                total: totalMAKING,
+                percentage: Math.round((totalMAKING / totalInProcessingOrders) * 100)
+            },
+            packaging: {
+                total: totalPACKAGING,
+                percentage: Math.round((totalPACKAGING / totalInProcessingOrders) * 100)
+            },
+            waitingPreOrder: {
+                total: totalWaitingPreOrder,
+                percentage: Math.round((totalWaitingPreOrder / totalInProcessingOrders) * 100)
+            }
+        }
     }
 }
 export default new OrderService();

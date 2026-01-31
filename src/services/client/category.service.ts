@@ -40,10 +40,6 @@ class CategoryService{
     }
     return treeResult;
   }
-
-  getCategoryTreeById = async (id: string) => {
-
-  }
 }
 
 export default new CategoryService();
