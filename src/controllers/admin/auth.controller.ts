@@ -11,8 +11,8 @@ class AuthController {
         const data = await authService.login(body, deviceId);
         res.cookie('refreshToken', data.refreshToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'none',
+            secure: false,
+            sameSite: 'lax',
             maxAge: config.jwt.refreshExpiresInSecond * 1000,
             path: '/api/v1',
         });
