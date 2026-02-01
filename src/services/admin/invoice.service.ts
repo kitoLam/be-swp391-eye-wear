@@ -46,6 +46,25 @@ class InvoiceService {
             },
         };
     };
+
+    getInvoiceListWithOrders = async (query: InvoiceListQuery) => {
+        const result = await invoiceRepository.getInvoiceListWithOrderTypes({
+            page: query.page,
+            limit: query.limit,
+            search: query.search,
+            status: query.status,
+            statuses: query.statuses,
+        });
+        return {
+            invoiceList: result.data,
+            pagination: {
+                page: query.page,
+                limit: query.limit,
+                total: result.total,
+                totalPages: Math.ceil(result.total / query.limit),
+            },
+        };
+    };
     /**
      * Hàm xử lí nghiệp vụ duyệt đơn cùa sale staff
      * @param invoiceId

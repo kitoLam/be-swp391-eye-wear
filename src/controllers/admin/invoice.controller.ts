@@ -7,8 +7,8 @@ import { formatDateToString, formatNumberToVND } from '../../utils/formatter';
 class InvoiceController {
     getListInvoice = async (req: Request, res: Response) => {
         const query = req.validatedQuery as InvoiceListQuery;
-        const data = await invoiceService.getInvoiceList(query);
-        const invoiceListFinal = data.invoiceList.map(item => {
+        const data = await invoiceService.getInvoiceListWithOrders(query);
+        const invoiceListFinal = data.invoiceList.map((item: any) => {
             return {
                 id: item._id.toString(),
                 invoiceCode: item.invoiceCode,
@@ -24,6 +24,7 @@ class InvoiceController {
                     item.address.ward,
                     item.address.city,
                 ].join(', '),
+                orders: item.orders,
             };
         });
         res.json(
