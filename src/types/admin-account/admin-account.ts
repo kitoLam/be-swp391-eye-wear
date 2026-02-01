@@ -10,7 +10,7 @@ export const AdminAccount = z.object({
     email: z.string(),
     hashedPassword: z.string(),
     avatar: z.string(),
-    role: z.string(),
+    role: z.enum(RoleType),
     createdAt: z.date(),
     updatedAt: z.date(),
     deletedAt: z.date().nullable(),

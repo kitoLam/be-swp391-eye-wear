@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import staffService from '../../services/admin/staff.service';
 import { ApiResponse } from '../../utils/api-response';
 import { AdminAccountListQuery } from '../../types/admin-account/admin-account.query';
+import { AdminAccountCreateDTO } from '../../types/admin-account/admin-account';
 
 class StaffController {
     getAdmins = async (req: Request, res: Response) => {
@@ -13,6 +14,11 @@ class StaffController {
             })
         );
     };
+
+    createAdmin = async (req: Request, res: Response) => {
+        await staffService.createAdmin(req.validatedBody as AdminAccountCreateDTO);
+        res.json(ApiResponse.success('Create admin successfully', null));
+    }
 }
 
 export default new StaffController();
