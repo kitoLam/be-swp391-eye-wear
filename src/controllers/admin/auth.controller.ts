@@ -14,7 +14,7 @@ class AuthController {
             secure: false,
             sameSite: 'lax',
             maxAge: config.jwt.refreshExpiresInSecond * 1000,
-            path: '/api/v1',
+            path: '/api/v1/admin',
         });
         res.json(
             ApiResponse.success(authMessage.success.login, {
