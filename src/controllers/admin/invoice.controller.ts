@@ -66,9 +66,9 @@ class InvoiceController {
     deliveringInvoice = async (req: Request, res: Response) => {
         const adminContext = req.adminAccount!;
         const invoiceId = req.params.id as string;
-        await invoiceService.deliveringInvoice(invoiceId, adminContext);
+        const shipmentInfo = await invoiceService.deliveringInvoice(invoiceId, adminContext);
         res.json(
-            ApiResponse.success('Update invoice to delivering success', null)
+            ApiResponse.success('Update invoice to delivering success', {shipmentInfo})
         );
     };
 
