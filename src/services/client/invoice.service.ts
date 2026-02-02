@@ -461,7 +461,7 @@ class InvoiceClientService {
     getInvoiceDetail = async (customerId: string, invoiceId: string) => {
         const invoice = await invoiceRepository.findOne({
             _id: invoiceId,
-            owner: customerId,
+            // owner: customerId,
             deletedAt: null,
         });
 
@@ -473,12 +473,57 @@ class InvoiceClientService {
         const orderList = await orderRepository.findAllNoPagination({
             invoiceId: invoiceId,
         });
+        const products: any = [];
+        for (const order of orderList) {
+            for (const curItem of order.products) {
+                const item : any = {
+                    type: order.type,
+                };
+                if(curItem.lens){
+                    const lensProduct = await productRepository.findOne({
+                        _id: item.lens.lens_id,
+                    });
+                    const lensVariant: any = lensProduct!.variants.find(
+                        (variant) => variant.sku === curItem.lens!.sku
+                    )
+                    item.lens = curItem.lens;
+                    item.lens.detail = lensVariant
+                }
+                const product = await productRepository.findOne({
+                    _id: curItem.product.product_id,
+                });
+                const productVariant = product!.variants.find(
+                    (variant) => variant.sku === curItem.product.sku
+                );
+                item.product = {
+                    product_id: curItem.product.product_id,
+                    sku: curItem.product.product_id,
+                    pricePerUnit: curItem.product.product_id,
+                    detail: productVariant
+                };
+                products.push(item);
+            }
+        }
+        let invoiceStatus;
+        if(invoice.status === InvoiceStatus.PENDING || invoice.status === InvoiceStatus.DEPOSITED){
+            invoiceStatus = 'PENDING';
+        } else if(invoice.status === InvoiceStatus.REJECTED){
+            invoiceStatus = 'REJECTED';
+        } else if(invoice.status === InvoiceStatus.CANCELED){
+            invoiceStatus = 'CANCELED';
+        } else if(invoice.status === InvoiceStatus.APPROVED){
+            invoiceStatus = 'APPROVED';
+        } else if(invoice.status == InvoiceStatus.DELIVERING){
+            invoiceStatus = 'DELIVERING';
+        } else if(invoice.status == InvoiceStatus.DELIVERED){
+            invoiceStatus = 'DELIVERED';
+        } else invoiceStatus = 'PROCESSING'
         return {
+            invoiceStatus: invoiceStatus,
             invoice,
-            orderList,
+            productList: products,
         };
     };
-
     /**
      * Update invoice status
      */
