@@ -94,6 +94,19 @@ class InvoiceService {
                 'You can not approve invoice if current status is not DEPOSITED'
             );
         }
+        // tất cả Order phải được approve rồi
+        const totalAllOrders = await orderRepository.count({
+            invoiceId: invoiceDetail._id,
+        })
+        const totalApprovedOrders = await orderRepository.count({
+            invoiceId: invoiceDetail._id,
+            status: OrderStatus.APPROVED
+        });
+        if(totalAllOrders != totalApprovedOrders){
+            throw new ConflictRequestError(
+                'You can not approve invoice if not all orders are approved'
+            );
+        }
         // Cập nhật các order trong invoice này thành waiting assign
         await orderRepository.updateMany(
             {
