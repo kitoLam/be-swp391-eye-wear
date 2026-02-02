@@ -495,12 +495,8 @@ class InvoiceClientService {
                 const productVariant = product!.variants.find(
                     (variant) => variant.sku === curItem.product.sku
                 );
-                item.product = {
-                    product_id: curItem.product.product_id,
-                    sku: curItem.product.product_id,
-                    pricePerUnit: curItem.product.product_id,
-                    detail: productVariant
-                };
+                item.product = curItem.product;
+                item.product.detail = productVariant;
                 products.push(item);
             }
         }
