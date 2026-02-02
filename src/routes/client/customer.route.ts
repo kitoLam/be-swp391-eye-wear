@@ -12,7 +12,7 @@ router.post('/profile/address', authMiddleware, validateBody(AddCustomerAddressS
 router.get('/profile/address', authMiddleware, customerController.getCustomerAddresses);
 router.get('/profile/address/default', authMiddleware, customerController.getCustomerAddressDefault);
 router.patch('/profile/address/change-default/:id', authMiddleware, customerController.resetAddressDefault);
-
+router.delete('/profile/address/:id', authMiddleware, customerController.removeCustomerAddress);
 router.post('/profile/prescription', authMiddleware, validateBody(AddCustomerPrescriptionSchema), customerController.addCustomerPrescription);
 // router.patch('/profile/address/:id', customerController.updateCustomerPrescription);
 // router.patch('/profile/prescription/:id', customerController.updateCustomerPrescription);

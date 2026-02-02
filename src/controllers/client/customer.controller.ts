@@ -54,7 +54,11 @@ class CustomerController {
         res.json(ApiResponse.success('Reset default address successfully', null));
     };
 
-    getAddressDefault = async (req: Request, res: Response) => {};
+    removeCustomerAddress = async (req: Request, res: Response) => {
+        await customerService.removeCustomerAddress(req.customer!, req.params.id as string);
+        res.json(ApiResponse.success('Remove address successfully', null));
+    };
+
     addCustomerPrescription = async (req: Request, res: Response) => {};
 }
 
