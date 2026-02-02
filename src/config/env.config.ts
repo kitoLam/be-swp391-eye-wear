@@ -77,6 +77,10 @@ interface Config {
 
     otp: {
         waitingMinute: number;
+    },
+
+    shipment: {
+        createApi: string;
     }
 }
 
@@ -168,6 +172,9 @@ export const config: Config = {
         waitingMinute: process.env.OTP_WAITING_MINUTE
             ? Number(process.env.OTP_WAITING_MINUTE)
             : 5
+    },
+    shipment: {
+        createApi: process.env.SHIPMENT_CREATE_API || ''
     }
 };
 

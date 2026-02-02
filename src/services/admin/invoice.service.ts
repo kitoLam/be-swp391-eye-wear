@@ -11,6 +11,8 @@ import {
 import { orderRepository } from '../../repositories/order/order.repository';
 import { productRepository } from '../../repositories/product/product.repository';
 import { OrderStatus } from '../../config/enums/order.enum';
+import { config } from '../../config/env.config';
+import axios from 'axios';
 
 class InvoiceService {
     /**
@@ -289,8 +291,25 @@ class InvoiceService {
             status: InvoiceStatus.DELIVERING,
             staffVerified: adminContext.id,
         });
-
-        return updatedInvoice;
+        // ============ Test call api shipment =============
+        const api = config.shipment.createApi;
+        const bodyData = {
+            invoiceId: invoiceDetail._id.toString(),
+            shipAddress:
+                invoiceDetail.address.street +
+                ', ' +
+                invoiceDetail.address.ward +
+                ', ' +
+                invoiceDetail.address.city,
+        };
+        try {
+            const response = await axios.post<{
+                data: { shipCode: string; estimatedShipDate: string };
+            }>(api, bodyData);
+            return response.data;
+        } catch (error) {
+            throw new Error('Failed to call api shipment');
+        }
     };
 
     /**
