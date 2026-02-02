@@ -97,12 +97,12 @@ class InvoiceService {
         // tất cả Order phải được approve rồi
         const totalAllOrders = await orderRepository.count({
             invoiceId: invoiceDetail._id,
-        })
+        });
         const totalApprovedOrders = await orderRepository.count({
             invoiceId: invoiceDetail._id,
-            status: OrderStatus.APPROVED
+            status: OrderStatus.APPROVED,
         });
-        if(totalAllOrders != totalApprovedOrders){
+        if (totalAllOrders != totalApprovedOrders) {
             throw new ConflictRequestError(
                 'You can not approve invoice if not all orders are approved'
             );
@@ -214,6 +214,52 @@ class InvoiceService {
             status: InvoiceStatus.ONBOARD,
             managerOnboard: adminContext.id,
         });
+    };
+
+    /**
+     * Complete an invoice
+     * @param invoiceId - ID of the invoice
+     * @param adminContext - Context of the admin user
+     */
+    completeInvoice = async (
+        invoiceId: string,
+        adminContext: AuthAdminContext
+    ) => {
+        const invoiceDetail = await invoiceRepository.findById(invoiceId);
+        if (!invoiceDetail) {
+            throw new NotFoundRequestError('Invoice not found');
+        }
+
+        // Check if invoice is already canceled or rejected
+        if (
+            invoiceDetail.status === InvoiceStatus.CANCELED ||
+            invoiceDetail.status === InvoiceStatus.REJECTED
+        ) {
+            throw new ConflictRequestError(
+                'Cannot complete a canceled or rejected invoice'
+            );
+        }
+
+        // Enforce all orders must be completed
+        const totalAllOrders = await orderRepository.count({
+            invoiceId: invoiceDetail._id,
+        });
+        const totalCompletedOrders = await orderRepository.count({
+            invoiceId: invoiceDetail._id,
+            status: OrderStatus.COMPLETED,
+        });
+
+        if (totalAllOrders !== totalCompletedOrders) {
+            throw new ConflictRequestError(
+                'Cannot complete invoice because not all orders are completed'
+            );
+        }
+
+        const updatedInvoice = await invoiceRepository.update(invoiceId, {
+            status: InvoiceStatus.COMPLETED,
+        });
+
+        return updatedInvoice;
     };
 
     /**

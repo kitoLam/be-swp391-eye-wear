@@ -56,6 +56,13 @@ class InvoiceController {
         res.json(ApiResponse.success('Onboard invoice success', null));
     };
 
+    completeInvoice = async (req: Request, res: Response) => {
+        const adminContext = req.adminAccount!;
+        const invoiceId = req.params.id as string;
+        await invoiceService.completeInvoice(invoiceId, adminContext);
+        res.json(ApiResponse.success('Complete invoice success', null));
+    };
+
     /**
      * Get deposited invoices with order types
      * Endpoint: GET /admin/invoices/deposited

@@ -47,6 +47,12 @@ router.patch(
     validateParams(ObjectIdSchema),
     invoiceController.onboardInvoice
 );
+router.patch(
+    '/:id/status/complete',
+    requireAdminRoles([RoleType.MANAGER]),
+    validateParams(ObjectIdSchema),
+    invoiceController.completeInvoice
+);
 // =============== END MANAGER ROLE =============
 
 export default router;
