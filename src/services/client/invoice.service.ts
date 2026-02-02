@@ -487,7 +487,13 @@ class InvoiceClientService {
                         (variant) => variant.sku === curItem.lens!.sku
                     )
                     item.lens = curItem.lens;
-                    item.lens.detail = lensVariant
+                    item.lens.detail = lensVariant;
+                    item.lens = {
+                        product_id: curItem.lens.lens_id,
+                        sku: curItem.lens.sku,
+                        pricePerUnit: curItem.lens.pricePerUnit,
+                        detail: lensVariant
+                    };
                 }
                 const product = await productRepository.findOne({
                     _id: curItem.product.product_id,
@@ -495,8 +501,12 @@ class InvoiceClientService {
                 const productVariant = product!.variants.find(
                     (variant) => variant.sku === curItem.product.sku
                 );
-                item.product = curItem.product;
-                item.product.detail = productVariant;
+                item.product = {
+                    product_id: curItem.product.product_id,
+                    sku: curItem.product.sku,
+                    pricePerUnit: curItem.product.pricePerUnit,
+                    detail: productVariant
+                };
                 products.push(item);
             }
         }
