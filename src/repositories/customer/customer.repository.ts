@@ -8,6 +8,7 @@ export class CustomerRepository extends BaseRepository<ICustomerDocument> {
     constructor() {
         super(CustomerModel);
     }
+    
 }
 
 export const customerRepository = new CustomerRepository();

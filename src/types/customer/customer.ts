@@ -2,6 +2,7 @@ import z from 'zod';
 import { AddressSchema } from './address';
 import { LinkedAccountSchema } from './linked-account';
 import { Types } from 'mongoose';
+import { LensParametersSchema } from '../lens-parameters/lens-parameters';
 
 // Customer Schema
 export const CustomerSchema = z.object({
@@ -11,7 +12,28 @@ export const CustomerSchema = z.object({
     hashedPassword: z.string().min(1, 'Password is required'),
     phone: z.string().min(1, 'Phone number is required'),
     gender: z.enum(['F', 'M', 'N']),
-    address: z.array(AddressSchema).default([]),
+    address: z.array(z.object({
+        street: z.string().min(1, 'Street is required'),
+        ward: z.string().min(1, 'Ward is required'),
+        city: z.string().min(1, 'City is required'),
+        isDefault: z.boolean().default(false),
+    })).default([]),
+    parameters: z.array(z.object({
+        left: z.object({
+            SPH: z.number(),
+            CYL: z.number(),
+            AXIS: z.number(),
+            ADD: z.number()
+        }),
+        right: z.object({
+            SPH: z.number(),
+            CYL: z.number(),
+            AXIS: z.number(),
+            ADD: z.number()
+        }),
+        PD: z.number(),
+        isDefault: z.boolean().default(false),
+    })).default([]),
     hobbies: z.array(z.string()).default([]),
     isVerified: z.boolean().default(false),
     linkedAccounts: z.array(LinkedAccountSchema).default([]),
