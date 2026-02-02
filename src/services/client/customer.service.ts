@@ -49,6 +49,15 @@ class CustomerService {
     await foundCustomer.save();
   }
 
+  removeCustomerAddress = async (customer: AuthCustomerContext, addressId: string) => {
+    const foundCustomer = await CustomerModel.findOne({_id: customer.id});
+    if(!foundCustomer){
+      throw new Error('Customer not found');
+    }
+    foundCustomer.address = foundCustomer.address.filter(address => (address as any)._id.toString() != addressId);
+    await foundCustomer.save();
+  }
+
   addCustomerPrescription = async (customer: AuthCustomerContext, payload: AddCustomerPrescription) => {
     const foundCustomer = await CustomerModel.findOne({_id: customer.id});
     if(!foundCustomer){
