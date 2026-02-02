@@ -6,11 +6,13 @@ export const LensParametersSchema = z.object({
         SPH: z.number(),
         CYL: z.number(),
         AXIS: z.number(),
+        ADD: z.number()
     }),
     right: z.object({
         SPH: z.number(),
         CYL: z.number(),
         AXIS: z.number(),
+        ADD: z.number()
     }),
     PD: z.number(),
 });

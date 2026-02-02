@@ -206,7 +206,6 @@ class InvoiceClientService {
             qty: number;
         }[] = [];
         const invoiceProducts: InvoiceProduct[] = [];
-        const createdOrders: string[] = [];
 
         try {
             // Separate products by type
@@ -331,7 +330,7 @@ class InvoiceClientService {
                 address: payload.address,
                 status:
                     payload.paymentMethod == PaymentMethodType.COD
-                        ? InvoiceStatus.DEPOSITED
+                        ? (InvoiceStatus.DEPOSITED )
                         : InvoiceStatus.PENDING,
                 fullName: payload.fullName,
                 phone: payload.phone,

@@ -77,6 +77,13 @@ class OrderController {
         const data = await orderService.getOrderSummary(query);
         res.json(ApiResponse.success('Get order pending breakdown success', data));
     }
+
+    approveOrder = async (req: Request, res: Response) => {
+        const adminContext = req.adminAccount!;
+        const orderId = req.params.id as string;
+        await orderService.approveOrder(adminContext, orderId);
+        res.json(ApiResponse.success('Approve order successfully', null));
+    }
 }
 
 export default new OrderController();

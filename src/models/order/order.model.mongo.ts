@@ -75,11 +75,13 @@ const OrderSchema = new Schema<IOrderDocument>(
                                     SPH: { type: Number, required: true },
                                     CYL: { type: Number, required: true },
                                     AXIS: { type: Number, required: true },
+                                    ADD: { type: Number, required: true },
                                 },
                                 right: {
                                     SPH: { type: Number, required: true },
                                     CYL: { type: Number, required: true },
                                     AXIS: { type: Number, required: true },
+                                    ADD: { type: Number, required: true },
                                 },
                                 PD: { type: Number, required: true },
                             },

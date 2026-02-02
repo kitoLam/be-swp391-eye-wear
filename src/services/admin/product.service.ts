@@ -251,6 +251,22 @@ class ProductService {
 
         return productConverter.toProductCreateDTO(foundProduct);
     };
+    getSpecificProductVariant = async (id: string, sku: string) => {
+        const product = await productRepository.findOne({
+            _id: id,
+        });
+        if (!product) {
+            throw new NotFoundRequestError('Product not found');
+        }
+        const variant = product.variants.find(v => v.sku === sku);
+        if (!variant) {
+            throw new NotFoundRequestError('Variant not found');
+        }
+        return {
+            productDetail: product,
+            variantDetail: variant,
+        };
+    }
 }
 
 export default new ProductService();

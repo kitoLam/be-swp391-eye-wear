@@ -29,5 +29,5 @@ router.get(
     validateParams(ObjectIdSchema),
     productController.getProductDetail
 );
-
+router.get('/:id/variants/:sku', productController.getSpecificProductVariant);
 export default router;

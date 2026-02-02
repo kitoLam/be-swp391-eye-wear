@@ -14,6 +14,10 @@ router.get('/:id', validateParams(ObjectIdSchema), orderController.getOrderDetai
 router.patch('/:id/status/assign', validateParams(ObjectIdSchema), validateBody(AssignOrderSchema), orderController.assignOrder);
 // ============== END MANAGER ================
 
+// =============== SALE ======================
+router.patch('/:id/status/approve', validateParams(ObjectIdSchema), orderController.approveOrder);
+// =============== END SALE ==================
+
 // ============== OPERATION ================
 router.patch('/:id/status/making', validateParams(ObjectIdSchema), orderController.makingOrder);
 router.patch('/:id/status/packaging', validateParams(ObjectIdSchema), orderController.packagingOrder);

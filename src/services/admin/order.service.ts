@@ -256,5 +256,23 @@ class OrderService {
             }
         }
     }
+
+    approveOrder = async (adminContext: AuthAdminContext, orderId: string) => {
+        const foundOrder = await orderRepository.findOne({
+            _id: orderId
+        });
+        if(!foundOrder){
+            throw new NotFoundRequestError('Order not found');
+        }
+        
+        if(foundOrder.status !== OrderStatus.PENDING){
+            throw new ConflictRequestError('Only approve order is pending!');
+        }
+
+        await orderRepository.update(orderId, {
+            status: OrderStatus.APPROVED
+        });
+        
+    }
 }
 export default new OrderService();

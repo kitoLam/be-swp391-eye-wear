@@ -29,7 +29,19 @@ class ProductController {
             })
         );
     };
-  
+    getSpecificProductVariant = async (req: Request, res: Response) => {
+        const productId = req.params.id as string;
+        const sku = req.params.sku as string;
+        const data = await productService.getSpecificProductVariant(
+            productId,
+            sku
+        );
+        res.json(
+            ApiResponse.success(ProductMessage.success.getDetail, {
+                ...data,
+            })
+        );
+    };
     // configProductManufacturing = async (req: Request, res: Response) => {
     //     const payload = req.body as ProductConfigManufacturing;
     //     const data = await clientProductService.configProductManufacturing(payload);
