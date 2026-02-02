@@ -459,10 +459,10 @@ class InvoiceClientService {
      * Get invoice detail
      */
     getInvoiceDetail = async (customerId: string, invoiceId: string) => {
+        console.log(invoiceId)
         const invoice = await invoiceRepository.findOne({
             _id: invoiceId,
-            // owner: customerId,
-            deletedAt: null,
+            owner: customerId,
         });
 
         if (!invoice) {
@@ -481,7 +481,7 @@ class InvoiceClientService {
                 };
                 if(curItem.lens){
                     const lensProduct = await productRepository.findOne({
-                        _id: item.lens.lens_id,
+                        _id: curItem.lens.lens_id,
                     });
                     const lensVariant: any = lensProduct!.variants.find(
                         (variant) => variant.sku === curItem.lens!.sku
