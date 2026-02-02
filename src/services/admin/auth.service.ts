@@ -19,8 +19,8 @@ class AuthService {
         }
         // check email exist
         const foundUser = await adminAccountRepository.findOne({
-          email: user.email,
-          deletedAt: null
+            email: user.email,
+            deletedAt: null,
         });
         if (!foundUser) {
             throw new UnauthorizedRequestError('Email is wrong');
@@ -34,9 +34,10 @@ class AuthService {
         }
         // generate accessToken and RefreshToken
         const userId = foundUser._id.toString();
-        const accessToken = tokenService.getNewAccessToken(userId);
+        const role = foundUser.role;
+        const accessToken = tokenService.getNewAccessToken(userId, role);
         const refreshToken = await tokenService.getNewRefreshToken(
-            { userId },
+            { userId, role },
             deviceId,
             'admin'
         );
@@ -52,7 +53,9 @@ class AuthService {
      * @param token
      * @returns
      */
-    verifyUserByAccessToken = async (token: string): Promise<{ userId: string }> => {
+    verifyUserByAccessToken = async (
+        token: string
+    ): Promise<{ userId: string }> => {
         // check in blacklist
         if (await tokenService.isInBlackList(token)) {
             throw new UnauthorizedRequestError(
@@ -64,8 +67,8 @@ class AuthService {
         const userId = payload.userId;
         // check user exist in the system
         const foundAdmin = await adminAccountRepository.findOne({
-          _id: userId,
-          deletedAt: null,
+            _id: userId,
+            deletedAt: null,
         });
         if (!foundAdmin) {
             throw new NotFoundRequestError('Not found user');
@@ -78,14 +81,16 @@ class AuthService {
      * @param deviceId
      * @returns
      */
-    verifyUserByRefreshToken = async (token: string): Promise<{ userId: string }> => {
+    verifyUserByRefreshToken = async (
+        token: string
+    ): Promise<{ userId: string }> => {
         // check token có trong db ko
         const payload = jwtUtil.verifyRefreshToken(token);
         const userId = payload.userId;
         // check user exist in the system
         const foundAdmin = await adminAccountRepository.findOne({
-          _id: userId,
-          deletedAt: null,
+            _id: userId,
+            deletedAt: null,
         });
         if (!foundAdmin) {
             throw new NotFoundRequestError('Not found user');
@@ -118,12 +123,23 @@ class AuthService {
         // RefreshToken lúc này được dùng ở 2 device chứng tỏ bị lộ
         if (deviceId != currentDeviceId) {
             // gọi service để xóa refreshToken trong hệ thống để không ai sài refreshToken này refresh lại được
-            await tokenService.deleteRefreshToken(userId, refreshToken, 'admin');
+            await tokenService.deleteRefreshToken(
+                userId,
+                refreshToken,
+                'admin'
+            );
             throw new UnauthorizedRequestError(
                 'You are not allowed to get resources'
             );
         }
-        return tokenService.getNewAccessToken(userId);
+        // Get user role from database
+        const foundAdmin = await adminAccountRepository.findById(userId);
+        if (!foundAdmin) {
+            throw new UnauthorizedRequestError(
+                'You are not allowed to get resources'
+            );
+        }
+        return tokenService.getNewAccessToken(userId, foundAdmin.role);
     };
     logout = async (
         userId: string,

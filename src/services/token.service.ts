@@ -1,26 +1,40 @@
-import { redisPrefix } from '../config/constants/redis.constant'; 
+import { redisPrefix } from '../config/constants/redis.constant';
 import { config } from '../config/env.config';
 import * as jwtUtil from '../utils/jwt.util';
 import redisService from './redis.service';
 class TokenService {
-    getNewAccessToken = (userId: string) => {
+    getNewAccessToken = (
+        userId: string,
+        role?: 'SALE_STAFF' | 'OPERATION_STAFF' | 'MANAGER' | 'SYSTEM_ADMIN'
+    ) => {
         // generate accessToken from jwtUtil
-        const accessToken = jwtUtil.generateAccessToken( userId );
+        const accessToken = jwtUtil.generateAccessToken(userId, role);
         return accessToken;
     };
-    getNewResetPasswordToken = (userId: string) => {
+    getNewResetPasswordToken = (
+        userId: string,
+        role?: 'SALE_STAFF' | 'OPERATION_STAFF' | 'MANAGER' | 'SYSTEM_ADMIN'
+    ) => {
         // generate token from jwtUtil
-        const token = jwtUtil.generateResetPasswordToken( userId );
+        const token = jwtUtil.generateResetPasswordToken(userId, role);
         return token;
     };
     getNewRefreshToken = async (
-        payload: { userId: string; },
+        payload: {
+            userId: string;
+            role?:
+                | 'SALE_STAFF'
+                | 'OPERATION_STAFF'
+                | 'MANAGER'
+                | 'SYSTEM_ADMIN';
+        },
         deviceId: string,
         side: 'admin' | 'client'
     ) => {
         // generate refreshToken from jwtUtil
         const refreshToken = jwtUtil.generateRefreshToken(
             payload.userId,
+            payload.role
         );
         // store refreshToken in redis
         await redisService.setDataWithExpiredTime(
@@ -39,7 +53,7 @@ class TokenService {
     addAccessTokenToBlackList = async (token: string) => {
         const payload = jwtUtil.verifyAccessToken(token);
         const ttlSeconds = payload.exp
-            ? (payload.exp) - Math.floor(Date.now() / 1000)
+            ? payload.exp - Math.floor(Date.now() / 1000)
             : 0;
         await redisService.setDataWithExpiredTime(
             `${redisPrefix.blacklist}:${token}`,
@@ -57,7 +71,11 @@ class TokenService {
         );
         return deviceId;
     };
-    deleteRefreshToken = async (userId: string, token: string, side: 'admin' | 'client') => {
+    deleteRefreshToken = async (
+        userId: string,
+        token: string,
+        side: 'admin' | 'client'
+    ) => {
         await redisService.deleteDataByKey(
             `${redisPrefix.refreshToken}:${side}:${userId}:${token}`
         );
