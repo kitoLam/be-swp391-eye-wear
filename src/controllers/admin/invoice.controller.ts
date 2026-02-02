@@ -63,6 +63,24 @@ class InvoiceController {
         res.json(ApiResponse.success('Complete invoice success', null));
     };
 
+    deliveringInvoice = async (req: Request, res: Response) => {
+        const adminContext = req.adminAccount!;
+        const invoiceId = req.params.id as string;
+        await invoiceService.deliveringInvoice(invoiceId, adminContext);
+        res.json(
+            ApiResponse.success('Update invoice to delivering success', null)
+        );
+    };
+
+    deliveredInvoice = async (req: Request, res: Response) => {
+        // No adminContext needed for this public endpoint
+        const invoiceId = req.params.id as string;
+        await invoiceService.deliveredInvoice(invoiceId);
+        res.json(
+            ApiResponse.success('Update invoice to delivered success', null)
+        );
+    };
+
     /**
      * Get deposited invoices with order types
      * Endpoint: GET /admin/invoices/deposited

@@ -10,6 +10,14 @@ import { ObjectIdSchema } from '../../types/common/objectId';
 import { requireAdminRoles } from '../../middlewares/admin/authorization.middleware';
 import { RoleType } from '../../config/enums/admin-account';
 const router = Router();
+
+// Public route - NO AUTHENTICATION
+router.patch(
+    '/:id/status/delivered',
+    validateParams(ObjectIdSchema),
+    invoiceController.deliveredInvoice
+);
+
 router.use(authenticateMiddleware);
 // api lấy danh sách hóa đơn
 router.get(
@@ -52,6 +60,11 @@ router.patch(
     requireAdminRoles([RoleType.MANAGER]),
     validateParams(ObjectIdSchema),
     invoiceController.completeInvoice
+);
+router.patch(
+    '/:id/status/delivering',
+    validateParams(ObjectIdSchema),
+    invoiceController.deliveringInvoice
 );
 // =============== END MANAGER ROLE =============
 

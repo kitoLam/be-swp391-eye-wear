@@ -263,6 +263,64 @@ class InvoiceService {
     };
 
     /**
+     * Mark invoice as DELIVERING
+     * @param invoiceId - ID of the invoice
+     * @param adminContext - Context of the admin user
+     */
+    deliveringInvoice = async (
+        invoiceId: string,
+        adminContext: AuthAdminContext
+    ) => {
+        const invoiceDetail = await invoiceRepository.findById(invoiceId);
+        if (!invoiceDetail) {
+            throw new NotFoundRequestError('Invoice not found');
+        }
+
+        if (
+            invoiceDetail.status === InvoiceStatus.CANCELED ||
+            invoiceDetail.status === InvoiceStatus.REJECTED
+        ) {
+            throw new ConflictRequestError(
+                'Cannot update status of a canceled or rejected invoice'
+            );
+        }
+
+        const updatedInvoice = await invoiceRepository.update(invoiceId, {
+            status: InvoiceStatus.DELIVERING,
+            staffVerified: adminContext.id,
+        });
+
+        return updatedInvoice;
+    };
+
+    /**
+     * Mark invoice as DELIVERED
+     * NO AUTHENTICATION REQUIRED - Public endpoint
+     * @param invoiceId - ID of the invoice
+     */
+    deliveredInvoice = async (invoiceId: string) => {
+        const invoiceDetail = await invoiceRepository.findById(invoiceId);
+        if (!invoiceDetail) {
+            throw new NotFoundRequestError('Invoice not found');
+        }
+
+        if (
+            invoiceDetail.status === InvoiceStatus.CANCELED ||
+            invoiceDetail.status === InvoiceStatus.REJECTED
+        ) {
+            throw new ConflictRequestError(
+                'Cannot update status of a canceled or rejected invoice'
+            );
+        }
+
+        const updatedInvoice = await invoiceRepository.update(invoiceId, {
+            status: InvoiceStatus.DELIVERED,
+        });
+
+        return updatedInvoice;
+    };
+
+    /**
      * Lấy danh sách invoices có status DEPOSITED với thông tin order types
      * Sử dụng aggregation pipeline để tối ưu performance
      * @returns Danh sách invoices với orders được map theo format {id, type}
