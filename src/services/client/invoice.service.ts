@@ -330,7 +330,7 @@ class InvoiceClientService {
                 address: payload.address,
                 status:
                     payload.paymentMethod == PaymentMethodType.COD
-                        ? (InvoiceStatus.DEPOSITED )
+                        ? (manufacturingProducts.length == 0  ? InvoiceStatus.APPROVED : InvoiceStatus.DEPOSITED)
                         : InvoiceStatus.PENDING,
                 fullName: payload.fullName,
                 phone: payload.phone,
@@ -353,7 +353,7 @@ class InvoiceClientService {
                     orderCode: generateOrderCode(),
                     type: [OrderType.NORMAL],
                     products: normalProducts,
-                    status: OrderStatus.PENDING,
+                    status: OrderStatus.APPROVED,
                     price: normalOrderPrice
                 });
             }

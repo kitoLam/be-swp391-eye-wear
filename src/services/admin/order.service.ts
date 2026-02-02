@@ -268,7 +268,7 @@ class OrderService {
         if(foundOrder.status !== OrderStatus.PENDING){
             throw new ConflictRequestError('Only approve order is pending!');
         }
-
+        
         await orderRepository.update(orderId, {
             status: OrderStatus.APPROVED
         });
