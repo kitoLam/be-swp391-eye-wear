@@ -2,7 +2,45 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { Customer } from '../../types/customer/customer';
 
 export type ICustomerDocument = Customer & Document;
-
+const AddressSchema = new Schema(
+    {
+        street: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        ward: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        city: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        isDefault: {
+            type: Boolean,
+            default: false,
+        }
+    },
+    { _id: true } // để mỗi address có id riêng
+);
+const ParametersSchema = new Schema({
+    left: {
+        SPH: { type: Number, required: true },
+        CYL: { type: Number, required: true },
+        AXIS: { type: Number, required: true },
+        ADD: { type: Number, required: true },
+    },
+    right: {
+        SPH: { type: Number, required: true },
+        CYL: { type: Number, required: true },
+        AXIS: { type: Number, required: true },
+        ADD: { type: Number, required: true },
+    },
+    PD: { type: Number, required: true },
+}, {_id: true});
 // Main Customer Schema
 const CustomerSchema = new Schema<ICustomerDocument>(
     {
@@ -40,25 +78,14 @@ const CustomerSchema = new Schema<ICustomerDocument>(
                     'Gender must be F (Female), M (Male), or N (Not specified)',
             },
         },
-        address: [
-            {
-                street: {
-                    type: String,
-                    required: [true, 'Address street is required'],
-                    trim: true,
-                },
-                ward: {
-                    type: String,
-                    required: [true, 'Ward is required'],
-                    trim: true,
-                },
-                city: {
-                    type: String,
-                    required: [true, 'City is required'],
-                    trim: true,
-                },
-            },
-        ],
+        address: {
+            type: [AddressSchema],
+            default: [],
+        },
+        parameters: {
+            type: [ParametersSchema],
+            default: [],
+        },
         hobbies: {
             type: [String],
             default: [],
@@ -114,7 +141,7 @@ const CustomerSchema = new Schema<ICustomerDocument>(
             type: Schema.Types.ObjectId,
             ref: 'AdminAccount',
             default: null,
-        }
+        },
     },
     {
         timestamps: true,
