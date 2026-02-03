@@ -52,10 +52,10 @@ class CartService {
         }
         const curProductInCart = cart ? cart.products.find(item => {
             return (
-                item.product.product_id === payload.item.product.product_id &&
-                item.product.sku === payload.item.product.sku &&
-                ((payload.item.lens && item.lens) ? (item.lens.lens_id === payload.item.lens.lens_id &&
-                item.lens.sku === payload.item.lens.sku) : true)
+                item.product.product_id == payload.item.product.product_id &&
+                item.product.sku == payload.item.product.sku &&
+                ((payload.item.lens && item.lens) ? (item.lens.lens_id == payload.item.lens.lens_id &&
+                item.lens.sku == payload.item.lens.sku) : true)
             );
         }) : 0;
         // chắc chắn là product khách mua đang đúng định dạng mà ta quy định và còn hàng

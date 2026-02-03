@@ -353,7 +353,7 @@ class InvoiceClientService {
                     orderCode: generateOrderCode(),
                     type: [OrderType.NORMAL],
                     products: normalProducts,
-                    status: OrderStatus.APPROVED,
+                    status: manufacturingProducts.length == 0  ? OrderStatus.WAITING_ASSIGN : OrderStatus.APPROVED,
                     price: normalOrderPrice
                 });
             }
