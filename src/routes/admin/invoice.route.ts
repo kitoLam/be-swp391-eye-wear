@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+    validateBody,
     validateParams,
     validateQuery,
 } from '../../middlewares/share/validator.middleware';
@@ -9,6 +10,7 @@ import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware'
 import { ObjectIdSchema } from '../../types/common/objectId';
 import { requireAdminRoles } from '../../middlewares/admin/authorization.middleware';
 import { RoleType } from '../../config/enums/admin-account';
+import { InvoiceAssignHandleDeliverySchema } from '../../types/invoice/invoice.request';
 const router = Router();
 
 // Public route - NO AUTHENTICATION
@@ -25,8 +27,6 @@ router.get(
     validateQuery(InvoiceListQuerySchema),
     invoiceController.getListInvoice
 );
-// api lấy danh sách hóa đơn có status DEPOSITED với order types
-
 // =============== MANAGER ROLE =============
 router.get(
     '/manager',
@@ -34,9 +34,7 @@ router.get(
     validateQuery(InvoiceListQuerySchema),
     invoiceController.getListInvoice
 );
-
 // =============== SALE ROLE ===============
-router.get('/deposited', invoiceController.getDepositedInvoices);
 router.patch(
     '/:id/status/approve',
     validateParams(ObjectIdSchema),
@@ -50,6 +48,7 @@ router.patch(
 // =============== END SALE ROLE ============
 
 // =============== MANAGER ROLE =============
+router.patch('/:id/assign/handle-delivery', validateParams(ObjectIdSchema), validateBody(InvoiceAssignHandleDeliverySchema), invoiceController.assignInvoiceToHandleDelivery);
 router.patch(
     '/:id/status/onboard',
     validateParams(ObjectIdSchema),

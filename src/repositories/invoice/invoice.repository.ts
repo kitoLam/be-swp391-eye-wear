@@ -168,10 +168,7 @@ export class InvoiceRepository extends BaseRepository<IInvoiceDocument> {
                                     $map: {
                                         input: '$orderDetails',
                                         as: 'order',
-                                        in: {
-                                            id: { $toString: '$$order._id' },
-                                            type: '$$order.type',
-                                        },
+                                        in: { $toString: '$$order._id' },
                                     },
                                 },
                             },

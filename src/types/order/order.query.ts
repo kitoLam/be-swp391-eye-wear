@@ -10,5 +10,11 @@ export const OrderListAdminQuerySchema = z.object({
 export const OrderStatsQuerySchema = z.object({
     staffId: z.string().min(1, 'Staff ID is required'),
 });
+export const OrderCountTotalQuerySchema = z.object({
+    invoiceId: z.string().optional().catch(undefined),
+    status: z.enum(OrderStatus).optional().catch(undefined),
+    search: z.string().optional().catch(undefined),
+});
 export type OrderListAdminQuery = z.infer<typeof OrderListAdminQuerySchema>;
 export type OrderStatsQuery = z.infer<typeof OrderStatsQuerySchema>;
+export type OrderCountTotalQuery = z.infer<typeof OrderCountTotalQuerySchema>;

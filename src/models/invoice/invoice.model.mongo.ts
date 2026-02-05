@@ -59,6 +59,18 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
             type: String,
             default: null
         },
+        onboardedAt: {
+            type: Date,
+            default: null
+        },
+        staffHandleDelivery: {
+            type: String,
+            default: null
+        },
+        assignStaffHandleDeliveryAt: {
+            type: Date,
+            default: null
+        },
         note: {
             type: String,
             trim: true,

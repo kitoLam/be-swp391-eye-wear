@@ -1,20 +1,7 @@
-/**
- * Type definitions for Deposited Invoice Response
- * Used for GET /admin/invoices/deposited endpoint
- */
-
-/**
- * Order type mapping object
- * Contains order ID and its associated types
- */
-export interface OrderTypeMapping {
-    id: string;
-    type: string[]; // Array of OrderType enum values
-}
 
 /**
  * Deposited Invoice Response
- * Full invoice data with orders mapped to {id, type} format
+ * Full invoice data with orders list id
  */
 export interface DepositedInvoiceResponse {
     _id: string;
@@ -30,7 +17,7 @@ export interface DepositedInvoiceResponse {
         ward: string;
         city: string;
     };
-    orders: OrderTypeMapping[];
+    orders: string[];
     createdAt: Date;
     updatedAt: Date;
 }
