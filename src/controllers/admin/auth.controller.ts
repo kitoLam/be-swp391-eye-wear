@@ -4,6 +4,7 @@ import authService from '../../services/admin/auth.service';
 import { ApiResponse } from '../../utils/api-response';
 import { authMessage } from '../../config/constants/response-messages/auth.constant';
 import { config } from '../../config/env.config';
+import staffService from '../../services/admin/staff.service';
 class AuthController {
     login = async (req: Request, res: Response) => {
         const body = req.body as LoginBodyDTO;
@@ -51,5 +52,19 @@ class AuthController {
             ApiResponse.success('Get new refresh token successfully', dataFinal)
         );
     };
+
+    getProfile = async (req: Request, res: Response) => {
+        const adminAccount = req.adminAccount!;
+        const data = await staffService.getStaffDetail(adminAccount.id);
+        res.json(ApiResponse.success('Get profile successfully', {
+            ...data
+        }));
+    }
+
+    changePassword = async (req: Request, res: Response) => {
+        const adminAccount = req.adminAccount!;
+        await staffService.changePassword(adminAccount.id, req.body);
+        res.json(ApiResponse.success('Change password successfully', null));
+    }
 }
 export default new AuthController();

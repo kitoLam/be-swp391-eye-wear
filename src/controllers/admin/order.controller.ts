@@ -3,7 +3,7 @@ import { AssignOrderDTO } from '../../types/order/order.request';
 import { ApiResponse } from '../../utils/api-response';
 import orderService from '../../services/admin/order.service';
 import { BadRequestError } from '../../errors/apiError/api-error';
-import { OrderListAdminQuery, OrderStatsQuery } from '../../types/order/order.query';
+import { OrderCountTotalQuery, OrderListAdminQuery, OrderStatsQuery } from '../../types/order/order.query';
 
 class OrderController {
     /**
@@ -83,6 +83,14 @@ class OrderController {
         const orderId = req.params.id as string;
         await orderService.approveOrder(adminContext, orderId);
         res.json(ApiResponse.success('Approve order successfully', null));
+    }
+
+    countTotalOrders = async (req: Request, res: Response) => {
+        const query = req.validatedQuery as OrderCountTotalQuery;
+        const data = await orderService.countTotalOrders(query);
+        res.json(ApiResponse.success('Count total orders successfully', {
+            total: data
+        }));
     }
 }
 

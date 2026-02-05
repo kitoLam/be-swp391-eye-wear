@@ -13,6 +13,9 @@ import { productRepository } from '../../repositories/product/product.repository
 import { OrderStatus } from '../../config/enums/order.enum';
 import { config } from '../../config/env.config';
 import axios from 'axios';
+import { InvoiceAssignHandleDeliveryRequest } from '../../types/invoice/invoice.request';
+import { adminAccountRepository } from '../../repositories/admin-account/admin-account.repository';
+import { RoleType } from '../../config/enums/admin-account';
 
 class InvoiceService {
     /**
@@ -112,7 +115,7 @@ class InvoiceService {
         // Cập nhật các order trong invoice này thành waiting assign
         await orderRepository.updateMany(
             {
-                invoiceId: invoiceDetail._id,
+                invoiceId: invoiceId,
             },
             {
                 status: OrderStatus.WAITING_ASSIGN,
@@ -212,9 +215,15 @@ class InvoiceService {
         invoiceId: string,
         adminContext: AuthAdminContext
     ) => {
+        await orderRepository.updateByFilter({
+            invoiceId: invoiceId,
+        }, {
+            status: OrderStatus.WAITING_ASSIGN
+        })
         await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.ONBOARD,
             managerOnboard: adminContext.id,
+            onboardedAt: new Date(),
         });
     };
 
@@ -348,6 +357,41 @@ class InvoiceService {
         const result =
             await invoiceRepository.getDepositedInvoicesWithOrderTypes();
         return result;
+    };
+
+    assignInvoiceToHandleDelivery = async (adminContext: AuthAdminContext, invoiceId: string, payload: InvoiceAssignHandleDeliveryRequest) => {
+        // check invoice exist
+        const foundInvoice = await invoiceRepository.findById(invoiceId);
+        if(!foundInvoice){
+            throw new NotFoundRequestError('Invoice not found');
+        }
+
+        // check invoice status
+        if(foundInvoice.status !== InvoiceStatus.COMPLETED){
+            throw new ConflictRequestError('Invoice status must be COMPLETED to assign');
+        }
+
+        // check admin onboard is the same with cur admin 
+        if(foundInvoice.managerOnboard != adminContext.id){
+            throw new ConflictRequestError('Only manager onboard can assign');
+        }
+
+        // check delivery staff exist
+        const foundDeliveryStaff = await adminAccountRepository.findById(payload.assignedStaff);
+        if(!foundDeliveryStaff){
+            throw new NotFoundRequestError('Delivery staff not found');
+        }
+
+        // check delivery staff role
+        if(foundDeliveryStaff.role != RoleType.OPERATION_STAFF){
+            throw new ConflictRequestError('Delivery staff role must be OPERATION_STAFF');
+        }
+
+        const updatedInvoice = await invoiceRepository.update(invoiceId, {
+            staffHandleDelivery: payload.assignedStaff,
+            assignStaffHandleDeliveryAt: new Date(),
+        });
+        return updatedInvoice;
     };
 }
 

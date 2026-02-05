@@ -11,7 +11,7 @@ import { adminAccountRepository } from '../../repositories/admin-account/admin-a
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { orderRepository } from '../../repositories/order/order.repository';
 import { AuthAdminContext } from '../../types/context/context';
-import { OrderListAdminQuery, OrderStatsQuery } from '../../types/order/order.query';
+import { OrderCountTotalQuery, OrderListAdminQuery, OrderStatsQuery } from '../../types/order/order.query';
 import { AssignOrderDTO } from '../../types/order/order.request';
 import { IOrderDocument } from '../../models/order/order.model.mongo';
 
@@ -273,6 +273,21 @@ class OrderService {
             status: OrderStatus.APPROVED
         });
         
+    }
+
+    countTotalOrders = async (query: OrderCountTotalQuery) => {
+        const filter: FilterQuery<IOrderDocument> = {};
+        if (query.search) {
+            const regex = new RegExp(query.search, 'gi');
+            filter.$or = [{ invoiceCode: regex }, { fullName: regex }];
+        }
+        if (query.status) {
+            filter.status = query.status;
+        }
+        if(query.invoiceId){
+            filter.invoiceId = query.invoiceId
+        }
+        return await orderRepository.count(filter);
     }
 }
 export default new OrderService();

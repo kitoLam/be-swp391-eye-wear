@@ -3,6 +3,7 @@ import { ApiResponse } from '../../utils/api-response';
 import invoiceService from '../../services/admin/invoice.service';
 import { InvoiceListQuery } from '../../types/invoice/invoice.query';
 import { formatDateToString, formatNumberToVND } from '../../utils/formatter';
+import { InvoiceAssignHandleDeliveryRequest } from '../../types/invoice/invoice.request';
 
 class InvoiceController {
     getListInvoice = async (req: Request, res: Response) => {
@@ -111,5 +112,15 @@ class InvoiceController {
             ApiResponse.success('Get deposited invoices success', formattedData)
         );
     };
+    
+    assignInvoiceToHandleDelivery = async (req: Request, res: Response) => {
+        const adminContext = req.adminAccount!;
+        const invoiceId = req.params.id as string;
+        const body = req.body as InvoiceAssignHandleDeliveryRequest;
+        const updatedInvoice = await invoiceService.assignInvoiceToHandleDelivery(adminContext, invoiceId, body);
+        res.json(ApiResponse.success('Assign invoice to handle delivery success', {
+            updatedInvoice
+        }));
+    }
 }
 export default new InvoiceController();

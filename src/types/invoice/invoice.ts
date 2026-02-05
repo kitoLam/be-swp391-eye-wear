@@ -20,6 +20,9 @@ export const InvoiceSchema = z
             .default(0),
         managerOnboard: z.string().nullable(), // Manager ID when status is ONBOARD
         staffVerified: z.string().nullable(),
+        staffHandleDelivery: z.string().nullable(),
+        assignStaffHandleDeliveryAt: z.date().nullable(),
+        onboardedAt: z.date().nullable(),
         createdAt: z.date(),
         updatedAt: z.date(),
         deletedAt: z.date().nullable(),
