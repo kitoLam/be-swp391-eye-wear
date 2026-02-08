@@ -156,7 +156,8 @@ class OrderService {
      * @param staffId - ID của staff (lấy từ JWT token)
      * @returns Danh sách order được giao cho staff này
      */
-    getOrdersByStaffAssigned = async (staffId: string, query: OrderListAdminQuery) => {
+    getOrdersList = async (adminContext: AuthAdminContext, query: OrderListAdminQuery) => {
+        const {id: staffId, role} = adminContext;
         const filter : FilterQuery<IOrderDocument> = {};
         if(query.orderCode){
             filter.orderCode = new RegExp(query.orderCode, 'gi');
@@ -164,10 +165,12 @@ class OrderService {
         if(query.status){
             filter.status = query.status;
         }
+        if(role == RoleType.OPERATION_STAFF){
+            filter.assignedStaff = staffId;
+        }
         const orders = await orderRepository.find({
             ...filter,
             deletedAt: null,
-            assignedStaff: staffId, // Lấy các order được giao CHO staff này
         }, {
             limit: query.limit,
             page: query.page

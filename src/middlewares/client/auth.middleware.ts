@@ -70,7 +70,7 @@ const verifyRefreshTokenMiddlewareClient = async (
         if(type != 'REFRESH'){
             throw new UnauthorizedRequestError('Please use the correct token');
         }
-        req.adminAccount = {
+        req.customer = {
             id: userId,
         };
         next();

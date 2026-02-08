@@ -1,6 +1,7 @@
 import { NextFunction, Response, Request } from 'express';
 import { UnauthorizedRequestError } from '../../errors/apiError/api-error';
 import authService from '../../services/admin/auth.service';
+import { RoleType } from '../../config/enums/admin-account';
 const authenticateMiddleware = async (
     req: Request,
     res: Response,
@@ -13,9 +14,10 @@ const authenticateMiddleware = async (
             throw new UnauthorizedRequestError('Please login to get resources');
         }
         const accessToken = authorization[1].trim();
-        const { userId } = await authService.verifyUserByAccessToken(accessToken);
+        const { userId, role } = await authService.verifyUserByAccessToken(accessToken);
         req.adminAccount = {
             id: userId,
+            role: role as RoleType
         };
         next();
     } catch (error) {
@@ -39,9 +41,10 @@ const verifyRefreshTokenMiddleware = async (
             throw new UnauthorizedRequestError('Invalid refresh token');
         }
         // get payload
-        const { userId } = await authService.verifyUserByRefreshToken(refreshToken);
+        const { userId, role } = await authService.verifyUserByRefreshToken(refreshToken);
         req.adminAccount = {
             id: userId,
+            role: role as RoleType,
         };
         next();
     } catch (error) {

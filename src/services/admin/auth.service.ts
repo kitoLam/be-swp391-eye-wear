@@ -8,6 +8,7 @@ import { comparePassword } from '../../utils/bcrypt.util';
 import tokenService from '../token.service';
 import * as jwtUtil from '../../utils/jwt.util';
 import { adminAccountRepository } from '../../repositories/admin-account/admin-account.repository';
+import { RoleType } from '../../config/enums/admin-account';
 class AuthService {
     login = async (
         user: LoginBodyDTO,
@@ -55,7 +56,7 @@ class AuthService {
      */
     verifyUserByAccessToken = async (
         token: string
-    ): Promise<{ userId: string }> => {
+    ): Promise<{ userId: string, role: string }> => {
         // check in blacklist
         if (await tokenService.isInBlackList(token)) {
             throw new UnauthorizedRequestError(
@@ -73,7 +74,7 @@ class AuthService {
         if (!foundAdmin) {
             throw new NotFoundRequestError('Not found user');
         }
-        return { userId: payload.userId };
+        return { userId: payload.userId, role: payload.role! };
     };
     /**
      * Hàm giúp kiểm tra xem user có đủ xác thực được bản thân để vào lấy token mới không
@@ -83,7 +84,7 @@ class AuthService {
      */
     verifyUserByRefreshToken = async (
         token: string
-    ): Promise<{ userId: string }> => {
+    ): Promise<{ userId: string, role: string }> => {
         // check token có trong db ko
         const payload = jwtUtil.verifyRefreshToken(token);
         const userId = payload.userId;
@@ -95,7 +96,7 @@ class AuthService {
         if (!foundAdmin) {
             throw new NotFoundRequestError('Not found user');
         }
-        return { userId: payload.userId };
+        return { userId: payload.userId, role: payload.role! };
     };
     /**
      * Logic nghiệp vụ xử lí việc tạo mới accessToken cho user
