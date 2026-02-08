@@ -36,6 +36,40 @@ class InvoiceController {
         );
     };
 
+    getListInvoiceByDeliveryStaff = async (req: Request, res: Response) => {
+        const adminContext = req.adminAccount!;
+        const query = req.validatedQuery as InvoiceListQuery;
+        const data = await invoiceService.getInvoiceListWithOrders(
+            query,
+            adminContext.id
+        );
+        const invoiceListFinal = data.invoiceList.map((item: any) => {
+            return {
+                id: item._id.toString(),
+                invoiceCode: item.invoiceCode,
+                fullName: item.fullName,
+                phone: item.phone,
+                finalPrice: formatNumberToVND(
+                    item.totalPrice - item.totalDiscount
+                ),
+                status: item.status,
+                createdAt: formatDateToString(item.createdAt),
+                address: [
+                    item.address.street,
+                    item.address.ward,
+                    item.address.city,
+                ].join(', '),
+                orders: item.orders,
+            };
+        });
+        res.json(
+            ApiResponse.success('Get invoice list by delivery staff success', {
+                pagination: data.pagination,
+                invoiceList: invoiceListFinal,
+            })
+        );
+    };
+
     approveInvoice = async (req: Request, res: Response) => {
         const adminContext = req.adminAccount!;
         const invoiceId = req.params.id as string;
@@ -67,9 +101,14 @@ class InvoiceController {
     deliveringInvoice = async (req: Request, res: Response) => {
         const adminContext = req.adminAccount!;
         const invoiceId = req.params.id as string;
-        const shipmentInfo = await invoiceService.deliveringInvoice(invoiceId, adminContext);
+        const shipmentInfo = await invoiceService.deliveringInvoice(
+            invoiceId,
+            adminContext
+        );
         res.json(
-            ApiResponse.success('Update invoice to delivering success', {shipmentInfo})
+            ApiResponse.success('Update invoice to delivering success', {
+                shipmentInfo,
+            })
         );
     };
 
@@ -112,15 +151,22 @@ class InvoiceController {
             ApiResponse.success('Get deposited invoices success', formattedData)
         );
     };
-    
+
     assignInvoiceToHandleDelivery = async (req: Request, res: Response) => {
         const adminContext = req.adminAccount!;
         const invoiceId = req.params.id as string;
         const body = req.body as InvoiceAssignHandleDeliveryRequest;
-        const updatedInvoice = await invoiceService.assignInvoiceToHandleDelivery(adminContext, invoiceId, body);
-        res.json(ApiResponse.success('Assign invoice to handle delivery success', {
-            updatedInvoice
-        }));
-    }
+        const updatedInvoice =
+            await invoiceService.assignInvoiceToHandleDelivery(
+                adminContext,
+                invoiceId,
+                body
+            );
+        res.json(
+            ApiResponse.success('Assign invoice to handle delivery success', {
+                updatedInvoice,
+            })
+        );
+    };
 }
 export default new InvoiceController();

@@ -117,6 +117,7 @@ export class InvoiceRepository extends BaseRepository<IInvoiceDocument> {
         search?: string;
         status?: string;
         statuses?: string[];
+        staffHandleDelivery?: string;
     }): Promise<{ data: DepositedInvoiceResponse[]; total: number }> {
         const match: FilterQuery<IInvoiceDocument> = { deletedAt: null };
 
@@ -131,6 +132,10 @@ export class InvoiceRepository extends BaseRepository<IInvoiceDocument> {
 
         if (params.statuses?.length) {
             match.status = { $in: params.statuses } as any;
+        }
+
+        if (params.staffHandleDelivery) {
+            match.staffHandleDelivery = params.staffHandleDelivery;
         }
 
         const skip = (params.page - 1) * params.limit;

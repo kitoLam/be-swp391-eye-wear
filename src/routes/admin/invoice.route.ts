@@ -27,6 +27,13 @@ router.get(
     validateQuery(InvoiceListQuerySchema),
     invoiceController.getListInvoice
 );
+
+// api lấy danh sách hóa đơn theo staffHandleDelivery của staff đang đăng nhập
+router.get(
+    '/handle-delivery',
+    validateQuery(InvoiceListQuerySchema),
+    invoiceController.getListInvoiceByDeliveryStaff
+);
 // =============== MANAGER ROLE =============
 router.get(
     '/manager',
@@ -48,7 +55,12 @@ router.patch(
 // =============== END SALE ROLE ============
 
 // =============== MANAGER ROLE =============
-router.patch('/:id/assign/handle-delivery', validateParams(ObjectIdSchema), validateBody(InvoiceAssignHandleDeliverySchema), invoiceController.assignInvoiceToHandleDelivery);
+router.patch(
+    '/:id/assign/handle-delivery',
+    validateParams(ObjectIdSchema),
+    validateBody(InvoiceAssignHandleDeliverySchema),
+    invoiceController.assignInvoiceToHandleDelivery
+);
 router.patch(
     '/:id/status/onboard',
     validateParams(ObjectIdSchema),

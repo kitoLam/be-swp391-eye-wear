@@ -52,13 +52,14 @@ class InvoiceService {
         };
     };
 
-    getInvoiceListWithOrders = async (query: InvoiceListQuery) => {
+    getInvoiceListWithOrders = async (query: InvoiceListQuery, staffHandleDelivery?: string) => {
         const result = await invoiceRepository.getInvoiceListWithOrderTypes({
             page: query.page,
             limit: query.limit,
             search: query.search,
             status: query.status,
             statuses: query.statuses,
+            staffHandleDelivery,
         });
         return {
             invoiceList: result.data,
