@@ -8,7 +8,7 @@ import { OrderCountTotalQuerySchema, OrderListAdminQuerySchema, OrderStatsQueryS
 const router = Router();
 router.use(authenticateMiddleware);
 // api lấy danh sách order theo staffId và admin đang đăng nhập
-router.get('/', validateQuery(OrderListAdminQuerySchema), orderController.getOrdersByStaff);
+router.get('/', validateQuery(OrderListAdminQuerySchema), orderController.getOrdersList);
 router.get('/total', validateQuery(OrderCountTotalQuerySchema), orderController.countTotalOrders);
 router.get('/:id', validateParams(ObjectIdSchema), orderController.getOrderDetail);
 // ============== MANAGER ================
