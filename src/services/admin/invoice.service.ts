@@ -275,6 +275,41 @@ class InvoiceService {
     };
 
     /**
+     * Mark invoice as READY_TO_SHIP
+     * @param invoiceId - ID of the invoice
+     * @param adminContext - Context of the admin user
+     */
+    readyToShipInvoice = async (
+        invoiceId: string,
+        adminContext: AuthAdminContext
+    ) => {
+        const invoiceDetail = await invoiceRepository.findById(invoiceId);
+        if (!invoiceDetail) {
+            throw new NotFoundRequestError('Invoice not found');
+        }
+
+        // Logic check: Chỉ cho phép từ COMPLETED sang READY_TO_SHIP
+        if (invoiceDetail.status !== InvoiceStatus.COMPLETED) {
+            throw new ConflictRequestError(
+                'Invoice status must be COMPLETED to update to READY_TO_SHIP'
+            );
+        }
+
+        // Logic check: userId trong token phải trùng với staffHandleDelivery
+        if (invoiceDetail.staffHandleDelivery !== adminContext.id) {
+            throw new ConflictRequestError(
+                'Only the assigned delivery staff can update this invoice to READY_TO_SHIP'
+            );
+        }
+
+        const updatedInvoice = await invoiceRepository.update(invoiceId, {
+            status: InvoiceStatus.READY_TO_SHIP,
+        });
+
+        return updatedInvoice;
+    };
+
+    /**
      * Mark invoice as DELIVERING
      * @param invoiceId - ID of the invoice
      * @param adminContext - Context of the admin user

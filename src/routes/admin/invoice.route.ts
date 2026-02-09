@@ -72,6 +72,13 @@ router.patch(
     validateParams(ObjectIdSchema),
     invoiceController.completeInvoice
 );
+
+// =============== OPERATION ROLE =============
+router.patch(
+    '/:id/status/ready-to-ship',
+    validateParams(ObjectIdSchema),
+    invoiceController.readyToShipInvoice
+);
 router.patch(
     '/:id/status/delivering',
     validateParams(ObjectIdSchema),

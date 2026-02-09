@@ -9,4 +9,5 @@ export enum InvoiceStatus {
     DELIVERED = 'DELIVERED', // Đã giao hàng
     REJECTED = 'REJECTED', // Bị từ chối
     CANCELED = 'CANCELED', // Đã hủy
+    READY_TO_SHIP = 'READY_TO_SHIP', // Đã sẵn sàng giao hàng
 }

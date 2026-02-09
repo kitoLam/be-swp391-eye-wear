@@ -20,4 +20,29 @@ export const AdminAccountCreateSchema = z
     })
     .strict();
 
+export const AdminAccountUpdateSchema = z
+    .object({
+        name: z
+            .string()
+            .max(255, 'Admin name is max 255 character')
+            .optional(),
+        citizenId: z
+            .string()
+            .regex(/^\d{12}$/, 'CitizenId is need to be at least 12 digits')
+            .optional(),
+        phone: z
+            .string()
+            .regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/g)
+            .optional(),
+        email: z.string().email('Email is invalid').optional(),
+        password: z
+            .string()
+            .min(8, 'Password must be at least 8 characters')
+            .optional(),
+        role: z.enum(RoleType, { error: 'Role is invalid' }).optional(),
+        avatar: z.string().nullable().optional(),
+    })
+    .strict();
+
 export type AdminAccountCreateDTO = z.infer<typeof AdminAccountCreateSchema>;
+export type AdminAccountUpdateDTO = z.infer<typeof AdminAccountUpdateSchema>;
