@@ -94,6 +94,16 @@ const CustomerSchema = new Schema<ICustomerDocument>(
             type: Boolean,
             default: false,
         },
+        // providers: {
+        //     type: [String],
+        //     enum: ["google", "local"],
+        //     required: true,
+        // },
+        // googleId: {
+        //     type: String,
+        //     unique: true,
+        //     required: false,
+        // },
         linkedAccounts: [
             {
                 provider: {
