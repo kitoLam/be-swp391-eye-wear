@@ -12,6 +12,9 @@ import { systemConstant } from './config/constants/system.constant';
 import clientRouter from './routes/client/index.route';
 import commonRouter from './routes/common/index.route';
 import cookieParser from 'cookie-parser';
+import { configGooglePassport } from './config/google-oauth.config';
+import passport from 'passport';
+import session from 'express-session';
 // Tạo Express application
 const app: Application = express();
 // Tạo HTTP server từ Express app (cần cho Socket.IO)
@@ -54,6 +57,16 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(session({
+  secret: 'SESSION_SECRET',
+  resave: false,
+  saveUninitialized: true,
+}));
+// Config Gg passport
+app.use(passport.initialize());
+app.use(passport.session());
+configGooglePassport(passport);
+
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'My API is running 1' });
 });

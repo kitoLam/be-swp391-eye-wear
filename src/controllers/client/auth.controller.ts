@@ -9,6 +9,7 @@ import {
 import authService from '../../services/client/auth.service';
 import { ApiResponse } from '../../utils/api-response';
 import { config } from '../../config/env.config';
+import { LoginBodyDTO } from '../../types/auth/admin/auth';
 
 class AuthController {
     registerCustomerAccount = async (req: Request, res: Response) => {
@@ -79,6 +80,31 @@ class AuthController {
         await authService.resetPassword(req.customer!, body.password);
         res.json(ApiResponse.success('Reset password success', null));
     };
+    handleGoogleCallback = async (req: Request, res: Response) => {
+        const deviceId =  req.query.state as string;
+        const tokenPair = await authService.loginWithGoogle(req.user as any, deviceId);
+        res.cookie('refreshTokenClient', tokenPair.refreshToken, {
+            httpOnly: true,
+            secure: config.env == 'deployment' ? true : false,
+            maxAge: config.jwt.refreshExpiresInSecond * 1000,
+            sameSite: 'lax',
+        });
+        res.redirect(
+            `http://localhost:5173/google/oauth/callback?accessToken=${tokenPair.accessToken}`
+        );
+    }
+
+    handleRequestMergeAccount = async (req: Request, res: Response) => {
+        const body = req.body as LoginBodyDTO;
+        await authService.handleRequestMergeAccount(body);
+        res.json(ApiResponse.success('Send merge request success success', null));
+    }
+
+    handleVerifyOtpForRequestMergeAccount = async (req: Request, res: Response) => {
+        const body = req.body as VerifyOTP;
+        await authService.verifyOTPForRequestMergeAccount(body.email, body.otp);
+        res.json(ApiResponse.success('Merge account success', null));
+    }
 }
 
 export default new AuthController();
