@@ -3,6 +3,8 @@ import { config } from './env.config';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { CustomerModel } from '../models/customer/customer.model.mongo';
 import passport from 'passport';
+import { cartRepository } from '../repositories/cart/cart.repository';
+import { supabase } from './supabase.config';
 
 export const configGooglePassport = function (
     passportInstance: typeof passport
@@ -25,7 +27,7 @@ export const configGooglePassport = function (
                     // nếu user đã đk tk với email này thì login thẳng luôn
                     if (existingUser) {
                         // nếu tk gg chưa đc link với account hiện tại thì link vào
-                        if(!existingUser.providers.includes('google')){
+                        if (!existingUser.providers.includes('google')) {
                             existingUser.googleId = profile.id;
                             existingUser.providers.push('google');
                             await existingUser.save();
@@ -36,10 +38,40 @@ export const configGooglePassport = function (
                         googleId: profile.id,
                         name: profile.displayName,
                         email: emailObj.value,
-                        providers: ["google"],
+                        providers: ['google'],
                     });
-                    console.log(">>>Create new Gg");
+                    console.log('>>>Create new Gg');
                     await newUser.save();
+                    // =============== CREATE OTHER RELATE DATA FOR INIT CUSTOMER =======
+                    await cartRepository.create({
+                        owner: newUser._id.toString(),
+                    });
+                    // 4. Create user in Supabase
+                    try {
+                        const { error } = await supabase
+                            .from('customer')
+                            .insert([
+                                {
+                                    id: newUser._id.toString(),
+                                    created_at: new Date(),
+                                },
+                            ]);
+
+                        if (error) {
+                            console.error(
+                                'Failed to create Supabase customer:',
+                                error
+                            );
+                            // Log error but don't fail registration?
+                            // Ideally we should rollback Mongo, but for now let's just log.
+                        }
+                    } catch (error) {
+                        console.error(
+                            'Failed to create Supabase customer:',
+                            error
+                        );
+                    }
+                    // =============== END CREATE OTHER RELATE DATA FOR INIT CUSTOMER =======
                     done(null, newUser);
                 } catch (error) {
                     done(error, undefined);

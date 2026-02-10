@@ -22,6 +22,7 @@ import * as mailUtil from '../../utils/mail.util';
 import redisService from '../redis.service';
 import { config } from '../../config/env.config';
 import { JwtPayload } from '../../types/jwt/jwt';
+import { GoogleOAuthRegisterBeforeError } from '../../errors/authError/auth-error';
 
 class AuthService {
     registerCustomer = async (payload: RegisterCustomerDTO) => {
@@ -32,6 +33,13 @@ class AuthService {
         });
 
         if (foundUser) {
+            // if this user exist by register GG oauth only
+            if (
+                !foundUser.providers.includes('local') &&
+                foundUser.providers[0] == 'google'
+            ) {
+                throw new GoogleOAuthRegisterBeforeError();
+            }
             throw new ConflictRequestError(
                 'Another user has already registered by this email!'
             );
@@ -155,9 +163,7 @@ class AuthService {
      * @param token
      * @returns
      */
-    verifyUserByAccessToken = async (
-        token: string
-    ): Promise<JwtPayload> => {
+    verifyUserByAccessToken = async (token: string): Promise<JwtPayload> => {
         // check in blacklist
         if (await tokenService.isInBlackList(token)) {
             throw new UnauthorizedRequestError(
@@ -207,9 +213,7 @@ class AuthService {
      * @param deviceId
      * @returns
      */
-    verifyUserByRefreshToken = async (
-        token: string
-    ): Promise<JwtPayload> => {
+    verifyUserByRefreshToken = async (token: string): Promise<JwtPayload> => {
         // check token có trong db ko
         const payload = jwtUtil.verifyRefreshToken(token);
         const userId = payload.userId;
@@ -276,35 +280,56 @@ class AuthService {
 
     forgotPassword = async (email: string) => {
         // Nếu gửi rồi thì override cái cũ
-        const existAccount = await customerRepository.findOne({email: email, deletedAt: null});
-        if(!existAccount){
-            throw new NotFoundRequestError("Email is not exist in system");
+        const existAccount = await customerRepository.findOne({
+            email: email,
+            deletedAt: null,
+        });
+        if (!existAccount) {
+            throw new NotFoundRequestError('Email is not exist in system');
         }
         const key = `${redisPrefix.mailForgotPass}:${email}`;
         const otp = generateOTPCode();
-        await redisService.setDataWithExpiredTime(key, otp, config.otp.waitingMinute * 60);
-        const subject = "Reset password OTP";
-        mailUtil.sendMail(email, subject, `<p >YOUR OTP TO RESET PASSWORD: <b>${otp}</b></p>`);
-    }
+        await redisService.setDataWithExpiredTime(
+            key,
+            otp,
+            config.otp.waitingMinute * 60
+        );
+        const subject = 'Reset password OTP';
+        mailUtil.sendMail(
+            email,
+            subject,
+            `<p >YOUR OTP TO RESET PASSWORD: <b>${otp}</b></p>`
+        );
+    };
 
     verifyOTP = async (email: string, otp: string) => {
-        const existAccount = await customerRepository.findOne({email: email, deletedAt: null});
-        if(!existAccount){
-            throw new NotFoundRequestError("Email is not exist in system");
+        const existAccount = await customerRepository.findOne({
+            email: email,
+            deletedAt: null,
+        });
+        if (!existAccount) {
+            throw new NotFoundRequestError('Email is not exist in system');
         }
         const key = `${redisPrefix.mailForgotPass}:${email}`;
         const existingOtpCode = await redisService.getDataByKey<string>(key);
-        if(!existingOtpCode){
-            throw new NotFoundRequestError("You don't have request to reset password");
+        if (!existingOtpCode) {
+            throw new NotFoundRequestError(
+                "You don't have request to reset password"
+            );
         }
-        if(existingOtpCode != otp){
-            throw new BadRequestError("OTP is not correct");
+        if (existingOtpCode != otp) {
+            throw new BadRequestError('OTP is not correct');
         }
         await redisService.deleteDataByKey(key);
-        return tokenService.getNewResetPasswordToken(existAccount._id.toString());
-    }
+        return tokenService.getNewResetPasswordToken(
+            existAccount._id.toString()
+        );
+    };
 
-    resetPassword = async (customer: AuthCustomerContext, passwordRaw: string) => {
+    resetPassword = async (
+        customer: AuthCustomerContext,
+        passwordRaw: string
+    ) => {
         // Hash password
         const hashedPassword = hashPassword(passwordRaw);
 
@@ -312,6 +337,82 @@ class AuthService {
         await customerRepository.update(customer.id, {
             hashedPassword: hashedPassword,
         });
-    }
+    };
+
+    handleRequestMergeAccount = async (payload: LoginCustomerDTO) => {
+        // 1. Check if email already exists
+        const foundUser = await customerRepository.findOne({
+            email: payload.email,
+            deletedAt: null,
+        });
+        if(!foundUser){
+            throw new NotFoundRequestError("Not found customer");
+        }
+        // thằng này có account local rồi thì thôi, ko cho gửi yêu cầu
+        if (foundUser) {
+            if (
+                foundUser.providers.includes('local')
+            ) {
+                throw new ConflictRequestError(
+                    'You have already register a manual account!'
+                );
+            }
+        }
+        const key = `${redisPrefix.mailMergeAccount}:${payload.email}`;
+        const otp = generateOTPCode();
+        const dataJson = {
+            otp: otp,
+            hashedPassword: hashPassword(payload.password),
+        }
+        await redisService.setDataWithExpiredTime(
+            key,
+            dataJson,
+            config.otp.waitingMinute * 60
+        );
+        const subject = 'MERGE ACCOUNT OTP';
+        mailUtil.sendMail(
+            payload.email,
+            subject,
+            `<p >YOUR OTP TO MERGE ACCOUNT: <b>${otp}</b></p>`
+        );
+    };
+
+    verifyOTPForRequestMergeAccount = async (email: string, otp: string) => {
+        const existAccount = await customerRepository.findOne({
+            email: email,
+            deletedAt: null,
+        });
+        if (!existAccount) {
+            throw new NotFoundRequestError('Email is not exist in system');
+        }
+        // thằng này có account local rồi thì thôi, ko cho gửi yêu cầu
+        if (existAccount) {
+            if (
+                existAccount.providers.includes('local')
+            ) {
+                throw new ConflictRequestError(
+                    'You have already register a manual account!'
+                );
+            }
+        }
+        const key = `${redisPrefix.mailMergeAccount}:${email}`;
+        const existingRequest = await redisService.getDataByKey<{
+            otp: string,
+            hashedPassword: string,
+        }>(key);
+        console.log(existingRequest);
+        if (!existingRequest) {
+            throw new NotFoundRequestError(
+                "You don't have request to reset password"
+            );
+        }
+        if (existingRequest.otp != otp) {
+            throw new BadRequestError('OTP is not correct');
+        }
+        await redisService.deleteDataByKey(key);
+        existAccount.hashedPassword = existingRequest.hashedPassword;
+        existAccount.providers.push("local");
+        await existAccount.save();
+    };
 }
 export default new AuthService();

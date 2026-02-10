@@ -9,6 +9,7 @@ import {
 import authService from '../../services/client/auth.service';
 import { ApiResponse } from '../../utils/api-response';
 import { config } from '../../config/env.config';
+import { LoginBodyDTO } from '../../types/auth/admin/auth';
 
 class AuthController {
     registerCustomerAccount = async (req: Request, res: Response) => {
@@ -91,6 +92,18 @@ class AuthController {
         res.redirect(
             `http://localhost:5173/google/oauth/callback?accessToken=${tokenPair.accessToken}`
         );
+    }
+
+    handleRequestMergeAccount = async (req: Request, res: Response) => {
+        const body = req.body as LoginBodyDTO;
+        await authService.handleRequestMergeAccount(body);
+        res.json(ApiResponse.success('Send merge request success success', null));
+    }
+
+    handleVerifyOtpForRequestMergeAccount = async (req: Request, res: Response) => {
+        const body = req.body as VerifyOTP;
+        await authService.verifyOTPForRequestMergeAccount(body.email, body.otp);
+        res.json(ApiResponse.success('Merge account success', null));
     }
 }
 
