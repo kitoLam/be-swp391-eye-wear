@@ -81,6 +81,12 @@ interface Config {
 
     shipment: {
         createApi: string;
+    },
+
+    googleOAuth20: {
+        client_id: string,
+        client_secret: string,
+        callback_url: string,
     }
 }
 
@@ -175,6 +181,12 @@ export const config: Config = {
     },
     shipment: {
         createApi: process.env.SHIPMENT_CREATE_API || ''
+    },
+
+    googleOAuth20: {
+        client_id: process.env.GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        callback_url: process.env.GOOGLE_CALLBACK_URL || '',
     }
 };
 

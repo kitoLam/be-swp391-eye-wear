@@ -62,11 +62,11 @@ const CustomerSchema = new Schema<ICustomerDocument>(
         },
         hashedPassword: {
             type: String,
-            required: [true, 'Password is required'],
+            required: false,
         },
         phone: {
             type: String,
-            required: [true, 'Phone number is required'],
+            required: false,
             unique: true,
             trim: true,
         },
@@ -77,6 +77,7 @@ const CustomerSchema = new Schema<ICustomerDocument>(
                 message:
                     'Gender must be F (Female), M (Male), or N (Not specified)',
             },
+            default: 'N',
         },
         address: {
             type: [AddressSchema],
@@ -92,47 +93,18 @@ const CustomerSchema = new Schema<ICustomerDocument>(
         },
         isVerified: {
             type: Boolean,
-            default: false,
+            default: true,
         },
-        linkedAccounts: [
-            {
-                provider: {
-                    type: String,
-                    required: [true, 'Provider is required'],
-                    trim: true,
-                },
-                sub: {
-                    type: String,
-                    required: [true, 'Subject is required'],
-                    trim: true,
-                },
-                email_verified: {
-                    type: Boolean,
-                    default: false,
-                },
-                given_name: {
-                    type: String,
-                    trim: true,
-                },
-                family_name: {
-                    type: String,
-                    trim: true,
-                },
-                picture: {
-                    type: String,
-                    trim: true,
-                },
-                locale: {
-                    type: String,
-                    trim: true,
-                },
-                linkedAt: {
-                    type: Date,
-                    required: [true, 'Linked date is required'],
-                    default: Date.now,
-                },
-            },
-        ],
+        providers: {
+            type: [String],
+            enum: ["google", "local"],
+            required: true,
+        },
+        googleId: {
+            type: String,
+            unique: true,
+            required: false,
+        },
         deletedAt: {
             type: Date,
             default: null,
@@ -147,22 +119,6 @@ const CustomerSchema = new Schema<ICustomerDocument>(
         timestamps: true,
     }
 );
-
-// Custom validation to ensure unique provider per customer
-CustomerSchema.pre('save', function (next) {
-    if (this.linkedAccounts && this.linkedAccounts.length > 0) {
-        const providers = this.linkedAccounts.map(acc => acc.provider);
-        const uniqueProviders = new Set(providers);
-        if (providers.length !== uniqueProviders.size) {
-            return next(
-                new Error(
-                    'Cannot link multiple accounts from the same provider'
-                )
-            );
-        }
-    }
-    next();
-});
 
 export const CustomerModel = mongoose.model<ICustomerDocument>(
     'Customer',
