@@ -1,8 +1,6 @@
 import z from 'zod';
 import { AddressSchema } from './address';
-import { LinkedAccountSchema } from './linked-account';
 import { Types } from 'mongoose';
-import { LensParametersSchema } from '../lens-parameters/lens-parameters';
 
 // Customer Schema
 export const CustomerSchema = z.object({
@@ -36,7 +34,8 @@ export const CustomerSchema = z.object({
     })).default([]),
     hobbies: z.array(z.string()).default([]),
     isVerified: z.boolean().default(false),
-    linkedAccounts: z.array(LinkedAccountSchema).default([]),
+    providers: z.array(z.string()),
+    googleId: z.string(),
     createdAt: z.date(),
     updatedAt: z.date(),
     deletedAt: z.date().nullable(),

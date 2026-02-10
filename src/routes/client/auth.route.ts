@@ -3,6 +3,7 @@ import authController from "../../controllers/client/auth.controller";
 import { ForgetPasswordSchema, LoginCustomerSchema, RegisterCustomerSchema, ResetPasswordSchema, VerifyOTPSchema } from "../../types/auth/client/auth";
 import { validateBody } from "../../middlewares/share/validator.middleware";
 import { authenticateMiddlewareClient, verifyRefreshTokenMiddlewareClient, verifyResetPasswordTokenMiddleware } from "../../middlewares/client/auth.middleware";
+import passport from "passport";
 
 const router = Router();
 router.post('/register', validateBody(RegisterCustomerSchema), authController.registerCustomerAccount);
@@ -12,4 +13,15 @@ router.post('/refresh-token', verifyRefreshTokenMiddlewareClient, authController
 router.post('/forgot-password', validateBody(ForgetPasswordSchema), authController.forgotPassword);
 router.post('/verify-otp', validateBody(VerifyOTPSchema), authController.verifyOTP);
 router.post('/reset-password', verifyResetPasswordTokenMiddleware, validateBody(ResetPasswordSchema), authController.resetPassword);
+router.get('/google', (req, res, next) => {
+  const state = req.query.state as string;
+
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    state: state
+  })(req, res, next);
+});
+router.get('/google/callback', passport.authenticate('google', {
+  failureRedirect: 'http://localhost:5173/auth/login',
+}), authController.handleGoogleCallback);
 export default router;

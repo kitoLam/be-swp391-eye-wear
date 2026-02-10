@@ -18,19 +18,28 @@ export const configGooglePassport = function (
             // Hàm gọi vào khi gg xác thực thành công
             async (accessToken, refreshToken, profile, done) => {
                 try {
-                    console.log('>>>Gg profile::', profile);
+                    const emailObj = (profile.emails as any)[0];
                     const existingUser = await userModel.findOne({
-                        // email: profile.emails[0].value,
+                        email: emailObj.value,
                     });
+                    // nếu user đã đk tk với email này thì login thẳng luôn
                     if (existingUser) {
+                        // nếu tk gg chưa đc link với account hiện tại thì link vào
+                        if(!existingUser.providers.includes('google')){
+                            existingUser.googleId = profile.id;
+                            existingUser.providers.push('google');
+                            await existingUser.save();
+                        }
                         return done(null, existingUser);
                     }
                     const newUser = new userModel({
                         googleId: profile.id,
                         name: profile.displayName,
-                        // email: profile.emails[0].value,
+                        email: emailObj.value,
+                        providers: ["google"],
                     });
-                    // await newUser.save();
+                    console.log(">>>Create new Gg");
+                    await newUser.save();
                     done(null, newUser);
                 } catch (error) {
                     done(error, undefined);

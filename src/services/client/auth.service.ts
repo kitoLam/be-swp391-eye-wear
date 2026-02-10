@@ -114,6 +114,42 @@ class AuthService {
         };
         return dataFinal;
     };
+    loginWithGoogle = async (
+        user: any,
+        deviceId: string | string[] | undefined
+    ) => {
+        // check deviceId
+        if (!deviceId || typeof deviceId != 'string') {
+            throw new BadRequestError('DeviceId is invalid');
+        }
+        // check email exist
+        const foundUser = await customerRepository.findOne({
+            email: user.email,
+            deletedAt: null,
+        });
+        if (!foundUser) {
+            throw new UnauthorizedRequestError(
+                'Account is not exist in the system'
+            );
+        }
+        if (!foundUser.isVerified) {
+            throw new ForbiddenRequestError('Account is not verified');
+        }
+        // generate accessToken and RefreshToken
+        const userId = foundUser._id.toString();
+        const accessToken = tokenService.getNewAccessToken(userId);
+        const refreshToken = await tokenService.getNewRefreshToken(
+            { userId },
+            deviceId,
+            'client'
+        );
+        // Return accessToken and refreshToken (refreshToken for cookie, not response)
+        const dataFinal = {
+            accessToken: accessToken,
+            refreshToken: refreshToken, // For controller to set cookie
+        };
+        return dataFinal;
+    };
     /**
      * Hàm giúp xác thực user hợp lệ để vào các route sau
      * @param token

@@ -79,6 +79,19 @@ class AuthController {
         await authService.resetPassword(req.customer!, body.password);
         res.json(ApiResponse.success('Reset password success', null));
     };
+    handleGoogleCallback = async (req: Request, res: Response) => {
+        const deviceId =  req.query.state as string;
+        const tokenPair = await authService.loginWithGoogle(req.user as any, deviceId);
+        res.cookie('refreshTokenClient', tokenPair.refreshToken, {
+            httpOnly: true,
+            secure: config.env == 'deployment' ? true : false,
+            maxAge: config.jwt.refreshExpiresInSecond * 1000,
+            sameSite: 'lax',
+        });
+        res.redirect(
+            `http://localhost:5173/google/oauth/callback?accessToken=${tokenPair.accessToken}`
+        );
+    }
 }
 
 export default new AuthController();
