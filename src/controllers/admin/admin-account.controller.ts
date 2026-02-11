@@ -12,7 +12,7 @@ class AdminAccountController {
     };
 
     getDetail = async (req: Request, res: Response) => {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const result = await adminAccountService.getDetail(id);
         res.json(ApiResponse.success('Get admin account detail success', result));
     };
@@ -24,14 +24,14 @@ class AdminAccountController {
     };
 
     update = async (req: Request, res: Response) => {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const body = req.validatedBody as AdminAccountUpdateDTO;
         const result = await adminAccountService.update(id, body);
         res.json(ApiResponse.success('Update admin account success', result));
     };
 
     delete = async (req: Request, res: Response) => {
-        const { id } = req.params;
+        const id = req.params.id as string;
         await adminAccountService.softDelete(id);
         res.json(ApiResponse.success('Delete admin account success', null));
     };
