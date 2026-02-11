@@ -10,8 +10,8 @@ router.post('/register', validateBody(RegisterCustomerSchema), authController.re
 router.post('/login', validateBody(LoginCustomerSchema), authController.login);
 router.post('/logout', authenticateMiddlewareClient, authController.logout);
 router.post('/refresh-token', verifyRefreshTokenMiddlewareClient, authController.refreshAccessToken);
-router.post('/forgot-password', validateBody(ForgetPasswordSchema), authController.forgotPassword);
-router.post('/verify-otp', validateBody(VerifyOTPSchema), authController.verifyOTP);
+router.post('/request-reset-password', validateBody(ForgetPasswordSchema), authController.forgotPassword);
+router.post('/request-reset-password/verify-otp', validateBody(VerifyOTPSchema), authController.verifyOTP);
 router.post('/reset-password', verifyResetPasswordTokenMiddleware, validateBody(ResetPasswordSchema), authController.resetPassword);
 router.get('/google', (req, res, next) => {
   const state = req.query.state as string;

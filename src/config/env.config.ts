@@ -37,13 +37,6 @@ interface Config {
         url: string; // URL Redis Cloud
     };
 
-    // Cấu hình Neo4j
-    neo4j: {
-        uri: string; // URI kết nối Neo4j
-        user: string; // Username
-        password: string; // Password Neo4j
-    };
-
     // Cấu hình JWT (JSON Web Token)
     jwt: {
         secret: string; // Khóa bí mật để mã hóa token
@@ -117,18 +110,6 @@ export const config: Config = {
         url: process.env.REDIS_URL || '',
     },
 
-    // Neo4j configuration
-    neo4j: {
-        // URI Neo4j (VD: neo4j+s://xxxxx.databases.neo4j.io)
-        uri: process.env.NEO4J_URI || '',
-
-        // Username Neo4j (thường là 'neo4j')
-        user: process.env.NEO4J_USER || 'neo4j',
-
-        // Password Neo4j
-        password: process.env.NEO4J_PASSWORD || '',
-    },
-
     // JWT configuration
     jwt: {
         // Secret key để mã hóa access token (phải đủ dài và phức tạp)
@@ -197,7 +178,6 @@ export const config: Config = {
 const requiredEnvVars = [
     'MONGODB_URI', // Không có thì không kết nối được MongoDB
     'REDIS_URL', // Không có thì không kết nối được Redis
-    'NEO4J_URI', // Không có thì không kết nối được Neo4j
     'JWT_SECRET', // Không có thì không tạo được token
     'SUPABASE_URL',
     'SUPABASE_KEY',
