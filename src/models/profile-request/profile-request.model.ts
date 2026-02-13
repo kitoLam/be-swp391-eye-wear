@@ -28,10 +28,12 @@ const profileRequestSchema = new Schema<IProfileRequestDocument>({
   processedBy: {
     type: Schema.Types.ObjectId,
     ref: 'AdminAccount',
-    required: true,
+    required: false,
+    default: null,
   },
   processedAt: {
     type: Date,
+    required: false,
     default: null,  
   },
   status: {

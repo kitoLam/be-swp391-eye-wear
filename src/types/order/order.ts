@@ -16,7 +16,8 @@ export const OrderSchema = z.object({
         .array(OrderProductSchema)
         .min(1, 'At least one product is required'),
     status: z.enum(OrderStatus),
-
+    verifiedBy: z.string().or(z.instanceof(Types.ObjectId)),
+    verifiedAt: z.date(),
     assignerStaff: z.string().nullable(),
     assignedStaff: z.string().nullable(),
     assignedAt: z.date().nullable(),

@@ -12,7 +12,7 @@ import { invoiceRepository } from '../../repositories/invoice/invoice.repository
 import { orderRepository } from '../../repositories/order/order.repository';
 import { AuthAdminContext } from '../../types/context/context';
 import { OrderCountTotalQuery, OrderListAdminQuery, OrderStatsQuery } from '../../types/order/order.query';
-import { AssignOrderDTO } from '../../types/order/order.request';
+import { ApproveOrderDTO, AssignOrderDTO } from '../../types/order/order.request';
 import { IOrderDocument } from '../../models/order/order.model.mongo';
 
 class OrderService {
@@ -260,22 +260,27 @@ class OrderService {
         }
     }
 
-    approveOrder = async (adminContext: AuthAdminContext, orderId: string) => {
+    approveOrder = async (adminContext: AuthAdminContext, orderId: string, payload: ApproveOrderDTO) => {
         const foundOrder = await orderRepository.findOne({
             _id: orderId
         });
         if(!foundOrder){
             throw new NotFoundRequestError('Order not found');
         }
-        
+
         if(foundOrder.status !== OrderStatus.PENDING){
             throw new ConflictRequestError('Only approve order is pending!');
         }
-        
-        await orderRepository.update(orderId, {
-            status: OrderStatus.APPROVED
-        });
-        
+        // update prescription detail
+        if(foundOrder.products[0] && foundOrder.products[0].lens){
+            foundOrder.products[0].lens.parameters = payload.parameters;
+        }
+        // update verified staff
+        foundOrder.verifiedBy = adminContext.id;
+        foundOrder.verifiedAt = new Date(),
+        // update order status 
+        foundOrder.status = OrderStatus.APPROVED;
+        await foundOrder.save();
     }
 
     countTotalOrders = async (query: OrderCountTotalQuery) => {

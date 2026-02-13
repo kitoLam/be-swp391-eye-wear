@@ -10,7 +10,7 @@ import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware'
 import { ObjectIdSchema } from '../../types/common/objectId';
 import { requireAdminRoles } from '../../middlewares/admin/authorization.middleware';
 import { RoleType } from '../../config/enums/admin-account';
-import { InvoiceAssignHandleDeliverySchema } from '../../types/invoice/invoice.request';
+import { InvoiceAssignHandleDeliverySchema, RejectInvoiceSchema } from '../../types/invoice/invoice.request';
 const router = Router();
 
 // Public route - NO AUTHENTICATION
@@ -50,6 +50,7 @@ router.patch(
 router.patch(
     '/:id/status/reject',
     validateParams(ObjectIdSchema),
+    validateBody(RejectInvoiceSchema),
     invoiceController.rejectInvoice
 );
 // =============== END SALE ROLE ============

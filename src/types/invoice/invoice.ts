@@ -1,6 +1,7 @@
 import z from 'zod';
 import { AddressSchema } from '../customer/address';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
+import { Types } from 'mongoose';
 
 // Invoice Schema
 export const InvoiceSchema = z
@@ -14,12 +15,13 @@ export const InvoiceSchema = z
         status: z.enum(InvoiceStatus),
         fullName: z.string().min(1, 'Full name is required'),
         phone: z.string().min(1, 'Phone number is required'),
+        staffVerified: z.string().or(z.instanceof(Types.ObjectId)).nullable(),
+        verifiedAt: z.date().nullable(),
         totalDiscount: z
             .number()
             .min(0, 'Total discount must be non-negative')
             .default(0),
         managerOnboard: z.string().nullable(), // Manager ID when status is ONBOARD
-        staffVerified: z.string().nullable(),
         staffHandleDelivery: z.string().nullable(),
         assignStaffHandleDeliveryAt: z.date().nullable(),
         onboardedAt: z.date().nullable(),
@@ -27,6 +29,7 @@ export const InvoiceSchema = z
         updatedAt: z.date(),
         deletedAt: z.date().nullable(),
         note: z.string(),
+        rejectedNote: z.string().optional(),
     })
     .refine(data => data.totalDiscount <= data.totalPrice, {
         message: 'Total discount cannot exceed total price',

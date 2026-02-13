@@ -13,7 +13,7 @@ import { productRepository } from '../../repositories/product/product.repository
 import { OrderStatus } from '../../config/enums/order.enum';
 import { config } from '../../config/env.config';
 import axios from 'axios';
-import { InvoiceAssignHandleDeliveryRequest } from '../../types/invoice/invoice.request';
+import { InvoiceAssignHandleDeliveryRequest, RejectInvoiceRequest } from '../../types/invoice/invoice.request';
 import { adminAccountRepository } from '../../repositories/admin-account/admin-account.repository';
 import { RoleType } from '../../config/enums/admin-account';
 
@@ -126,6 +126,7 @@ class InvoiceService {
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.APPROVED,
             staffVerified: adminContext.id,
+            verifiedAt: new Date(),
         });
         return updatedInvoice;
     };
@@ -137,7 +138,8 @@ class InvoiceService {
      */
     rejectInvoice = async (
         invoiceId: string,
-        adminContext: AuthAdminContext
+        adminContext: AuthAdminContext,
+        requestBody: RejectInvoiceRequest,
     ) => {
         const invoiceDetail = await invoiceRepository.findById(invoiceId);
         if (!invoiceDetail) {
@@ -196,12 +198,16 @@ class InvoiceService {
             },
             {
                 status: OrderStatus.CANCELED,
+                verifiedBy: adminContext.id,
+                verifiedAt: new Date(),
             }
         );
         // Cập nhật trạng thái rejected
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.REJECTED,
             staffVerified: adminContext.id,
+            verifiedAt: new Date(),
+            rejectedNote: requestBody.note,
         });
         return updatedInvoice;
     };

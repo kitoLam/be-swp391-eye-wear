@@ -3,7 +3,7 @@ import { ApiResponse } from '../../utils/api-response';
 import invoiceService from '../../services/admin/invoice.service';
 import { InvoiceListQuery } from '../../types/invoice/invoice.query';
 import { formatDateToString, formatNumberToVND } from '../../utils/formatter';
-import { InvoiceAssignHandleDeliveryRequest } from '../../types/invoice/invoice.request';
+import { InvoiceAssignHandleDeliveryRequest, RejectInvoiceRequest } from '../../types/invoice/invoice.request';
 
 class InvoiceController {
     getListInvoice = async (req: Request, res: Response) => {
@@ -80,7 +80,8 @@ class InvoiceController {
     rejectInvoice = async (req: Request, res: Response) => {
         const adminContext = req.adminAccount!;
         const invoiceId = req.params.id as string;
-        await invoiceService.rejectInvoice(invoiceId, adminContext);
+        const body = req.body as RejectInvoiceRequest;
+        await invoiceService.rejectInvoice(invoiceId, adminContext, body);
         res.json(ApiResponse.success('Reject invoice success', null));
     };
 

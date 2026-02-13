@@ -50,14 +50,25 @@ class ProfileRequestService {
             phone: payload.phone,
             staffId: adminContext.id,
         });
-        const foundStaff = (await adminAccountRepository.findById(
-            adminContext.id
-        ))!;
-        // check mail exist
-        await profileRequestRepository.create({
-            staffId: foundStaff._id,
-            ...payload,
-        });
+        const foundRequestStaff = (await profileRequestRepository.findOne(
+            {
+                staffId: adminContext.id,
+                status: ProfileRequestStatus.PENDING,
+            }
+        ));
+        if(foundRequestStaff){
+            foundRequestStaff.name = payload.name;
+            foundRequestStaff.phone = payload.phone;
+            foundRequestStaff.email = payload.email;
+            await foundRequestStaff.save();
+        }
+        else {
+            // check mail exist
+            await profileRequestRepository.create({
+                staffId: adminContext.id,
+                ...payload,
+            });
+        }
     };
 
     getProfileRequestList = async (query: GetProfileRequestListQuery) => {

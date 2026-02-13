@@ -5,7 +5,7 @@ export const LensParametersSchema = z.object({
     left: z.object({
         SPH: z.number(),
         CYL: z.number(),
-        AXIS: z.number(),
+        AXIS: z.number(), 
         ADD: z.number()
     }),
     right: z.object({

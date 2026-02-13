@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AssignOrderDTO } from '../../types/order/order.request';
+import { ApproveOrderDTO, AssignOrderDTO } from '../../types/order/order.request';
 import { ApiResponse } from '../../utils/api-response';
 import orderService from '../../services/admin/order.service';
 import { BadRequestError } from '../../errors/apiError/api-error';
@@ -80,7 +80,8 @@ class OrderController {
     approveOrder = async (req: Request, res: Response) => {
         const adminContext = req.adminAccount!;
         const orderId = req.params.id as string;
-        await orderService.approveOrder(adminContext, orderId);
+        const body = req.body as ApproveOrderDTO;
+        await orderService.approveOrder(adminContext, orderId, body);
         res.json(ApiResponse.success('Approve order successfully', null));
     }
 

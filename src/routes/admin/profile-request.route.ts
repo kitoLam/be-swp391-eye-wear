@@ -20,3 +20,5 @@ router.patch('/:id/status/approved', validateParams(ObjectIdSchema), profileRequ
 router.patch('/:id/status/rejected', validateParams(ObjectIdSchema), profileRequestController.rejectProfileRequest);
 // oper, sale cancel
 router.patch('/:id/status/cancelled', validateParams(ObjectIdSchema), profileRequestController.cancelProfileRequest);
+
+export default router;

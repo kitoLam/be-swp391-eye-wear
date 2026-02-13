@@ -2,7 +2,7 @@ import { Router } from "express";
 import orderController from "../../controllers/admin/order.controller";
 import { authenticateMiddleware } from "../../middlewares/admin/auth.middleware";
 import { validateBody, validateParams, validateQuery } from "../../middlewares/share/validator.middleware";
-import { AssignOrderSchema } from "../../types/order/order.request";
+import { ApproveOrderSchema, AssignOrderSchema } from "../../types/order/order.request";
 import { ObjectIdSchema } from "../../types/common/objectId";
 import { OrderCountTotalQuerySchema, OrderListAdminQuerySchema, OrderStatsQuerySchema } from "../../types/order/order.query";
 const router = Router();
@@ -16,7 +16,7 @@ router.patch('/:id/status/assign', validateParams(ObjectIdSchema), validateBody(
 // ============== END MANAGER ================
 
 // =============== SALE ======================
-router.patch('/:id/status/approve', validateParams(ObjectIdSchema), orderController.approveOrder);
+router.patch('/:id/status/approve', validateParams(ObjectIdSchema), validateBody(ApproveOrderSchema) ,orderController.approveOrder);
 // =============== END SALE ==================
 
 // ============== OPERATION ================
