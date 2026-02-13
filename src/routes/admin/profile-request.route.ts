@@ -14,11 +14,11 @@ router.get('/:id', validateParams(ObjectIdSchema), profileRequestController.getR
 
 // oper, sale gửi yêu cầu thay đổi lên manager
 router.post('/', validateBody(SendProfileRequestSchema), profileRequestController.sendProfileUpdateRequest);
+// oper, sale cancel
+router.patch('/cancel-request', profileRequestController.cancelProfileRequest);
 // manager approve
 router.patch('/:id/status/approved', validateParams(ObjectIdSchema), profileRequestController.approveProfileRequest);
 // manager reject
 router.patch('/:id/status/rejected', validateParams(ObjectIdSchema), profileRequestController.rejectProfileRequest);
-// oper, sale cancel
-router.patch('/:id/status/cancelled', validateParams(ObjectIdSchema), profileRequestController.cancelProfileRequest);
 
 export default router;
