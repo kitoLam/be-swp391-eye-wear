@@ -49,12 +49,6 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
             default: 0,
             min: 0,
         },
-        // Verification fields (flattened)
-        staffVerified: {
-            type: String,
-            trim: true,
-            default: null,
-        },
         managerOnboard: {
             type: String,
             default: null
@@ -80,6 +74,20 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
             type: Date,
             default: null,
         },
+        staffVerified: {
+            type: String,
+            trim: true,
+            default: null,
+        },
+        verifiedAt: {
+            type: Date,
+            required: false,
+            default: null,
+        },
+        rejectedNote: {
+            type: String,
+            required: false,
+        }
     },
     {
         timestamps: true,

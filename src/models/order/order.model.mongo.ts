@@ -93,7 +93,17 @@ const OrderSchema = new Schema<IOrderDocument>(
                 },
             },
         ],
-
+        verifiedBy: {
+            type: Schema.Types.ObjectId,
+            ref: "AdminAccount",
+            required: false,
+            default: null,
+        },
+        verifiedAt: {
+            type: Date,
+            required: false,
+            default: null,
+        },
         assignerStaff: {
             type: String,
             trim: true,

@@ -13,8 +13,13 @@ export type ClientUpdateOrder = z.infer<typeof ClientUpdateOrderPrescriptionSche
 // ========= End Client Request Schema ==============
 
 // ========= Admin Request Schema ==================
+export const ApproveOrderSchema = z.object({
+    parameters: LensParametersSchema
+});
+
 export const AssignOrderSchema = z.object({
     assignedStaff: z.string().nonempty('Staff ID is required').refine(v => Types.ObjectId.isValid(v), 'Staff ID is not valid'),
 });
 export type AssignOrderDTO = z.infer<typeof AssignOrderSchema>;
+export type ApproveOrderDTO = z.infer<typeof ApproveOrderSchema>;
 // ========= End Admin Request Schema ==============

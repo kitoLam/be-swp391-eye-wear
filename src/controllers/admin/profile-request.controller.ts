@@ -75,8 +75,7 @@ class ProfileRequestController {
         res.json(ApiResponse.success('Reject request success', null));
     };
     cancelProfileRequest = async (req: Request, res: Response) => {
-        const id = req.params.id as string;
-        await profileRequestService.cancelProfileRequest(req.adminAccount!, id);
+        await profileRequestService.cancelProfileRequest(req.adminAccount!);
         res.json(ApiResponse.success('Cancel request success', null));
     };
 }

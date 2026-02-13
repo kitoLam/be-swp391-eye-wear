@@ -50,14 +50,25 @@ class ProfileRequestService {
             phone: payload.phone,
             staffId: adminContext.id,
         });
-        const foundStaff = (await adminAccountRepository.findById(
-            adminContext.id
-        ))!;
-        // check mail exist
-        await profileRequestRepository.create({
-            staffId: foundStaff._id,
-            ...payload,
-        });
+        const foundRequestStaff = (await profileRequestRepository.findOne(
+            {
+                staffId: adminContext.id,
+                status: ProfileRequestStatus.PENDING,
+            }
+        ));
+        if(foundRequestStaff){
+            foundRequestStaff.name = payload.name;
+            foundRequestStaff.phone = payload.phone;
+            foundRequestStaff.email = payload.email;
+            await foundRequestStaff.save();
+        }
+        else {
+            // check mail exist
+            await profileRequestRepository.create({
+                staffId: adminContext.id,
+                ...payload,
+            });
+        }
     };
 
     getProfileRequestList = async (query: GetProfileRequestListQuery) => {
@@ -85,6 +96,7 @@ class ProfileRequestService {
     ) => {
         const foundRequest = await profileRequestRepository.findOne({
             _id: id,
+            status: ProfileRequestStatus.PENDING,
             deletedAt: null,
         });
         if (!foundRequest) {
@@ -104,7 +116,7 @@ class ProfileRequestService {
             staffId: foundRequest.staffId.toString(),
         });
         // mutate admin account info in db
-        await adminAccountRepository.update(adminContext.id, {
+        await adminAccountRepository.update(foundRequest.staffId, {
           name: foundRequest.name,
           email: foundRequest.email,
           phone: foundRequest.phone
@@ -120,16 +132,11 @@ class ProfileRequestService {
     ) => {
         const foundRequest = await profileRequestRepository.findOne({
             _id: id,
+            status: ProfileRequestStatus.PENDING,
             deletedAt: null,
         });
         if (!foundRequest) {
             throw new NotFoundRequestError('Request not found');
-        }
-        // ensure status is still pending
-        if (foundRequest.status != ProfileRequestStatus.PENDING) {
-            throw new ConflictRequestError(
-                'Request status must be in pending status'
-            );
         }
         foundRequest.status = ProfileRequestStatus.REJECTED;
         foundRequest.processedAt = new Date();
@@ -138,27 +145,16 @@ class ProfileRequestService {
     };
 
     cancelProfileRequest = async (
-        adminContext: AuthAdminContext,
-        id: string
+        adminContext: AuthAdminContext
     ) => {
+        // chỉ cho cancel request đg pending và đúng staff hiên tại
         const foundRequest = await profileRequestRepository.findOne({
-            _id: id,
+            staffId: adminContext.id,
+            status: ProfileRequestStatus.PENDING,
             deletedAt: null,
         });
         if (!foundRequest) {
-            throw new NotFoundRequestError('Request not found');
-        }
-        // only auth user can cancel his own request
-        if (adminContext.id != foundRequest.staffId.toString()) {
-            throw new ForbiddenRequestError(
-                'You do not have permission to cancel this request'
-            );
-        }
-        // ensure status is still pending
-        if (foundRequest.status != ProfileRequestStatus.PENDING) {
-            throw new ConflictRequestError(
-                'Request status must be in pending status'
-            );
+            throw new NotFoundRequestError('You have not sent any request');
         }
         foundRequest.status = ProfileRequestStatus.CANCELLED;
         await foundRequest.save();
