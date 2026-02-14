@@ -19,7 +19,11 @@ router.patch(
     validateParams(ObjectIdSchema),
     invoiceController.deliveredInvoice
 );
-
+router.patch(
+    '/:id/status/delivering',
+    validateParams(ObjectIdSchema),
+    invoiceController.deliveringInvoice
+);
 router.use(authenticateMiddleware);
 // api lấy danh sách hóa đơn
 router.get(
@@ -79,11 +83,6 @@ router.patch(
     '/:id/status/ready-to-ship',
     validateParams(ObjectIdSchema),
     invoiceController.readyToShipInvoice
-);
-router.patch(
-    '/:id/status/delivering',
-    validateParams(ObjectIdSchema),
-    invoiceController.deliveringInvoice
 );
 // =============== END MANAGER ROLE =============
 
