@@ -10,7 +10,7 @@ import {
     ConflictRequestError,
     NotFoundRequestError,
 } from '../../errors/apiError/api-error';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 class AdminAccountService {
     async getList(query: AdminAccountListQuery) {

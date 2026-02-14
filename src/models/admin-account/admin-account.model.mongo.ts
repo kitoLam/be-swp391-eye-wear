@@ -46,6 +46,11 @@ const AdminAccountSchema = new Schema<IAdminAccountDocument>(
           type: Date,
           default: null,
         },
+        lastLogin: {
+          type: Date,
+          required: false,
+          default: null,
+        }
     },
     {
         timestamps: true,

@@ -37,6 +37,7 @@ class StaffService {
             avatar: admin.avatar,
             role: admin.role,
             createdAt: formatDateToString(admin.createdAt),
+            lastLogin: admin.lastLogin  ? formatDateToString(admin.lastLogin) : null,
         };
     }
 

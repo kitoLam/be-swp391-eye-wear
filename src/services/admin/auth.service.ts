@@ -42,6 +42,11 @@ class AuthService {
             deviceId,
             'admin'
         );
+        await adminAccountRepository.updateByFilter({
+            _id: userId,
+        }, {
+            lastLogin: new Date(),
+        });
         // Return accessToken and refreshToken (refreshToken for cookie, not response)
         const dataFinal = {
             accessToken: accessToken,
