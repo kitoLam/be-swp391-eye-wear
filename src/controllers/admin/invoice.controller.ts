@@ -104,18 +104,19 @@ class InvoiceController {
     readyToShipInvoice = async (req: Request, res: Response) => {
         const adminContext = req.adminAccount!;
         const invoiceId = req.params.id as string;
-        await invoiceService.readyToShipInvoice(invoiceId, adminContext);
+        const data = await invoiceService.readyToShipInvoice(invoiceId, adminContext);
         res.json(
-            ApiResponse.success('Update invoice to ready to ship success', null)
+            ApiResponse.success('Update invoice to ready to ship success', {
+                shipmentInfo: data.shipmentData,
+                updatedInvoice: data.updatedInvoice
+            })
         );
     };
 
     deliveringInvoice = async (req: Request, res: Response) => {
-        const adminContext = req.adminAccount!;
         const invoiceId = req.params.id as string;
         const shipmentInfo = await invoiceService.deliveringInvoice(
-            invoiceId,
-            adminContext
+            invoiceId
         );
         res.json(
             ApiResponse.success('Update invoice to delivering success', {

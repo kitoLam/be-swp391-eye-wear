@@ -11,6 +11,7 @@ import importProductRouter from './import-product.route';
 import preOrderImportRouter from './pre-order-import.route';
 import staffRouter from './staff.route';
 import profileRequest from './profile-request.route';
+import reportTicketRouter from './report-ticket.route';
 const router = Router();
 
 router.use('/auth', authRouter);
@@ -25,4 +26,5 @@ router.use('/import-products', importProductRouter);
 router.use('/pre-order-imports', preOrderImportRouter);
 router.use('/staff', staffRouter);
 router.use('/profile-requests', profileRequest);
+router.use('/report-tickets', reportTicketRouter);
 export default router;
