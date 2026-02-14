@@ -81,8 +81,10 @@ class InvoiceController {
         const adminContext = req.adminAccount!;
         const invoiceId = req.params.id as string;
         const body = req.body as RejectInvoiceRequest;
-        await invoiceService.rejectInvoice(invoiceId, adminContext, body);
-        res.json(ApiResponse.success('Reject invoice success', null));
+        const updatedInvoice = await invoiceService.rejectInvoice(invoiceId, adminContext, body);
+        res.json(ApiResponse.success('Reject invoice success', {
+            rejectedNote: updatedInvoice?.rejectedNote,
+        }));
     };
 
     onboardInvoice = async (req: Request, res: Response) => {
