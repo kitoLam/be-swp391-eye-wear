@@ -14,6 +14,7 @@ export const AdminAccount = z.object({
     createdAt: z.date(),
     updatedAt: z.date(),
     deletedAt: z.date().nullable(),
+    lastLogin: z.date().nullable(),
 });
 
 export const AdminAccountCreateSchema = z
