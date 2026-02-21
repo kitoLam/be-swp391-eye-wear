@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Product } from '../../types/product/product/product';
+import { ProductVariantMode } from '../../config/enums/product.enum';
 
 export type IProductDocument = Product & Document;
 
@@ -116,7 +117,7 @@ const ProductSchema = new Schema<IProductDocument>(
                 },
                 mode: {
                     type: String,
-                    enum: ["AVAILABLE", "PRE_ORDER"],
+                    enum: ProductVariantMode,
                     default: "AVAILABLE",
                 },
             },
