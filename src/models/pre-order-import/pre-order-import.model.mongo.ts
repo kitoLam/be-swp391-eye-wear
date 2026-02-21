@@ -31,6 +31,14 @@ const PreOrderImportSchema = new Schema<IPreOrderImportDocument>(
             required: [true, 'Manager responsibility is required'],
             trim: true,
         },
+        startedDate: {
+            type: Date,
+            required: true,
+        },
+        endedDate: {
+            type: Date,
+            required: true,
+        },
         status: {
             type: String,
             enum: [

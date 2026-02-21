@@ -14,6 +14,8 @@ export const PreOrderImportSchema = z.object({
         PreOrderImportStatus.DONE,
         PreOrderImportStatus.CANCELLED,
     ]),
+    startedDate: z.date(),
+    endedDate: z.date(),
     createdAt: z.date(),
     updatedAt: z.date(),
     deletedAt: z.date().nullable(),

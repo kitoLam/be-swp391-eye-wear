@@ -114,6 +114,11 @@ const ProductSchema = new Schema<IProductDocument>(
                     type: Date,
                     default: null,
                 },
+                mode: {
+                    type: String,
+                    enum: ["AVAILABLE", "PRE_ORDER"],
+                    default: "AVAILABLE",
+                },
             },
         ],
         deletedAt: {
