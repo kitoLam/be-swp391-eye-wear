@@ -155,7 +155,7 @@ class ProductService {
                 // nếu ngày hiện tại bé hơn thời gian sk diễn ra hoặc lớn hơn thời gian sk kết thúc thì báo lỗi
                 throw new BadRequestError(`Product with sku ${productVariant.sku} can not order right now due to invalid pre-order date plan!`);
             }
-            currentProductInStock = foundPreOrderImport.targetQuantity - (stockRace + stockOnline) - product.buyAmount;
+            currentProductInStock = foundPreOrderImport.targetQuantity - (stockRace + stockOnline) - product.buyAmount - foundPreOrderImport.preOrderedQuantity;
         } else {
             currentProductInStock =
             productVariant.stock -
@@ -224,7 +224,7 @@ class ProductService {
                     // nếu ngày hiện tại bé hơn thời gian sk diễn ra hoặc lớn hơn thời gian sk kết thúc thì báo lỗi
                     throw new BadRequestError(`Lens with sku ${lensVariant.sku} can not order right now due to invalid pre-order date plan!`);
                 }
-                currentLensInStock = foundLensPreOrderImport.targetQuantity - (stockRace + stockOnline) - product.buyAmount;
+                currentLensInStock = foundLensPreOrderImport.targetQuantity - (stockRace + stockOnline) - product.buyAmount - foundLensPreOrderImport.preOrderedQuantity;
             } else {
                 currentLensInStock =
                 lensVariant.stock -

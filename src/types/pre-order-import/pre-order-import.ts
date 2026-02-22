@@ -6,6 +6,7 @@ export const PreOrderImportSchema = z.object({
     description: z.string().min(1, 'Description is required'),
     targetDate: z.date(),
     targetQuantity: z.number().min(1, 'Target quantity is required'),
+    preOrderedQuantity: z.number().min(0, 'Target quantity is required'),
     managerResponsibility: z
         .string()
         .min(1, 'Manager responsibility is required'),

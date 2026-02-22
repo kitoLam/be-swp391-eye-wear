@@ -26,6 +26,10 @@ const PreOrderImportSchema = new Schema<IPreOrderImportDocument>(
             required: [true, 'Target quantity is required'],
             min: [1, 'Target quantity must be at least 1'],
         },
+        preOrderedQuantity: {
+            type: Number,
+            default: 0,
+        },
         managerResponsibility: {
             type: String,
             required: [true, 'Manager responsibility is required'],

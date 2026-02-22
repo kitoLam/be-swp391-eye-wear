@@ -483,7 +483,7 @@ class InvoiceClientService {
                         },
                         {
                             $inc: {
-                                targetQuantity: -item.qty,
+                                preOrderedQuantity: item.qty,
                             },
                         }
                     );
@@ -666,7 +666,7 @@ class InvoiceClientService {
                                 },
                                 {
                                     $inc: {
-                                        targetQuantity: orderProduct.quantity,
+                                        preOrderedQuantity: -orderProduct.quantity,
                                     },
                                 }
                             );
@@ -708,7 +708,7 @@ class InvoiceClientService {
                                 },
                                 {
                                     $inc: {
-                                        quantity: orderProduct.quantity,
+                                        preOrderedQuantity: -orderProduct.quantity,
                                     },
                                 }
                             );
