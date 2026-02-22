@@ -1,5 +1,5 @@
 export const enum PreOrderImportStatus {
-    PENDING = 'pending',
-    DONE = 'done',
-    CANCELLED = 'cancelled',
+    PENDING = 'PENDING',
+    DONE = 'DONE',
+    CANCELLED = 'CANCELLED',
 }

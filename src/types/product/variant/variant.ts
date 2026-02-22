@@ -1,4 +1,5 @@
 import z from 'zod';
+import { ProductVariantMode } from '../../../config/enums/product.enum';
 
 export const VariantSchema = z
     .object({
@@ -30,6 +31,7 @@ export const VariantSchema = z
         updatedAt: z.date().optional(),
         createdAt: z.date().optional(),
         deletedAt: z.date().nullable().optional(),
+        mode: z.enum(ProductVariantMode, {error: "Mode must be either 'AVAILABLE' or 'PRE_ORDER'"}),
     })
     .refine(data => data.finalPrice <= data.price, {
         message: 'Final Price cannot be greater than the default Price',

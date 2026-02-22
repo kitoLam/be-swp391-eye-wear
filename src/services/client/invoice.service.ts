@@ -9,10 +9,7 @@ import {
     ConflictRequestError,
     NotFoundRequestError,
 } from '../../errors/apiError/api-error';
-import {
-    OrderType,
-    OrderStatus,
-} from '../../config/enums/order.enum';
+import { OrderType, OrderStatus } from '../../config/enums/order.enum';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 import {
     PaymentMethodType,
@@ -26,9 +23,14 @@ import {
     ClientCreateInvoice,
     ClientUpdateInvoice,
 } from '../../types/invoice/client-invoice';
-import { generateInvoiceCode, generateOrderCode } from '../../utils/generate.util';
+import {
+    generateInvoiceCode,
+    generateOrderCode,
+} from '../../utils/generate.util';
 import { AuthCustomerContext } from '../../types/context/context';
 import productService from './product.service';
+import { ProductVariantMode } from '../../config/enums/product.enum';
+import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
 
 interface InvoiceProduct {
     productId: string;
@@ -204,34 +206,41 @@ class InvoiceClientService {
             _id: string;
             sku: string;
             qty: number;
+            mode: ProductVariantMode;
         }[] = [];
         const invoiceProducts: InvoiceProduct[] = [];
 
         try {
             // Separate products by type
-            const normalProducts: OrderProduct[] =
-                [];
+            const normalProducts: OrderProduct[] = [];
             const manufacturingProducts: OrderProduct[] = [];
-
+            const preOrderProducts: OrderProduct[] = [];
+            const preOrderProductModeSkuSet = new Set();
             let totalPrice = 0;
 
             for (const item of payload.products) {
                 let itemPrice = 0;
-                const ensureProductResult = await productService.ensureBoughtProductIsValidToBuy({
-                    productId: item.product.product_id,
-                    productSku: item.product.sku,
-                    buyAmount: item.quantity,
-                }, item.lens ? {
-                    lensId: item.lens.lens_id,
-                    lensSku: item.lens.sku,
-                    buyAmount: item.quantity,
-                } : undefined);
+                const ensureProductResult =
+                    await productService.ensureBoughtProductIsValidToBuy(
+                        {
+                            productId: item.product.product_id,
+                            productSku: item.product.sku,
+                            buyAmount: item.quantity,
+                        },
+                        item.lens
+                            ? {
+                                  lensId: item.lens.lens_id,
+                                  lensSku: item.lens.sku,
+                                  buyAmount: item.quantity,
+                              }
+                            : undefined
+                    );
                 // ==== Process Product ====
                 const productDetail = ensureProductResult.product.productDetail;
-                const productVariant = ensureProductResult.product.productVariant
+                const productVariant =
+                    ensureProductResult.product.productVariant;
                 // === Check stock ===
                 const keyRace = `${redisPrefix.productLockRace}:${item.product.product_id}:${item.product.sku}`;
-                const keyOnline = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
                 // === End check stock ===
 
                 // ==== Acquire race lock ====
@@ -244,6 +253,7 @@ class InvoiceClientService {
                         _id: item.product!.product_id,
                         sku: item.product!.sku,
                         qty: item.quantity,
+                        mode: productVariant.mode,
                     });
                 }
 
@@ -254,6 +264,10 @@ class InvoiceClientService {
                     qty: item.quantity,
                     type: productDetail.type,
                 });
+                // Nếu đây là hàng pre-order thì add vào set
+                if (productVariant.mode == ProductVariantMode.PRE_ORDER) {
+                    preOrderProductModeSkuSet.add(productVariant.sku);
+                }
                 // ==== End process product ====
 
                 // Process Lens
@@ -262,7 +276,6 @@ class InvoiceClientService {
                     const lensVariant = ensureProductResult.lens!.lensVariant;
                     // Check stock
                     const keyRace = `${redisPrefix.productLockRace}:${item.lens.lens_id}:${item.lens.sku}`;
-                    const keyOnline = `${redisPrefix.productLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
 
                     // Acquire race lock
                     await this.acquireProductLock(
@@ -278,6 +291,7 @@ class InvoiceClientService {
                             _id: item.lens.lens_id,
                             sku: item.lens.sku,
                             qty: item.quantity,
+                            mode: lensVariant.mode,
                         });
                     }
 
@@ -288,6 +302,9 @@ class InvoiceClientService {
                         qty: item.quantity,
                         type: 'lens',
                     });
+                    if (lensVariant.mode == ProductVariantMode.PRE_ORDER) {
+                        preOrderProductModeSkuSet.add(lensVariant.sku);
+                    }
                     // Nếu có lens và check đầy đủ hết, push vào loại đơn hàng MANUFACTURING
                     manufacturingProducts.push({
                         product: {
@@ -301,14 +318,24 @@ class InvoiceClientService {
                         quantity: item.quantity,
                     });
                 } else {
-                    // Nếu không đây là đơn NORMAL
-                    normalProducts.push({
-                        product: {
-                            ...item.product,
-                            pricePerUnit: productVariant.finalPrice,
-                        },
-                        quantity: item.quantity,
-                    });
+                    // Nếu không có lens thì đây là đơn Normal hoặc pre-order
+                    if (productVariant.mode == ProductVariantMode.PRE_ORDER) {
+                        preOrderProducts.push({
+                            product: {
+                                ...item.product,
+                                pricePerUnit: productVariant.finalPrice,
+                            },
+                            quantity: item.quantity,
+                        });
+                    } else {
+                        normalProducts.push({
+                            product: {
+                                ...item.product,
+                                pricePerUnit: productVariant.finalPrice,
+                            },
+                            quantity: item.quantity,
+                        });
+                    }
                 }
 
                 totalPrice += itemPrice;
@@ -330,12 +357,14 @@ class InvoiceClientService {
                 address: payload.address,
                 status:
                     payload.paymentMethod == PaymentMethodType.COD
-                        ? (manufacturingProducts.length == 0  ? InvoiceStatus.APPROVED : InvoiceStatus.DEPOSITED)
+                        ? manufacturingProducts.length == 0
+                            ? InvoiceStatus.APPROVED
+                            : InvoiceStatus.DEPOSITED
                         : InvoiceStatus.PENDING,
                 fullName: payload.fullName,
                 phone: payload.phone,
                 invoiceCode: generateInvoiceCode(),
-                note: payload.note
+                note: payload.note,
             };
 
             const newInvoice = await invoiceRepository.create(invoiceData);
@@ -345,7 +374,8 @@ class InvoiceClientService {
             if (normalProducts.length > 0) {
                 let normalOrderPrice = 0;
                 for (const item of normalProducts) {
-                    normalOrderPrice += item.product.pricePerUnit * item.quantity;
+                    normalOrderPrice +=
+                        item.product.pricePerUnit * item.quantity;
                 }
 
                 insertedOrders.push({
@@ -353,29 +383,60 @@ class InvoiceClientService {
                     orderCode: generateOrderCode(),
                     type: [OrderType.NORMAL],
                     products: normalProducts,
-                    status: manufacturingProducts.length == 0  ? OrderStatus.WAITING_ASSIGN : OrderStatus.APPROVED,
-                    price: normalOrderPrice
+                    status:
+                        manufacturingProducts.length == 0
+                            ? OrderStatus.WAITING_ASSIGN
+                            : OrderStatus.APPROVED,
+                    price: normalOrderPrice,
                 });
             }
 
-            // 2. Create separate MANUFACTURING order for each product with lens
+            // 2. Create separate MANUFACTURING order for each product with lens (quantity = 2 ~ 2 orders)
             for (const item of manufacturingProducts) {
-                for (let i = 0; i < item.quantity; i++){
-                    let mfgOrderPrice = item.product.pricePerUnit + item.lens!.pricePerUnit;
+                for (let i = 0; i < item.quantity; i++) {
+                    const orderType = [OrderType.MANUFACTURING];
+                    if (
+                        preOrderProductModeSkuSet.has(item.product.sku) ||
+                        preOrderProductModeSkuSet.has(item.lens!.sku)
+                    ) {
+                        orderType.push(OrderType.PRE_ORDER);
+                    }
+                    let mfgOrderPrice =
+                        item.product.pricePerUnit + item.lens!.pricePerUnit;
                     insertedOrders.push({
                         invoiceId: newInvoice._id,
                         orderCode: generateOrderCode(),
-                        type: [OrderType.MANUFACTURING],
-                        products: [{
-                            ...item,
-                            quantity: 1,
-                        }],
+                        type: orderType,
+                        products: [
+                            {
+                                ...item,
+                                quantity: 1,
+                            },
+                        ],
                         status: OrderStatus.PENDING,
                         price: mfgOrderPrice,
                     });
                 }
             }
 
+            // 3. Create separate PRE-ORDER order for each product
+            for (const item of preOrderProducts) {
+                insertedOrders.push({
+                    invoiceId: newInvoice._id,
+                    orderCode: generateOrderCode(),
+                    type: [OrderType.PRE_ORDER],
+                    products: [
+                        {
+                            ...item,
+                        },
+                    ],
+                    status:
+                        manufacturingProducts.length == 0
+                            ? OrderStatus.WAITING_ASSIGN
+                            : OrderStatus.APPROVED,
+                    price: item.product.pricePerUnit * item.quantity,
+                });
+            }
             await orderRepository.insertMany(insertedOrders);
             // If ONLINE payment, acquire online locks and add to timeout queue
             if (payload.paymentMethod !== PaymentMethodType.COD) {
@@ -407,13 +468,26 @@ class InvoiceClientService {
                 price: totalPrice - totalDiscount,
             });
             for (const item of alreadyDecreasedItems) {
-                await productRepository.updateByFilter(
-                    {
-                        _id: item._id,
-                        'variants.sku': item.sku,
-                    },
-                    { $inc: { 'variants.$.stock': -item.qty } }
-                );
+                if (item.mode == ProductVariantMode.AVAILABLE) {
+                    await productRepository.updateByFilter(
+                        {
+                            _id: item._id,
+                            'variants.sku': item.sku,
+                        },
+                        { $inc: { 'variants.$.stock': -item.qty } }
+                    );
+                } else {
+                    await PreOrderImportModel.updateOne(
+                        {
+                            sku: item.sku,
+                        },
+                        {
+                            $inc: {
+                                targetQuantity: -item.qty,
+                            },
+                        }
+                    );
+                }
             }
             return {
                 invoice: newInvoice,
@@ -459,7 +533,7 @@ class InvoiceClientService {
      * Get invoice detail
      */
     getInvoiceDetail = async (customerId: string, invoiceId: string) => {
-        console.log(invoiceId)
+        console.log(invoiceId);
         const invoice = await invoiceRepository.findOne({
             _id: invoiceId,
             owner: customerId,
@@ -476,54 +550,57 @@ class InvoiceClientService {
         const products: any = [];
         for (const order of orderList) {
             for (const curItem of order.products) {
-                const item : any = {
+                const item: any = {
                     type: order.type,
                 };
-                if(curItem.lens){
+                if (curItem.lens) {
                     const lensProduct = await productRepository.findOne({
                         _id: curItem.lens.lens_id,
                     });
                     const lensVariant: any = lensProduct!.variants.find(
-                        (variant) => variant.sku === curItem.lens!.sku
-                    )
+                        variant => variant.sku === curItem.lens!.sku
+                    );
                     item.lens = curItem.lens;
                     item.lens.detail = lensVariant;
                     item.lens = {
                         product_id: curItem.lens.lens_id,
                         sku: curItem.lens.sku,
                         pricePerUnit: curItem.lens.pricePerUnit,
-                        detail: lensVariant
+                        detail: lensVariant,
                     };
                 }
                 const product = await productRepository.findOne({
                     _id: curItem.product.product_id,
                 });
                 const productVariant = product!.variants.find(
-                    (variant) => variant.sku === curItem.product.sku
+                    variant => variant.sku === curItem.product.sku
                 );
                 item.product = {
                     product_id: curItem.product.product_id,
                     sku: curItem.product.sku,
                     pricePerUnit: curItem.product.pricePerUnit,
-                    detail: productVariant
+                    detail: productVariant,
                 };
                 products.push(item);
             }
         }
         let invoiceStatus;
-        if(invoice.status === InvoiceStatus.PENDING || invoice.status === InvoiceStatus.DEPOSITED){
+        if (
+            invoice.status === InvoiceStatus.PENDING ||
+            invoice.status === InvoiceStatus.DEPOSITED
+        ) {
             invoiceStatus = 'PENDING';
-        } else if(invoice.status === InvoiceStatus.REJECTED){
+        } else if (invoice.status === InvoiceStatus.REJECTED) {
             invoiceStatus = 'REJECTED';
-        } else if(invoice.status === InvoiceStatus.CANCELED){
+        } else if (invoice.status === InvoiceStatus.CANCELED) {
             invoiceStatus = 'CANCELED';
-        } else if(invoice.status === InvoiceStatus.APPROVED){
+        } else if (invoice.status === InvoiceStatus.APPROVED) {
             invoiceStatus = 'APPROVED';
-        } else if(invoice.status == InvoiceStatus.DELIVERING){
+        } else if (invoice.status == InvoiceStatus.DELIVERING) {
             invoiceStatus = 'DELIVERING';
-        } else if(invoice.status == InvoiceStatus.DELIVERED){
+        } else if (invoice.status == InvoiceStatus.DELIVERED) {
             invoiceStatus = 'DELIVERED';
-        } else invoiceStatus = 'PROCESSING'
+        } else invoiceStatus = 'PROCESSING';
         return {
             invoiceStatus: invoiceStatus,
             invoice,
@@ -560,45 +637,108 @@ class InvoiceClientService {
         // Cập nhật lại stock của từng order trong đơn về lại kho
         const orderList = await orderRepository.findAllNoPagination({
             invoiceId: invoiceId,
-        })
+        });
         for (const orderDetail of orderList) {
             if (orderDetail) {
                 for (const orderProduct of orderDetail.products) {
                     if (orderProduct.product) {
-                        await productRepository.updateByFilter(
-                            {
-                                _id: orderProduct.product.product_id,
-                                'variants.sku': orderProduct.product.sku,
-                            },
-                            {
-                                $inc: {
-                                    'variants.$.stock': orderProduct.quantity,
-                                },
-                            }
+                        const productDetail = await productRepository.findOne({
+                            _id: orderProduct.product.product_id,
+                            'variants.sku': orderProduct.product.sku,
+                        });
+                        if (!productDetail) {
+                            throw new NotFoundRequestError('Product not found');
+                        }
+                        const productVariant = productDetail.variants.find(
+                            v => v.sku === orderProduct.product.sku
                         );
+                        if (!productVariant) {
+                            throw new NotFoundRequestError(
+                                `Product with sku ${orderProduct.product.sku} not found`
+                            );
+                        }
+                        if (
+                            productVariant.mode == ProductVariantMode.PRE_ORDER
+                        ) {
+                            await PreOrderImportModel.updateOne(
+                                {
+                                    sku: orderProduct.product.sku,
+                                },
+                                {
+                                    $inc: {
+                                        targetQuantity: orderProduct.quantity,
+                                    },
+                                }
+                            );
+                        } else {
+                            await productRepository.updateByFilter(
+                                {
+                                    _id: orderProduct.product.product_id,
+                                    'variants.sku': orderProduct.product.sku,
+                                },
+                                {
+                                    $inc: {
+                                        'variants.$.stock':
+                                            orderProduct.quantity,
+                                    },
+                                }
+                            );
+                        }
                     }
                     if (orderProduct.lens) {
-                        await productRepository.updateByFilter(
-                            {
-                                _id: orderProduct.lens.lens_id,
-                                'variants.sku': orderProduct.lens.sku,
-                            },
-                            {
-                                $inc: {
-                                    'variants.$.stock': orderProduct.quantity,
-                                },
-                            }
+                        const lensDetail = await productRepository.findOne({
+                            _id: orderProduct.lens.lens_id,
+                            'variants.sku': orderProduct.lens.sku,
+                        });
+                        if (!lensDetail) {
+                            throw new NotFoundRequestError('Product not found');
+                        }
+                        const lensVariant = lensDetail.variants.find(
+                            v => v.sku === orderProduct.lens!.sku
                         );
+                        if (!lensVariant) {
+                            throw new NotFoundRequestError(
+                                `Product with sku ${orderProduct.lens.sku} not found`
+                            );
+                        }
+                        if (lensVariant.mode == ProductVariantMode.PRE_ORDER) {
+                            await PreOrderImportModel.updateOne(
+                                {
+                                    sku: orderProduct.lens.sku,
+                                },
+                                {
+                                    $inc: {
+                                        quantity: orderProduct.quantity,
+                                    },
+                                }
+                            );
+                        } else {
+                            await productRepository.updateByFilter(
+                                {
+                                    _id: orderProduct.lens.lens_id,
+                                    'variants.sku': orderProduct.lens.sku,
+                                },
+                                {
+                                    $inc: {
+                                        'variants.$.stock':
+                                            orderProduct.quantity,
+                                    },
+                                }
+                            );
+                        }
                     }
                 }
             }
         }
         // Nếu 1 invoice bị hủy => tất cả order trong invoice đó đều trở thành cancelled
-        await orderRepository.updateMany({
-            _id: { $in: orderList.map((order) => order._id) }
-        }, {
-            status: OrderStatus.CANCELED
-        });
+        await orderRepository.updateMany(
+            {
+                _id: { $in: orderList.map(order => order._id) },
+            },
+            {
+                status: OrderStatus.CANCELED,
+            }
+        );
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.CANCELED,
         });
