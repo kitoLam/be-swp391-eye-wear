@@ -18,6 +18,7 @@ export const toProductCreateDTO = (
         brand: data.brand,
         categories: data.categories,
         variants: data.variants.map(variant => ({
+            mode: variant.mode,
             sku: variant.sku,
             name: variant.name,
             slug: variant.slug,
