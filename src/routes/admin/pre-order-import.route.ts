@@ -38,4 +38,10 @@ router.patch(
     preOrderImportController.cancelPreOrderImport
 );
 
+router.get(
+    '/',
+    authenticateMiddleware,
+    preOrderImportController.getPreOrderImportsBySku
+);
+
 export default router;

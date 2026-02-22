@@ -1,8 +1,5 @@
 import { Types } from 'mongoose';
-import {
-    ProductRepository,
-    productRepository,
-} from '../../repositories/product/product.repository';
+import { productRepository } from '../../repositories/product/product.repository';
 import {
     ProductCreateDTO,
     ProductUpdateDTO,
@@ -14,16 +11,20 @@ import { ProductListQuery } from '../../types/product/product/product.query';
 import { slugify, generateUniqueSlug } from '../../utils/slug.util';
 import { generateSkuBase, generateVariantSku } from '../../utils/sku.util';
 
+import { ProductVariantMode } from '../../config/enums/product.enum';
+
 class ProductService {
     /**
      * Tạo mới sản phẩm
      * @param payload - form data yêu cầu tạo từ user
      * @param context - thông tin admin đã login
+     * @param defaultMode - chế độ mặc định cho các variant (AVAILABLE hoặc PRE_ORDER)
      * @returns
      */
     createProduct = async (
         payload: ProductCreateDTO,
-        context: AuthAdminContext
+        context: AuthAdminContext,
+        defaultMode?: ProductVariantMode
     ) => {
         // 1. Generate slugBase with UUID
         const baseSlug = slugify(payload.nameBase);
@@ -41,7 +42,9 @@ class ProductService {
             const variantSku = generateVariantSku(skuBase, variant.options);
             const variantName =
                 variant.name ||
-                `${payload.nameBase} - ${variant.options.map(o => o.label).join(' - ')}`;
+                `${payload.nameBase} - ${variant.options
+                    .map(o => o.label)
+                    .join(' - ')}`;
             const variantSlug = variant.slug || slugify(variantName);
 
             return {
@@ -49,6 +52,10 @@ class ProductService {
                 sku: variantSku,
                 name: variantName,
                 slug: variantSlug,
+                mode:
+                    (variant as any).mode ||
+                    defaultMode ||
+                    ProductVariantMode.AVAILABLE,
             };
         });
 
@@ -266,7 +273,7 @@ class ProductService {
             productDetail: product,
             variantDetail: variant,
         };
-    }
+    };
 }
 
 export default new ProductService();

@@ -33,6 +33,16 @@ router.get(
 // Note: Body validation removed for create/update due to union type schemas
 // Validation will be handled at service layer
 router.post('/', authenticateMiddleware, productController.createProduct);
+router.post(
+    '/available',
+    authenticateMiddleware,
+    productController.createProductAvailable
+);
+router.post(
+    '/pre-order',
+    authenticateMiddleware,
+    productController.createProductPreOrder
+);
 router.get(
     '/',
     validateQuery(ProductListQuerySchema),
