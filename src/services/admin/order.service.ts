@@ -33,6 +33,9 @@ class OrderService {
         if (!foundOrder) {
             throw new NotFoundRequestError('Order not found');
         }
+        if(foundOrder.status != OrderStatus.WAITING_ASSIGN){
+            throw new ConflictRequestError('Only waiting assigned order can move to this step');
+        }
         if (foundOrder.assignedStaff) {
             throw new ConflictRequestError('Order already assigned');
         }
@@ -50,7 +53,7 @@ class OrderService {
         await orderRepository.update(orderId, {
             assignedStaff: payload.assignedStaff,
             assignerStaff: adminContext.id,
-            status: OrderStatus.ASSIGNED,
+            status: foundOrder.type.includes(OrderType.PRE_ORDER) ? OrderStatus.WAITING_STOCK : OrderStatus.ASSIGNED,
             assignedAt: new Date(),
         });
     };
@@ -76,6 +79,9 @@ class OrderService {
             throw new ConflictRequestError(
                 'This order can not be manufactured'
             );
+        }
+        if(foundOrder.status != OrderStatus.ASSIGNED){
+            throw new ConflictRequestError('Only assigned order can move to this step');
         }
         // chỉ cho staff đc phân chỉnh sửa
         if (foundOrder.assignedStaff !== adminContext.id) {
@@ -103,6 +109,12 @@ class OrderService {
         if (!foundOrder) {
             throw new NotFoundRequestError('Order not found');
         }
+        if(foundOrder.type.includes(OrderType.MANUFACTURING) && foundOrder.status != OrderStatus.MAKING){
+            throw new ConflictRequestError('Manufacturing order need to be making before packaging');
+        } else if(!foundOrder.type.includes(OrderType.MANUFACTURING) && foundOrder.status != OrderStatus.ASSIGNED){
+            throw new ConflictRequestError('Only assigned order can move to this step');
+        }
+
         // chỉ cho staff đc phân chỉnh sửa
         if (foundOrder.assignedStaff !== adminContext.id) {
             throw new ForbiddenRequestError('This order is not assign to you');
@@ -128,6 +140,9 @@ class OrderService {
         });
         if (!foundOrder) {
             throw new NotFoundRequestError('Order not found');
+        }
+        if(foundOrder.status != OrderStatus.PACKAGING){
+            throw new ConflictRequestError('Order needs to be packaged to be able can move to this step');
         }
         // chỉ cho staff đc phân chỉnh sửa
         if (foundOrder.assignedStaff !== adminContext.id) {

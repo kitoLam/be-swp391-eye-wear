@@ -15,65 +15,90 @@ class ImportProductService {
         context: AuthAdminContext
     ) {
         const { sku, quantity, preOrderImportId } = payload;
+        if (preOrderImportId) {
+            // 1. Verify pre-order-import exists
+            const preOrderImport =
+                await preOrderImportRepository.findById(preOrderImportId);
 
-        // 1. Verify pre-order-import exists
-        const preOrderImport =
-            await preOrderImportRepository.findById(preOrderImportId);
-
-        if (!preOrderImport) {
-            throw new NotFoundRequestError(
-                `Pre-order import with ID: ${preOrderImportId} not found`
-            );
-        }
-
-        // 2. Verify SKU matches the pre-order
-        if (preOrderImport.sku !== sku) {
-            throw new BadRequestError(
-                `SKU mismatch: Pre-order is for SKU ${preOrderImport.sku}, but import is for ${sku}`
-            );
-        }
-
-        // 3. Verify pre-order is still pending
-        if (preOrderImport.status !== PreOrderImportStatus.PENDING) {
-            throw new BadRequestError(
-                `Pre-order import is already ${preOrderImport.status}. Cannot import for completed or cancelled pre-orders.`
-            );
-        }
-
-        // 4. Find the product containing the variant with the given SKU
-        const product = await productRepository.findOne({
-            'variants.sku': sku,
-        });
-
-        if (!product) {
-            throw new NotFoundRequestError(
-                `Product variant with SKU: ${sku} not found`
-            );
-        }
-
-        // 5. Create a record in the import history
-        await importProductRepository.create({
-            sku,
-            quantity,
-            staffResponsible: context.id,
-            preOrderImportId,
-        });
-
-        // 6. Update the stock and updatedAt for the specific variant
-        await productRepository.updateByFilter(
-            { 'variants.sku': sku },
-            {
-                $inc: { 'variants.$.stock': quantity },
-                $set: { 'variants.$.updatedAt': new Date() },
+            if (!preOrderImport) {
+                throw new NotFoundRequestError(
+                    `Pre-order import with ID: ${preOrderImportId} not found`
+                );
             }
-        );
 
-        // 7. Update pre-order status to DONE
-        await preOrderImportRepository.update(preOrderImportId, {
-            status: PreOrderImportStatus.DONE,
-        });
+            // 2. Verify SKU matches the pre-order
+            if (preOrderImport.sku !== sku) {
+                throw new BadRequestError(
+                    `SKU mismatch: Pre-order is for SKU ${preOrderImport.sku}, but import is for ${sku}`
+                );
+            }
 
-        return { message: 'Product imported successfully', preOrderImport };
+            // 3. Verify pre-order is still pending
+            if (preOrderImport.status !== PreOrderImportStatus.PENDING) {
+                throw new BadRequestError(
+                    `Pre-order import is already ${preOrderImport.status}. Cannot import for completed or cancelled pre-orders.`
+                );
+            }
+
+            // 4. Find the product containing the variant with the given SKU
+            const product = await productRepository.findOne({
+                'variants.sku': sku,
+            });
+
+            if (!product) {
+                throw new NotFoundRequestError(
+                    `Product variant with SKU: ${sku} not found`
+                );
+            }
+
+            // 5. Create a record in the import history
+            await importProductRepository.create({
+                sku,
+                quantity,
+                staffResponsible: context.id,
+                preOrderImportId,
+            });
+
+            // 6. Update the stock and updatedAt for the specific variant
+            await productRepository.updateByFilter(
+                { 'variants.sku': sku },
+                {
+                    $inc: { 'variants.$.stock': (preOrderImport.targetQuantity - preOrderImport.preOrderedQuantity) },
+                    $set: { 'variants.$.updatedAt': new Date() },
+                }
+            );
+
+            // 7. Update pre-order status to DONE
+            await preOrderImportRepository.update(preOrderImportId, {
+                status: PreOrderImportStatus.DONE,
+            });
+        }
+        else {
+            const product = await productRepository.findOne({
+                'variants.sku': sku,
+            });
+
+            if (!product) {
+                throw new NotFoundRequestError(
+                    `Product variant with SKU: ${sku} not found`
+                );
+            }
+
+            await importProductRepository.create({
+                sku,
+                quantity,
+                staffResponsible: context.id,
+                preOrderImportId,
+            });
+
+            await productRepository.updateByFilter(
+                { 'variants.sku': sku },
+                {
+                    $inc: { 'variants.$.stock': quantity },
+                    $set: { 'variants.$.updatedAt': new Date() },
+                }
+            );
+        }
     }
 }
 

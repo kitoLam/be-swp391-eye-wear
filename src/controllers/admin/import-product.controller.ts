@@ -6,12 +6,12 @@ import { ImportProductRequest } from '../../types/import-product/import-product'
 class ImportProductController {
     importProduct = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const result = await importProductService.importProduct(
+            await importProductService.importProduct(
                 req.body as ImportProductRequest,
                 req.adminAccount!
             );
             res.json(
-                ApiResponse.success('Product imported successfully', result)
+                ApiResponse.success('Product imported successfully', null)
             );
         } catch (error) {
             next(error);

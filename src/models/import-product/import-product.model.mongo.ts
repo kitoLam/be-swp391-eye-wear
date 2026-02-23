@@ -23,7 +23,7 @@ const ImportProductSchema = new Schema<IImportProductDocument>(
         },
         preOrderImportId: {
             type: String,
-            required: [true, 'Pre-order import ID is required'],
+            required: [false, 'Pre-order import ID is required'],
             trim: true,
         },
         deletedAt: {

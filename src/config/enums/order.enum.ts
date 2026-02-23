@@ -11,6 +11,7 @@ export enum OrderStatus {
     PENDING = 'PENDING', // Chờ xác minh
     APPROVED = 'APPROVED', // Đã xác minh
     WAITING_ASSIGN = 'WAITING_ASSIGN', // Chờ phân công
+    WAITING_STOCK = 'WAITING_STOCK', // Chờ nhập kho
     ASSIGNED = 'ASSIGNED', // Đã phân công
     MAKING = 'MAKING', // Đang sản xuất
     PACKAGING = 'PACKAGING', // Đã đóng gói
