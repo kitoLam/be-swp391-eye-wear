@@ -8,6 +8,10 @@ import {
     BadRequestError,
 } from '../../errors/apiError/api-error';
 import { PreOrderImportStatus } from '../../config/enums/pre-order-import.enum';
+import { orderRepository } from '../../repositories/order/order.repository';
+import { OrderStatus, OrderType } from '../../config/enums/order.enum';
+import { OrderModel } from '../../models/order/order.model.mongo';
+import { ProductModel } from '../../models/product/product.model.mongo';
 
 class ImportProductService {
     async importProduct(
@@ -72,6 +76,33 @@ class ImportProductService {
             await preOrderImportRepository.update(preOrderImportId, {
                 status: PreOrderImportStatus.DONE,
             });
+            // 8. Với mỗi order là pre-order với sku này sẽ chuyển status của nó từ WAITING_STOCK -> ASSIGNED
+            await ProductModel.findOneAndUpdate(
+                { "variants.sku": sku }, // Tìm Product có chứa variant mang SKU này
+                { 
+                    $set: { "variants.$[v].mode": "AVAILABLE" } // "v" là biến đại diện cho phần tử thỏa mãn arrayFilters
+                },
+                { 
+                    arrayFilters: [{ "v.sku": sku }], // Chỉ lọc những variant có SKU khớp để update
+                    new: true // Trả về dữ liệu sau khi đã update thành công
+                }
+            );
+            await OrderModel.updateMany(
+                {
+                    type: { $in: [OrderType.PRE_ORDER] },
+                    "products.product.sku": sku
+                },
+                {
+                    // Cập nhật giá trị bên trong mảng
+                    $set: {
+                        "status": OrderStatus.ASSIGNED
+                    } 
+                },
+                {
+                    // Bộ lọc để tìm đúng phần tử trong mảng products của từng Order
+                    arrayFilters: [{ "elem.product.sku": sku }]
+                }
+            );
         }
         else {
             const product = await productRepository.findOne({
