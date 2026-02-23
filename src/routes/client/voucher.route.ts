@@ -10,7 +10,8 @@ router.get('/available', voucherClientController.getAvailableVouchers);
 // Protected routes
 router.use(authenticateMiddlewareClient);
 router.get('/my-vouchers', voucherClientController.getMyVouchers);
+router.get('/client/:clientId', voucherClientController.getVouchersByClientId);
 router.post('/validate', voucherClientController.validateVoucher);
-router.post('/assign', voucherClientController.assignVoucher); // Test route
+router.post('/assign', voucherClientController.assignVoucher); // Add voucher to client
 
 export default router;

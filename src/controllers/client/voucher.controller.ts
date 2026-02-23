@@ -5,6 +5,15 @@ import { ValidateVoucherPayload } from '../../services/client/voucher.service';
 
 class VoucherClientController {
     /**
+     * Get vouchers by clientId (Supabase)
+     */
+    getVouchersByClientId = async (req: Request, res: Response) => {
+        const clientId = req.params.clientId as string;
+        const result = await voucherClientService.getVouchersByClientId(clientId);
+        res.json(ApiResponse.success('Lấy danh sách voucher thành công!', result));
+    };
+
+    /**
      * Get my vouchers
      */
     getMyVouchers = async (req: Request, res: Response) => {

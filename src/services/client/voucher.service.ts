@@ -1,4 +1,5 @@
 import { voucherRepository } from '../../repositories/voucher/voucher.repository';
+import { voucherSupabaseRepository } from '../../repositories/voucher/voucher.supabase.repository';
 import { supabase } from '../../config/supabase.config';
 import {
     NotFoundRequestError,
@@ -11,6 +12,15 @@ interface ValidateVoucherPayload {
 }
 
 class VoucherClientService {
+    /**
+     * Get vouchers by clientId (Supabase only)
+     */
+    getVouchersByClientId = async (clientId: string) => {
+        return await voucherSupabaseRepository.getVouchersByCustomerId(
+            clientId
+        );
+    };
+
     /**
      * Assign voucher to user (Supabase)
      */
