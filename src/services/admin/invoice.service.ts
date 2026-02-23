@@ -13,9 +13,14 @@ import { productRepository } from '../../repositories/product/product.repository
 import { OrderStatus } from '../../config/enums/order.enum';
 import { config } from '../../config/env.config';
 import axios from 'axios';
-import { InvoiceAssignHandleDeliveryRequest, RejectInvoiceRequest } from '../../types/invoice/invoice.request';
+import {
+    InvoiceAssignHandleDeliveryRequest,
+    RejectInvoiceRequest,
+} from '../../types/invoice/invoice.request';
 import { adminAccountRepository } from '../../repositories/admin-account/admin-account.repository';
 import { RoleType } from '../../config/enums/admin-account';
+import { ProductVariantMode } from '../../config/enums/product.enum';
+import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
 
 class InvoiceService {
     /**
@@ -52,7 +57,10 @@ class InvoiceService {
         };
     };
 
-    getInvoiceListWithOrders = async (query: InvoiceListQuery, staffHandleDelivery?: string) => {
+    getInvoiceListWithOrders = async (
+        query: InvoiceListQuery,
+        staffHandleDelivery?: string
+    ) => {
         const result = await invoiceRepository.getInvoiceListWithOrderTypes({
             page: query.page,
             limit: query.limit,
@@ -139,7 +147,7 @@ class InvoiceService {
     rejectInvoice = async (
         invoiceId: string,
         adminContext: AuthAdminContext,
-        requestBody: RejectInvoiceRequest,
+        requestBody: RejectInvoiceRequest
     ) => {
         const invoiceDetail = await invoiceRepository.findById(invoiceId);
         if (!invoiceDetail) {
@@ -163,30 +171,92 @@ class InvoiceService {
             if (orderDetail) {
                 for (const orderProduct of orderDetail.products) {
                     if (orderProduct.product) {
-                        await productRepository.updateByFilter(
-                            {
-                                _id: orderProduct.product.product_id,
-                                'variants.sku': orderProduct.product.sku,
-                            },
-                            {
-                                $inc: {
-                                    'variants.$.stock': orderProduct.quantity,
-                                },
-                            }
+                        const productDetail = await productRepository.findOne({
+                            _id: orderProduct.product.product_id,
+                            'variants.sku': orderProduct.product.sku,
+                        });
+                        if (!productDetail) {
+                            throw new NotFoundRequestError('Product not found');
+                        }
+                        const productVariant = productDetail.variants.find(
+                            v => v.sku === orderProduct.product.sku
                         );
+                        if (!productVariant) {
+                            throw new NotFoundRequestError(
+                                `Product with sku ${orderProduct.product.sku} not found`
+                            );
+                        }
+                        if (
+                            productVariant.mode == ProductVariantMode.PRE_ORDER
+                        ) {
+                            await PreOrderImportModel.updateOne(
+                                {
+                                    sku: orderProduct.product.sku,
+                                },
+                                {
+                                    $inc: {
+                                        preOrderedQuantity:
+                                            -orderProduct.quantity,
+                                    },
+                                }
+                            );
+                        } else {
+                            await productRepository.updateByFilter(
+                                {
+                                    _id: orderProduct.product.product_id,
+                                    'variants.sku': orderProduct.product.sku,
+                                },
+                                {
+                                    $inc: {
+                                        'variants.$.stock':
+                                            orderProduct.quantity,
+                                    },
+                                }
+                            );
+                        }
                     }
                     if (orderProduct.lens) {
-                        await productRepository.updateByFilter(
-                            {
-                                _id: orderProduct.lens.lens_id,
-                                'variants.sku': orderProduct.lens.sku,
-                            },
-                            {
-                                $inc: {
-                                    'variants.$.stock': orderProduct.quantity,
-                                },
-                            }
+                        const lensDetail = await productRepository.findOne({
+                            _id: orderProduct.lens.lens_id,
+                            'variants.sku': orderProduct.lens.sku,
+                        });
+                        if (!lensDetail) {
+                            throw new NotFoundRequestError('Product not found');
+                        }
+                        const lensVariant = lensDetail.variants.find(
+                            v => v.sku === orderProduct.lens!.sku
                         );
+                        if (!lensVariant) {
+                            throw new NotFoundRequestError(
+                                `Product with sku ${orderProduct.lens.sku} not found`
+                            );
+                        }
+                        if (lensVariant.mode == ProductVariantMode.PRE_ORDER) {
+                            await PreOrderImportModel.updateOne(
+                                {
+                                    sku: orderProduct.lens.sku,
+                                },
+                                {
+                                    $inc: {
+                                        preOrderedQuantity:
+                                            -orderProduct.quantity,
+                                    },
+                                }
+                            );
+                        } else {
+                            await productRepository.updateByFilter(
+                                {
+                                    _id: orderProduct.lens.lens_id,
+                                    'variants.sku': orderProduct.lens.sku,
+                                },
+                                {
+                                    $inc: {
+                                        'variants.$.stock':
+                                            orderProduct.quantity,
+                                    },
+                                }
+                            );
+                        }
                     }
                 }
             }
@@ -222,11 +292,14 @@ class InvoiceService {
         invoiceId: string,
         adminContext: AuthAdminContext
     ) => {
-        await orderRepository.updateByFilter({
-            invoiceId: invoiceId,
-        }, {
-            status: OrderStatus.WAITING_ASSIGN
-        })
+        await orderRepository.updateByFilter(
+            {
+                invoiceId: invoiceId,
+            },
+            {
+                status: OrderStatus.WAITING_ASSIGN,
+            }
+        );
         await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.ONBOARD,
             managerOnboard: adminContext.id,
@@ -324,7 +397,7 @@ class InvoiceService {
         };
         try {
             const response = await axios.post<{
-                data: { shipCode: string, estimatedShipDate: string }
+                data: { shipCode: string; estimatedShipDate: string };
             }>(api, bodyData);
             return {
                 updatedInvoice,
@@ -340,9 +413,7 @@ class InvoiceService {
      * @param invoiceId - ID of the invoice
      * @param adminContext - Context of the admin user
      */
-    deliveringInvoice = async (
-        invoiceId: string
-    ) => {
+    deliveringInvoice = async (invoiceId: string) => {
         const invoiceDetail = await invoiceRepository.findById(invoiceId);
         if (!invoiceDetail) {
             throw new NotFoundRequestError('Invoice not found');
@@ -358,7 +429,7 @@ class InvoiceService {
         }
 
         await invoiceRepository.update(invoiceId, {
-            status: InvoiceStatus.DELIVERING
+            status: InvoiceStatus.DELIVERING,
         });
     };
 
@@ -400,32 +471,42 @@ class InvoiceService {
         return result;
     };
 
-    assignInvoiceToHandleDelivery = async (adminContext: AuthAdminContext, invoiceId: string, payload: InvoiceAssignHandleDeliveryRequest) => {
+    assignInvoiceToHandleDelivery = async (
+        adminContext: AuthAdminContext,
+        invoiceId: string,
+        payload: InvoiceAssignHandleDeliveryRequest
+    ) => {
         // check invoice exist
         const foundInvoice = await invoiceRepository.findById(invoiceId);
-        if(!foundInvoice){
+        if (!foundInvoice) {
             throw new NotFoundRequestError('Invoice not found');
         }
 
         // check invoice status
-        if(foundInvoice.status !== InvoiceStatus.COMPLETED){
-            throw new ConflictRequestError('Invoice status must be COMPLETED to assign');
+        if (foundInvoice.status !== InvoiceStatus.COMPLETED) {
+            throw new ConflictRequestError(
+                'Invoice status must be COMPLETED to assign'
+            );
         }
 
-        // check admin onboard is the same with cur admin 
-        if(foundInvoice.managerOnboard != adminContext.id){
+        // check admin onboard is the same with cur admin
+        if (foundInvoice.managerOnboard != adminContext.id) {
             throw new ConflictRequestError('Only manager onboard can assign');
         }
 
         // check delivery staff exist
-        const foundDeliveryStaff = await adminAccountRepository.findById(payload.assignedStaff);
-        if(!foundDeliveryStaff){
+        const foundDeliveryStaff = await adminAccountRepository.findById(
+            payload.assignedStaff
+        );
+        if (!foundDeliveryStaff) {
             throw new NotFoundRequestError('Delivery staff not found');
         }
 
         // check delivery staff role
-        if(foundDeliveryStaff.role != RoleType.OPERATION_STAFF){
-            throw new ConflictRequestError('Delivery staff role must be OPERATION_STAFF');
+        if (foundDeliveryStaff.role != RoleType.OPERATION_STAFF) {
+            throw new ConflictRequestError(
+                'Delivery staff role must be OPERATION_STAFF'
+            );
         }
 
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
