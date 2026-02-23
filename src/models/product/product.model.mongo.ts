@@ -118,7 +118,7 @@ const ProductSchema = new Schema<IProductDocument>(
                 mode: {
                     type: String,
                     enum: ProductVariantMode,
-                    default: "AVAILABLE",
+                    default: 'AVAILABLE',
                 },
             },
         ],

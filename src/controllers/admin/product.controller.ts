@@ -1,5 +1,5 @@
 import productService from '../../services/admin/product.service';
-import { NextFunction, Request, Response } from 'express';
+import { Request, Response } from 'express';
 import {
     ProductCreateDTO,
     ProductUpdateDTO,
@@ -7,6 +7,7 @@ import {
 import { ApiResponse } from '../../utils/api-response';
 import { ProductMessage } from '../../config/constants/response-messages/product.constant';
 import { ProductListQuery } from '../../types/product/product/product.query';
+import { ProductVariantMode } from '../../config/enums/product.enum';
 
 class ProductController {
     /**
@@ -16,6 +17,30 @@ class ProductController {
         await productService.createProduct(
             req.body as ProductCreateDTO,
             req.adminAccount!
+        );
+        res.json(ApiResponse.success(ProductMessage.success.create, {}));
+    };
+
+    /**
+     * Tạo sản phẩm mới - auto set tất cả variants mode = AVAILABLE
+     */
+    createProductAvailable = async (req: Request, res: Response) => {
+        await productService.createProduct(
+            req.body as ProductCreateDTO,
+            req.adminAccount!,
+            ProductVariantMode.AVAILABLE
+        );
+        res.json(ApiResponse.success(ProductMessage.success.create, {}));
+    };
+
+    /**
+     * Tạo sản phẩm mới - auto set tất cả variants mode = PRE_ORDER
+     */
+    createProductPreOrder = async (req: Request, res: Response) => {
+        await productService.createProduct(
+            req.body as ProductCreateDTO,
+            req.adminAccount!,
+            ProductVariantMode.PRE_ORDER
         );
         res.json(ApiResponse.success(ProductMessage.success.create, {}));
     };

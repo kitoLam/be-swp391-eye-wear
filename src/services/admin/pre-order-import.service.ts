@@ -76,8 +76,9 @@ class PreOrderImportService {
         }
 
         // 2. Verify pre-order exists
-        const preOrderImport =
-            await preOrderImportRepository.findById(preOrderImportId);
+        const preOrderImport = await preOrderImportRepository.findById(
+            preOrderImportId
+        );
 
         if (!preOrderImport) {
             throw new NotFoundRequestError(
@@ -101,6 +102,26 @@ class PreOrderImportService {
         );
 
         return updatedPreOrder;
+    }
+
+    async getPreOrderImportsBySku(sku: string, targetDate?: string) {
+        const filter: any = { sku };
+
+        if (targetDate) {
+            const queryDate = new Date(targetDate);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (queryDate <= today) {
+                throw new BadRequestError(
+                    'Target date must be greater than current date'
+                );
+            }
+
+            filter.targetDate = { $eq: queryDate };
+        }
+
+        return await preOrderImportRepository.findAllNoPagination(filter);
     }
 }
 
