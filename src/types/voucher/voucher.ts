@@ -15,8 +15,8 @@ export const VoucherSchema = z
             .int()
             .min(0, 'Usage count must be non-negative')
             .default(0),
-        startedDate: z.date(),
-        endedDate: z.date(),
+        startedDate: z.coerce.date(),
+        endedDate: z.coerce.date(),
         minOrderValue: z
             .number()
             .min(0, 'Minimum order value must be non-negative'),
@@ -62,8 +62,8 @@ export const CreateVoucherSchema = z
         typeDiscount: z.enum(['FIXED', 'PERCENTAGE']),
         value: z.number().min(0, 'Value must be non-negative'),
         usageLimit: z.number().int().min(1, 'Usage limit must be at least 1'),
-        startedDate: z.date(),
-        endedDate: z.date(),
+        startedDate: z.coerce.date(),
+        endedDate: z.coerce.date(),
         minOrderValue: z
             .number()
             .min(0, 'Minimum order value must be non-negative')
