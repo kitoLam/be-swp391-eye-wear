@@ -2,7 +2,10 @@ import { Request, Response } from 'express';
 import returnTicketService from '../../services/return-ticket/return-ticket.service';
 import { ApiResponse } from '../../utils/api-response';
 import { formatDateToString } from '../../utils/formatter';
-import { CreateReturnTicketRequest, ReturnTicketListQuery } from '../../types/return-ticket/return-ticket.request';
+import {
+    CreateReturnTicketRequest,
+    ReturnTicketListQuery,
+} from '../../types/return-ticket/return-ticket.request';
 import { ReturnTicketStatus } from '../../config/enums/return-ticket.enum';
 
 class ReturnTicketController {
@@ -16,7 +19,10 @@ class ReturnTicketController {
             body
         );
         res.json(
-            ApiResponse.success('Create return ticket successfully', this.mapResponse(newTicket))
+            ApiResponse.success(
+                'Create return ticket successfully',
+                this.mapResponse(newTicket)
+            )
         );
     };
 
@@ -25,11 +31,16 @@ class ReturnTicketController {
      */
     getClientReturnTicketList = async (req: Request, res: Response) => {
         const query = req.validatedQuery as ReturnTicketListQuery;
-        const result = await returnTicketService.getReturnTicketList(query, req.customer!);
+        const result = await returnTicketService.getReturnTicketList(
+            query,
+            req.customer!
+        );
         res.json(
             ApiResponse.success('Get return ticket list successfully', {
                 pagination: result.pagination,
-                returnTicketList: result.returnTicketList.map(item => this.mapResponse(item)),
+                returnTicketList: result.returnTicketList.map(item =>
+                    this.mapResponse(item)
+                ),
             })
         );
     };
@@ -43,7 +54,9 @@ class ReturnTicketController {
         res.json(
             ApiResponse.success('Get staff return ticket list successfully', {
                 pagination: result.pagination,
-                returnTicketList: result.returnTicketList.map(item => this.mapResponse(item)),
+                returnTicketList: result.returnTicketList.map(item =>
+                    this.mapResponse(item)
+                ),
             })
         );
     };
@@ -58,77 +71,117 @@ class ReturnTicketController {
         res.json(
             ApiResponse.success('Get return tickets by staff successfully', {
                 pagination: result.pagination,
-                returnTicketList: result.returnTicketList.map(item => this.mapResponse(item)),
+                returnTicketList: result.returnTicketList.map(item =>
+                    this.mapResponse(item)
+                ),
             })
         );
     };
 
-    /**
-     * Staff: Update status to APPROVED
-     */
     approveReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.updateStatus(id, ReturnTicketStatus.APPROVED, req.adminAccount!);
-        res.json(ApiResponse.success('Approve return ticket successfully', this.mapResponse(updatedTicket)));
+        const updatedTicket = await returnTicketService.updateStatus(
+            id,
+            ReturnTicketStatus.APPROVED,
+            req.adminAccount!
+        );
+        res.json(
+            ApiResponse.success(
+                'Approve return ticket successfully',
+                this.mapResponse(updatedTicket)
+            )
+        );
     };
 
-    /**
-     * Staff: Update status to REJECTED
-     */
     rejectReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.updateStatus(id, ReturnTicketStatus.REJECTED, req.adminAccount!);
-        res.json(ApiResponse.success('Reject return ticket successfully', this.mapResponse(updatedTicket)));
+        const updatedTicket = await returnTicketService.updateStatus(
+            id,
+            ReturnTicketStatus.REJECTED,
+            req.adminAccount!
+        );
+        res.json(
+            ApiResponse.success(
+                'Reject return ticket successfully',
+                this.mapResponse(updatedTicket)
+            )
+        );
     };
 
-    /**
-     * Staff: Update status to IN_PROGRESS
-     */
     processReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.updateStatus(id, ReturnTicketStatus.IN_PROGRESS, req.adminAccount!);
-        res.json(ApiResponse.success('Process return ticket successfully', this.mapResponse(updatedTicket)));
+        const updatedTicket = await returnTicketService.updateStatus(
+            id,
+            ReturnTicketStatus.IN_PROGRESS,
+            req.adminAccount!
+        );
+        res.json(
+            ApiResponse.success(
+                'Process return ticket successfully',
+                this.mapResponse(updatedTicket)
+            )
+        );
     };
 
-    /**
-     * Staff: Update status to CANCEL
-     */
     cancelReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.updateStatus(id, ReturnTicketStatus.CANCEL, req.adminAccount!);
-        res.json(ApiResponse.success('Cancel return ticket successfully', this.mapResponse(updatedTicket)));
+        const updatedTicket = await returnTicketService.updateStatus(
+            id,
+            ReturnTicketStatus.CANCEL,
+            req.adminAccount!
+        );
+        res.json(
+            ApiResponse.success(
+                'Cancel return ticket successfully',
+                this.mapResponse(updatedTicket)
+            )
+        );
     };
 
-    /**
-     * Staff: Update status to DELIVERING
-     */
     deliveringReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.updateStatus(id, ReturnTicketStatus.DELIVERING, req.adminAccount!);
-        res.json(ApiResponse.success('Update status to delivering successfully', this.mapResponse(updatedTicket)));
+        const updatedTicket = await returnTicketService.updateStatus(
+            id,
+            ReturnTicketStatus.DELIVERING,
+            req.adminAccount!
+        );
+        res.json(
+            ApiResponse.success(
+                'Update status to delivering successfully',
+                this.mapResponse(updatedTicket)
+            )
+        );
     };
 
-    /**
-     * Staff: Update status to RETURNED
-     */
     returnedReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.updateStatus(id, ReturnTicketStatus.RETURNED, req.adminAccount!);
-        res.json(ApiResponse.success('Update status to returned successfully', this.mapResponse(updatedTicket)));
+        const updatedTicket = await returnTicketService.updateStatus(
+            id,
+            ReturnTicketStatus.RETURNED,
+            req.adminAccount!
+        );
+        res.json(
+            ApiResponse.success(
+                'Update status to returned successfully',
+                this.mapResponse(updatedTicket)
+            )
+        );
     };
 
-    /**
-     * Staff: Manually update staffVerify
-     */
     updateStaffVerify = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.updateStaffVerify(id, req.adminAccount!);
-        res.json(ApiResponse.success('Update staff verify successfully', this.mapResponse(updatedTicket)));
+        const updatedTicket = await returnTicketService.updateStaffVerify(
+            id,
+            req.adminAccount!
+        );
+        res.json(
+            ApiResponse.success(
+                'Update staff verify successfully',
+                this.mapResponse(updatedTicket)
+            )
+        );
     };
 
-    /**
-     * Map document to response object
-     */
     private mapResponse = (item: any) => {
         return {
             id: item.id,
@@ -137,6 +190,7 @@ class ReturnTicketController {
             reason: item.reason,
             description: item.description,
             media: item.media,
+            skus: item.skus ?? null,
             staffVerify: item.staffVerify,
             status: item.status,
             createdAt: formatDateToString(item.createdAt),
@@ -146,4 +200,3 @@ class ReturnTicketController {
 }
 
 export default new ReturnTicketController();
-

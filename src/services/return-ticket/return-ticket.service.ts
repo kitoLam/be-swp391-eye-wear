@@ -20,12 +20,15 @@ import {
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 import { ReturnTicketStatus } from '../../config/enums/return-ticket.enum';
-import { OrderStatus } from '../../config/enums/order.enum';
+import { OrderStatus, OrderType } from '../../config/enums/order.enum';
 
 class ReturnTicketService {
     /**
      * Client: Create return ticket
-     * Condition: Order status must be COMPLETED and Invoice status must be DELIVERED
+     * Conditions:
+     * - Order status must be COMPLETED
+     * - Invoice containing this order must be DELIVERED
+     * - If order type is NORMAL and has more than 1 product, require requestBody.skus
      */
     createReturnTicket = async (
         customerContext: AuthCustomerContext,
@@ -39,17 +42,15 @@ class ReturnTicketService {
             throw new NotFoundRequestError('Order not found');
         }
 
-        // Checking if order is COMPLETED
         if (order.status !== OrderStatus.COMPLETED) {
             throw new ConflictRequestError(
                 'Only completed orders can be returned'
             );
         }
 
-        // Find Invoice containing this orderId and check its status
         const invoice = await invoiceRepository.findOne({
-            orders: requestBody.orderId,
-            owner: customerContext.id,
+            _id: order.invoiceId,
+            // owner: customerContext.id,
         });
 
         if (!invoice) {
@@ -64,7 +65,6 @@ class ReturnTicketService {
             );
         }
 
-        // Check if return ticket already exists for this order
         const existingTicket = await ReturnTicketModel.findOne({
             orderId: requestBody.orderId,
             deletedAt: null,
@@ -75,12 +75,28 @@ class ReturnTicketService {
             );
         }
 
+        const orderTypes = Array.isArray(order.type)
+            ? order.type
+            : [order.type];
+        const isNormalOrder = orderTypes.includes(OrderType.NORMAL);
+        const hasMultipleProducts =
+            Array.isArray(order.products) && order.products.length > 1;
+
+        if (isNormalOrder && hasMultipleProducts) {
+            if (!requestBody.skus || requestBody.skus.length === 0) {
+                throw new ConflictRequestError(
+                    'This order contains multiple products. Please provide skus to return.'
+                );
+            }
+        }
+
         const returnTicket = new ReturnTicketModel({
             orderId: requestBody.orderId,
             customerId: customerContext.id,
             reason: requestBody.reason,
             description: requestBody.description,
             media: requestBody.media,
+            skus: requestBody.skus ?? null,
             status: ReturnTicketStatus.PENDING,
         });
 
@@ -104,12 +120,10 @@ class ReturnTicketService {
             filter.orderId = query.orderId;
         }
 
-        // Filter by ownership if context is provided
         if (customerContext) {
             filter.customerId = customerContext.id;
         }
 
-        // If staff filtered by their own verification
         if (query.staffVerify) {
             filter.staffVerify = query.staffVerify;
         }
@@ -154,7 +168,7 @@ class ReturnTicketService {
             throw new NotFoundRequestError('Return ticket not found');
 
         returnTicket.status = status;
-        returnTicket.staffVerify = adminContext.id; // Automatically update staffVerify when status changes
+        returnTicket.staffVerify = adminContext.id;
 
         return await returnTicket.save();
     };

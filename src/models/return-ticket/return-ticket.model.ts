@@ -37,6 +37,10 @@ const returnTicketSchema = new Schema<IReturnTicketDocument>(
             required: false,
             default: null,
         },
+        skus: {
+            type: [String],
+            default: [],
+        },
         status: {
             type: String,
             enum: Object.values(ReturnTicketStatus),
