@@ -1,0 +1,9 @@
+export enum ReturnTicketStatus {
+    PENDING = 'PENDING',
+    IN_PROGRESS = 'IN_PROGRESS',
+    CANCEL = 'CANCEL',
+    REJECTED = 'REJECTED',
+    APPROVED = 'APPROVED',
+    DELIVERING = 'DELIVERING',
+    RETURNED = 'RETURNED',
+}
