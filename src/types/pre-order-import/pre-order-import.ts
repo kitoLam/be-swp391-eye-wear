@@ -25,8 +25,10 @@ export const PreOrderImportSchema = z.object({
 export const PreOrderImportRequestSchema = z.object({
     sku: z.string().min(1, 'SKU is required'),
     description: z.string().min(1, 'Description is required'),
-    targetDate: z.coerce.date(),
+    targetDate: z.string(),
     targetQuantity: z.number().min(1, 'Target quantity is required'),
+    startedDate: z.string(),
+    endedDate: z.string(),
 });
 
 export type PreOrderImportRequest = z.infer<typeof PreOrderImportRequestSchema>;

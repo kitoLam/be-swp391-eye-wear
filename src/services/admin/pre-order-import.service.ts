@@ -10,6 +10,8 @@ import {
 } from '../../errors/apiError/api-error';
 import { PreOrderImportStatus } from '../../config/enums/pre-order-import.enum';
 import { RoleType } from '../../config/enums/admin-account';
+import moment from 'moment';
+import { ProductVariantMode } from '../../config/enums/product.enum';
 
 class PreOrderImportService {
     async createPreOrderImport(
@@ -41,18 +43,20 @@ class PreOrderImportService {
                 `Product variant with SKU: ${sku} not found`
             );
         }
-
+        const variantDetail = product.variants.find((v) => v.sku === sku);
+        if(!variantDetail || variantDetail.mode != ProductVariantMode.PRE_ORDER){
+            throw new BadRequestError(`Product variant with SKU: ${sku} is not a pre-order variant`);
+        }
         // 3. Create the pre-order-import record
         const preOrderImport = await preOrderImportRepository.create({
             sku,
             description,
-            targetDate,
+            targetDate: moment(payload.targetDate, 'DD-MM-YYYY').startOf('date').toDate(),
             targetQuantity,
             managerResponsibility: context.id,
             status: PreOrderImportStatus.PENDING,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            deletedAt: null,
+            startedDate: moment(payload.startedDate, 'DD-MM-YYYY').startOf('date').toDate(),
+            endedDate: moment(payload.endedDate, 'DD-MM-YYYY').endOf('date').toDate()
         });
 
         return preOrderImport;
