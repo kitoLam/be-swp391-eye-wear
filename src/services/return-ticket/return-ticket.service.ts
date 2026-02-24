@@ -90,6 +90,39 @@ class ReturnTicketService {
             }
         }
 
+        // Calculate money for return ticket
+        // Formula: money = (totalPrice - totalDiscount) * skuPrice / totalPrice
+        let skuPrice = 0;
+        if (requestBody.skus && requestBody.skus.length > 0) {
+            // Sum pricePerUnit * quantity for matching SKUs
+            for (const orderProduct of order.products) {
+                if (
+                    orderProduct.product &&
+                    requestBody.skus.includes(orderProduct.product.sku)
+                ) {
+                    skuPrice +=
+                        orderProduct.product.pricePerUnit *
+                        orderProduct.quantity;
+                }
+                if (
+                    orderProduct.lens &&
+                    requestBody.skus.includes(orderProduct.lens.sku)
+                ) {
+                    skuPrice +=
+                        orderProduct.lens.pricePerUnit * orderProduct.quantity;
+                }
+            }
+        } else {
+            // No skus specified → use entire order price
+            skuPrice = order.price;
+        }
+
+        const money =
+            invoice.totalPrice > 0
+                ? ((invoice.totalPrice - invoice.totalDiscount) * skuPrice) /
+                  invoice.totalPrice
+                : 0;
+
         const returnTicket = new ReturnTicketModel({
             orderId: requestBody.orderId,
             customerId: customerContext.id,
@@ -97,6 +130,7 @@ class ReturnTicketService {
             description: requestBody.description,
             media: requestBody.media,
             skus: requestBody.skus ?? null,
+            money: Math.round(money),
             status: ReturnTicketStatus.PENDING,
         });
 

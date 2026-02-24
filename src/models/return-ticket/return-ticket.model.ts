@@ -41,6 +41,11 @@ const returnTicketSchema = new Schema<IReturnTicketDocument>(
             type: [String],
             default: [],
         },
+        money: {
+            type: Number,
+            required: true,
+            min: 0,
+        },
         status: {
             type: String,
             enum: Object.values(ReturnTicketStatus),

@@ -191,6 +191,7 @@ class ReturnTicketController {
             description: item.description,
             media: item.media,
             skus: item.skus ?? null,
+            money: item.money,
             staffVerify: item.staffVerify,
             status: item.status,
             createdAt: formatDateToString(item.createdAt),
