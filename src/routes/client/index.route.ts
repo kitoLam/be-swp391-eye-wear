@@ -9,6 +9,7 @@ import checkoutRouter from './checkout.route';
 import customerRouter from './customer.route';
 import wishlistRouter from './wishlist.route';
 import returnTicketRouter from './return-ticket.route';
+import aiConversationRouter from './ai-conversation.route';
 
 const router = Router();
 
@@ -22,5 +23,5 @@ router.use('/checkout', checkoutRouter);
 router.use('/customer', customerRouter);
 router.use('/wishlist', wishlistRouter);
 router.use('/return-tickets', returnTicketRouter);
-
+router.use('/ai-conversation', aiConversationRouter);
 export default router;

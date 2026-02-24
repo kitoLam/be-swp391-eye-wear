@@ -12,6 +12,7 @@
         "seed": "ts-node -r tsconfig-paths/register src/seed-data.ts"
     },
     "dependencies": {
+        "@google/generative-ai": "^0.24.1",
         "@supabase/supabase-js": "^2.93.1",
         "@types/bcrypt": "^6.0.0",
         "axios": "^1.11.0",
