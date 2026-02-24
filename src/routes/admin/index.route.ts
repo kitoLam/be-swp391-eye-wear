@@ -13,6 +13,7 @@ import staffRouter from './staff.route';
 import profileRequest from './profile-request.route';
 import reportTicketRouter from './report-ticket.route';
 import returnTicketRouter from './return-ticket.route';
+import adminAccountRouter from './admin-account.route';
 const router = Router();
 
 router.use('/auth', authRouter);
@@ -29,4 +30,5 @@ router.use('/staff', staffRouter);
 router.use('/profile-requests', profileRequest);
 router.use('/report-tickets', reportTicketRouter);
 router.use('/return-tickets', returnTicketRouter);
+router.use('/admin-accounts', adminAccountRouter);
 export default router;
