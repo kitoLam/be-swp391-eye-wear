@@ -30,5 +30,5 @@ const schema = new Schema<IConversationSession>(
 export const AIConversationSessionModel = mongoose.model(
   "AIConversationSession",
   schema,
-  "ai_conversation_sessions"
+  "ai-conversation-sessions"
 );
