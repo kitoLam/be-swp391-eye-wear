@@ -93,28 +93,31 @@ class InvoiceClientService {
     };
 
     /**
-     * Helper: Calculate voucher discount
+     * Helper: Calculate voucher discount and validate ownership
      */
-    private calculateVoucherDiscount = async (
+    private validateAndCalculateVoucher = async (
         voucherCodes: string[] | undefined,
         totalPrice: number,
         customerId: string
-    ): Promise<{ discount: number; voucherId?: string }> => {
+    ): Promise<{ discount: number; voucherId?: string; voucherDoc?: any }> => {
         if (!voucherCodes || voucherCodes.length === 0) {
             return { discount: 0 };
         }
 
         const voucherCode = voucherCodes[0];
+        // 1. Check if voucher exists in MongoDB by CODE
         const voucher = await voucherRepository.findOne({
             code: voucherCode.toUpperCase(),
             deletedAt: null,
         });
 
         if (!voucher) {
-            throw new NotFoundRequestError('Voucher không tồn tại');
+            throw new NotFoundRequestError(`Voucher code "${voucherCode}" không tồn tại`);
         }
 
-        // Check voucher access for SPECIFIC vouchers
+        // 2. Check voucher ownership in Supabase (since IDs are same)
+        // Even for ALL scope, we might want to check if it's assigned if the system requires it,
+        // but typically SPECIFIC is the one that needs strict ownership check.
         if (voucher.applyScope === 'SPECIFIC') {
             const { data, error } = await supabase
                 .from('voucher_user')
@@ -126,29 +129,29 @@ class InvoiceClientService {
 
             if (error || !data) {
                 throw new BadRequestError(
-                    'Bạn không có quyền sử dụng voucher này'
+                    'Bạn không có quyền sử dụng voucher này hoặc voucher không thuộc về bạn'
                 );
             }
         }
 
-        // Validate voucher
+        // 3. Validate voucher conditions (Date, Status, Usage, MinOrder)
         const now = new Date();
         if (voucher.status !== 'ACTIVE') {
-            throw new BadRequestError('Voucher chưa được kích hoạt');
+            throw new BadRequestError('Voucher hiện không khả dụng');
         }
         if (now < voucher.startedDate || now > voucher.endedDate) {
-            throw new BadRequestError('Voucher không trong thời gian sử dụng');
+            throw new BadRequestError('Voucher đã hết hạn hoặc chưa đến thời gian sử dụng');
         }
         if (voucher.usageCount >= voucher.usageLimit) {
-            throw new BadRequestError('Voucher đã hết lượt sử dụng');
+            throw new BadRequestError('Voucher đã hết lượt sử dụng tổng thể');
         }
         if (totalPrice < voucher.minOrderValue) {
             throw new BadRequestError(
-                `Giá trị đơn hàng tối thiểu là ${voucher.minOrderValue.toLocaleString()}đ`
+                `Đơn hàng tối thiểu ${voucher.minOrderValue.toLocaleString()}đ để áp dụng voucher này`
             );
         }
 
-        // Calculate discount
+        // 4. Calculate discount
         let discount = 0;
         if (voucher.typeDiscount === 'FIXED') {
             discount = voucher.value;
@@ -159,36 +162,48 @@ class InvoiceClientService {
         discount = Math.min(discount, voucher.maxDiscountValue);
         discount = Math.min(discount, totalPrice);
 
-        // Mark voucher as used
-        if (voucher.applyScope === 'SPECIFIC') {
-            // Update metadata to include invoice_id and used_at
-            // First get current metadata
-            const { data: currentRecord } = await supabase
-                .from('voucher_user')
-                .select('metadata')
-                .eq('customer_id', customerId)
-                .eq('voucher_id', voucher._id.toString())
-                .single();
+        return { discount, voucherId: voucher._id.toString(), voucherDoc: voucher };
+    };
 
+    /**
+     * Helper: Mark voucher as used in both DBs
+     */
+    private markVoucherAsUsed = async (
+        voucherId: string,
+        customerId: string,
+        invoiceId: string
+    ) => {
+        // 1. Increment usage in MongoDB
+        await voucherRepository.incrementUsage(voucherId);
+
+        // 2. Update status in Supabase voucher_user if SPECIFIC
+        // (Or always update metadata if you want to track usage per user)
+        const { data: currentRecord } = await supabase
+            .from('voucher_user')
+            .select('metadata')
+            .eq('customer_id', customerId)
+            .eq('voucher_id', voucherId)
+            .is('deleted_at', null)
+            .single();
+
+        if (currentRecord) {
             const newMetadata = {
-                ...currentRecord?.metadata,
-                invoice_id: 'PENDING_INVOICE', // We don't have invoice ID yet here, or we can update it later.
-                // Actually this function returns discount and then createInvoice uses it.
-                // But createInvoice creates invoice AFTER this check.
-                // So maybe we just mark it as used?
-                // The original code marked it as used here.
-                used_at: new Date(),
+                ...(currentRecord.metadata || {}),
+                invoice_id: invoiceId,
+                used_at: new Date().toISOString(),
             };
 
             await supabase
                 .from('voucher_user')
-                .update({ metadata: newMetadata, updated_at: new Date() })
+                .update({ 
+                    metadata: newMetadata, 
+                    updated_at: new Date().toISOString(),
+                    // Optionally mark as deleted_at if it's one-time use
+                    deleted_at: new Date().toISOString() 
+                })
                 .eq('customer_id', customerId)
-                .eq('voucher_id', voucher._id.toString());
+                .eq('voucher_id', voucherId);
         }
-        await voucherRepository.incrementUsage(voucher._id.toString());
-
-        return { discount, voucherId: voucher._id.toString() };
     };
 
     /**
@@ -343,17 +358,18 @@ class InvoiceClientService {
 
             // Apply Voucher
             const { discount: totalDiscount, voucherId } =
-                await this.calculateVoucherDiscount(
+                await this.validateAndCalculateVoucher(
                     payload.voucher,
                     totalPrice,
                     customerId
                 );
+
             // Create Invoice
             const invoiceData = {
                 owner: customerId,
                 totalPrice,
                 totalDiscount,
-                voucher: [], // NÀO LÀM VOUCHER RỒI THÌ ADD VÀO, voucherId ? [voucherId] : [],
+                voucher: voucherId ? [voucherId] : [],
                 address: payload.address,
                 status:
                     payload.paymentMethod == PaymentMethodType.COD
@@ -368,6 +384,15 @@ class InvoiceClientService {
             };
 
             const newInvoice = await invoiceRepository.create(invoiceData);
+
+            // Mark voucher as used after invoice is successfully created
+            if (voucherId) {
+                await this.markVoucherAsUsed(
+                    voucherId,
+                    customerId,
+                    newInvoice._id.toString()
+                );
+            }
             const insertedOrders = [];
             // Create Orders with proper grouping
             // 1. Create ONE order for all NORMAL products

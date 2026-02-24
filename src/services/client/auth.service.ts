@@ -178,6 +178,7 @@ class AuthService {
             _id: userId,
             deletedAt: null,
         });
+        console.log(userId);
         if (!foundCustomer) {
             throw new NotFoundRequestError('Not found customer');
         }
@@ -345,14 +346,12 @@ class AuthService {
             email: payload.email,
             deletedAt: null,
         });
-        if(!foundUser){
-            throw new NotFoundRequestError("Not found customer");
+        if (!foundUser) {
+            throw new NotFoundRequestError('Not found customer');
         }
         // thằng này có account local rồi thì thôi, ko cho gửi yêu cầu
         if (foundUser) {
-            if (
-                foundUser.providers.includes('local')
-            ) {
+            if (foundUser.providers.includes('local')) {
                 throw new ConflictRequestError(
                     'You have already register a manual account!'
                 );
@@ -363,7 +362,7 @@ class AuthService {
         const dataJson = {
             otp: otp,
             hashedPassword: hashPassword(payload.password),
-        }
+        };
         await redisService.setDataWithExpiredTime(
             key,
             dataJson,
@@ -387,9 +386,7 @@ class AuthService {
         }
         // thằng này có account local rồi thì thôi, ko cho gửi yêu cầu
         if (existAccount) {
-            if (
-                existAccount.providers.includes('local')
-            ) {
+            if (existAccount.providers.includes('local')) {
                 throw new ConflictRequestError(
                     'You have already register a manual account!'
                 );
@@ -397,8 +394,8 @@ class AuthService {
         }
         const key = `${redisPrefix.mailMergeAccount}:${email}`;
         const existingRequest = await redisService.getDataByKey<{
-            otp: string,
-            hashedPassword: string,
+            otp: string;
+            hashedPassword: string;
         }>(key);
         console.log(existingRequest);
         if (!existingRequest) {
@@ -411,7 +408,7 @@ class AuthService {
         }
         await redisService.deleteDataByKey(key);
         existAccount.hashedPassword = existingRequest.hashedPassword;
-        existAccount.providers.push("local");
+        existAccount.providers.push('local');
         await existAccount.save();
     };
 }
