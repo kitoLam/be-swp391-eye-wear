@@ -1,54 +1,41 @@
-import { NextFunction, Request, Response } from 'express';
+import { Request, Response } from 'express';
 import customerService from '../../services/admin/customer.service';
 import { ApiResponse } from '../../utils/api-response';
+import { CustomerListQuery } from '../../types/customer/customer.query';
+import { CreateCustomer, UpdateCustomer } from '../../types/customer/customer';
 
 class CustomerController {
-    getCustomers = async (req: Request, res: Response, next: NextFunction) => {
-        try {
-            const page = req.query.page
-                ? parseInt(req.query.page as string)
-                : 1;
-            const limit = req.query.limit
-                ? parseInt(req.query.limit as string)
-                : 10;
-            const search = (req.query.search as string) || '';
-
-            const data = await customerService.getCustomers({
-                page,
-                limit,
-                search,
-            });
-            res.json(
-                ApiResponse.success('Get customer list successfully', data)
-            );
-        } catch (error) {
-            next(error);
-        }
+    getList = async (req: Request, res: Response) => {
+        const query = req.validatedQuery as CustomerListQuery;
+        const result = await customerService.getList(query);
+        res.json(ApiResponse.success('Get customer list successfully', result));
     };
 
-    getCustomerById = async (
-        req: Request,
-        res: Response,
-        next: NextFunction
-    ) => {
-        try {
-            const id = req.params.id as string;
-            const customer = await customerService.getCustomerById(id);
+    getDetail = async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+        const result = await customerService.getDetail(id);
+        res.json(
+            ApiResponse.success('Get customer detail successfully', result)
+        );
+    };
 
-            if (!customer) {
-                // Assuming global error handler handles errors, or use ApiResponse.error if available
-                return next(new Error('Customer not found'));
-            }
+    create = async (req: Request, res: Response) => {
+        const body = req.validatedBody as CreateCustomer;
+        const result = await customerService.create(body);
+        res.json(ApiResponse.success('Create customer successfully', result));
+    };
 
-            res.json(
-                ApiResponse.success(
-                    'Get customer detail successfully',
-                    customer
-                )
-            );
-        } catch (error) {
-            next(error);
-        }
+    update = async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+        const body = req.validatedBody as UpdateCustomer;
+        const result = await customerService.update(id, body);
+        res.json(ApiResponse.success('Update customer successfully', result));
+    };
+
+    delete = async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+        await customerService.softDelete(id);
+        res.json(ApiResponse.success('Delete customer successfully', null));
     };
 }
 
