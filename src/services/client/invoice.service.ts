@@ -112,7 +112,9 @@ class InvoiceClientService {
         });
 
         if (!voucher) {
-            throw new NotFoundRequestError(`Voucher code "${voucherCode}" không tồn tại`);
+            throw new NotFoundRequestError(
+                `Voucher code "${voucherCode}" không tồn tại`
+            );
         }
 
         // 2. Check voucher ownership in Supabase (since IDs are same)
@@ -140,7 +142,9 @@ class InvoiceClientService {
             throw new BadRequestError('Voucher hiện không khả dụng');
         }
         if (now < voucher.startedDate || now > voucher.endedDate) {
-            throw new BadRequestError('Voucher đã hết hạn hoặc chưa đến thời gian sử dụng');
+            throw new BadRequestError(
+                'Voucher đã hết hạn hoặc chưa đến thời gian sử dụng'
+            );
         }
         if (voucher.usageCount >= voucher.usageLimit) {
             throw new BadRequestError('Voucher đã hết lượt sử dụng tổng thể');
@@ -162,7 +166,11 @@ class InvoiceClientService {
         discount = Math.min(discount, voucher.maxDiscountValue);
         discount = Math.min(discount, totalPrice);
 
-        return { discount, voucherId: voucher._id.toString(), voucherDoc: voucher };
+        return {
+            discount,
+            voucherId: voucher._id.toString(),
+            voucherDoc: voucher,
+        };
     };
 
     /**
@@ -195,11 +203,11 @@ class InvoiceClientService {
 
             await supabase
                 .from('voucher_user')
-                .update({ 
-                    metadata: newMetadata, 
+                .update({
+                    metadata: newMetadata,
                     updated_at: new Date().toISOString(),
                     // Optionally mark as deleted_at if it's one-time use
-                    deleted_at: new Date().toISOString() 
+                    deleted_at: new Date().toISOString(),
                 })
                 .eq('customer_id', customerId)
                 .eq('voucher_id', voucherId);
@@ -395,25 +403,36 @@ class InvoiceClientService {
             }
             const insertedOrders = [];
             // Create Orders with proper grouping
-            // 1. Create ONE order for all NORMAL products
+            // 1. Create separate orders for each unique SKU in NORMAL products
             if (normalProducts.length > 0) {
-                let normalOrderPrice = 0;
+                const normalGroupedBySku = new Map<string, OrderProduct[]>();
                 for (const item of normalProducts) {
-                    normalOrderPrice +=
-                        item.product.pricePerUnit * item.quantity;
+                    const sku = item.product.sku;
+                    if (!normalGroupedBySku.has(sku)) {
+                        normalGroupedBySku.set(sku, []);
+                    }
+                    normalGroupedBySku.get(sku)!.push(item);
                 }
 
-                insertedOrders.push({
-                    invoiceId: newInvoice._id,
-                    orderCode: generateOrderCode(),
-                    type: [OrderType.NORMAL],
-                    products: normalProducts,
-                    status:
-                        manufacturingProducts.length == 0
-                            ? OrderStatus.WAITING_ASSIGN
-                            : OrderStatus.APPROVED,
-                    price: normalOrderPrice,
-                });
+                for (const [sku, skuProducts] of normalGroupedBySku) {
+                    let normalOrderPrice = 0;
+                    for (const item of skuProducts) {
+                        normalOrderPrice +=
+                            item.product.pricePerUnit * item.quantity;
+                    }
+
+                    insertedOrders.push({
+                        invoiceId: newInvoice._id,
+                        orderCode: generateOrderCode(),
+                        type: [OrderType.NORMAL],
+                        products: skuProducts,
+                        status:
+                            manufacturingProducts.length == 0
+                                ? OrderStatus.WAITING_ASSIGN
+                                : OrderStatus.APPROVED,
+                        price: normalOrderPrice,
+                    });
+                }
             }
 
             // 2. Create separate MANUFACTURING order for each product with lens (quantity = 2 ~ 2 orders)
@@ -691,7 +710,8 @@ class InvoiceClientService {
                                 },
                                 {
                                     $inc: {
-                                        preOrderedQuantity: -orderProduct.quantity,
+                                        preOrderedQuantity:
+                                            -orderProduct.quantity,
                                     },
                                 }
                             );
@@ -733,7 +753,8 @@ class InvoiceClientService {
                                 },
                                 {
                                     $inc: {
-                                        preOrderedQuantity: -orderProduct.quantity,
+                                        preOrderedQuantity:
+                                            -orderProduct.quantity,
                                     },
                                 }
                             );
