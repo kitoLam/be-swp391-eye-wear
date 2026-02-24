@@ -1,7 +1,10 @@
 import { FilterQuery } from 'mongoose';
 import { redisPrefix } from '../../config/constants/redis.constant';
 import { CheckoutSource } from '../../config/enums/checkout.enum';
-import { ProductType, ProductVariantMode } from '../../config/enums/product.enum';
+import {
+    ProductType,
+    ProductVariantMode,
+} from '../../config/enums/product.enum';
 import {
     BadRequestError,
     ConflictRequestError,
@@ -13,7 +16,7 @@ import { ProductConfigManufacturing } from '../../types/product/product/product.
 import redisService from '../redis.service';
 import cartService from './cart.service';
 import { Product } from '../../types/product/product/product';
-import { IProductDocument } from '../../models/product/product.model.mongo';
+import { IProductDocument, ProductModel } from '../../models/product/product.model.mongo';
 import { Variant } from '../../types/product/variant/variant';
 import { preOrderImportRepository } from '../../repositories/pre-order-import/pre-order-import.repository';
 import { compareDate } from '../../utils/date.util';
@@ -140,27 +143,37 @@ class ProductService {
         const stockOnline =
             (await redisService.getDataByKey<number>(keyOnline)) || 0;
         let currentProductInStock = 0;
-        if(productVariant.mode === ProductVariantMode.PRE_ORDER){
+        if (productVariant.mode === ProductVariantMode.PRE_ORDER) {
             // nếu đây là sp pre-order thì cần check bên bên bảng pre-order-import
             const foundPreOrderImport = await preOrderImportRepository.findOne({
                 sku: productVariant.sku,
                 status: PreOrderImportStatus.PENDING,
             });
-            if(!foundPreOrderImport){
-                throw new BadRequestError(`Product with sku ${productVariant.sku} does not have pre-order plan`);
+            if (!foundPreOrderImport) {
+                throw new BadRequestError(
+                    `Product with sku ${productVariant.sku} does not have pre-order plan`
+                );
             }
-            const isValidStart = compareDate(new Date(), foundPreOrderImport.startedDate) >= 0;
-            const isValidEnd = compareDate(new Date(), foundPreOrderImport.endedDate) <= 0;
-            if(!isValidStart || !isValidEnd){
+            const isValidStart =
+                compareDate(new Date(), foundPreOrderImport.startedDate) >= 0;
+            const isValidEnd =
+                compareDate(new Date(), foundPreOrderImport.endedDate) <= 0;
+            if (!isValidStart || !isValidEnd) {
                 // nếu ngày hiện tại bé hơn thời gian sk diễn ra hoặc lớn hơn thời gian sk kết thúc thì báo lỗi
-                throw new BadRequestError(`Product with sku ${productVariant.sku} can not order right now due to invalid pre-order date plan!`);
+                throw new BadRequestError(
+                    `Product with sku ${productVariant.sku} can not order right now due to invalid pre-order date plan!`
+                );
             }
-            currentProductInStock = foundPreOrderImport.targetQuantity - (stockRace + stockOnline) - product.buyAmount - foundPreOrderImport.preOrderedQuantity;
+            currentProductInStock =
+                foundPreOrderImport.targetQuantity -
+                (stockRace + stockOnline) -
+                product.buyAmount -
+                foundPreOrderImport.preOrderedQuantity;
         } else {
             currentProductInStock =
-            productVariant.stock -
-            (stockRace + stockOnline) -
-            product.buyAmount;
+                productVariant.stock -
+                (stockRace + stockOnline) -
+                product.buyAmount;
         }
 
         if (currentProductInStock < 0) {
@@ -209,29 +222,46 @@ class ProductService {
             const stockOnline =
                 (await redisService.getDataByKey<number>(keyOnline)) || 0;
             let currentLensInStock = 0;
-            if(lensVariant.mode === ProductVariantMode.PRE_ORDER){
+            if (lensVariant.mode === ProductVariantMode.PRE_ORDER) {
                 // nếu đây là sp pre-order thì cần check bên bên bảng pre-order-import
-                const foundLensPreOrderImport = await preOrderImportRepository.findOne({
-                    sku: lensVariant.sku,
-                    status: PreOrderImportStatus.PENDING,
-                });
-                if(!foundLensPreOrderImport){
-                    throw new BadRequestError(`Lens with sku ${lensVariant.sku} does not have pre-order plan`);
+                const foundLensPreOrderImport =
+                    await preOrderImportRepository.findOne({
+                        sku: lensVariant.sku,
+                        status: PreOrderImportStatus.PENDING,
+                    });
+                if (!foundLensPreOrderImport) {
+                    throw new BadRequestError(
+                        `Lens with sku ${lensVariant.sku} does not have pre-order plan`
+                    );
                 }
-                const isValidStart = compareDate(new Date(), foundLensPreOrderImport.startedDate) >= 0;
-                const isValidEnd = compareDate(new Date(), foundLensPreOrderImport.endedDate) <= 0;
-                if(!isValidStart || !isValidEnd){
+                const isValidStart =
+                    compareDate(
+                        new Date(),
+                        foundLensPreOrderImport.startedDate
+                    ) >= 0;
+                const isValidEnd =
+                    compareDate(
+                        new Date(),
+                        foundLensPreOrderImport.endedDate
+                    ) <= 0;
+                if (!isValidStart || !isValidEnd) {
                     // nếu ngày hiện tại bé hơn thời gian sk diễn ra hoặc lớn hơn thời gian sk kết thúc thì báo lỗi
-                    throw new BadRequestError(`Lens with sku ${lensVariant.sku} can not order right now due to invalid pre-order date plan!`);
+                    throw new BadRequestError(
+                        `Lens with sku ${lensVariant.sku} can not order right now due to invalid pre-order date plan!`
+                    );
                 }
-                currentLensInStock = foundLensPreOrderImport.targetQuantity - (stockRace + stockOnline) - product.buyAmount - foundLensPreOrderImport.preOrderedQuantity;
+                currentLensInStock =
+                    foundLensPreOrderImport.targetQuantity -
+                    (stockRace + stockOnline) -
+                    product.buyAmount -
+                    foundLensPreOrderImport.preOrderedQuantity;
             } else {
                 currentLensInStock =
-                lensVariant.stock -
-                (stockRace + stockOnline) -
-                product.buyAmount;
+                    lensVariant.stock -
+                    (stockRace + stockOnline) -
+                    product.buyAmount;
             }
-            
+
             if (currentLensInStock < 0) {
                 throw new BadRequestError('Lens is not enough in stock');
             }
@@ -241,6 +271,31 @@ class ProductService {
             };
         }
         return dataFinal;
+    };
+
+    buildQueryForAISuggestion = async (intent: any) => {
+        const query: any = {
+            type: intent.type,
+            deletedAt: null,
+        };
+
+        if (intent.priceLower || intent.priceUpper) {
+            query['variants.finalPrice'] = {};
+            if (intent.priceLower)
+                query['variants.finalPrice'].$gte = intent.priceLower;
+            if (intent.priceUpper)
+                query['variants.finalPrice'].$lte = intent.priceUpper;
+        }
+
+        if (intent.color) {
+            query['variants.options.label'] = intent.color;
+        }
+
+        if (intent.shape) {
+            query['spec.shape'] = intent.shape;
+        }
+
+        return ProductModel.find(query).limit(4);
     };
 }
 export default new ProductService();
