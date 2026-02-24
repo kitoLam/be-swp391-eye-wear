@@ -14,8 +14,8 @@ jobs:
               with:
                   host: ${{ secrets.HOST }}
                   username: ${{ secrets.USERNAME }}
-                  key: ${{ secrets.SSH_KEY }}
-                  port: 22
+                  key: ${{ secrets.PASSWORD }}
+                  port: 26266
                   script: |
                       # 1. Vào thư mục
                       cd ~/be-swp391-eye-wear
