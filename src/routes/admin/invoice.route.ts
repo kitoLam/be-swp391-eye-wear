@@ -31,7 +31,11 @@ router.get(
     validateQuery(InvoiceListQuerySchema),
     invoiceController.getListInvoice
 );
-
+router.get(
+    '/:id',
+    validateParams(ObjectIdSchema),
+    invoiceController.getInvoiceDetail
+)
 // api lấy danh sách hóa đơn theo staffHandleDelivery của staff đang đăng nhập
 router.get(
     '/handle-delivery',

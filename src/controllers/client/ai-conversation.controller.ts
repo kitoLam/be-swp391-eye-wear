@@ -13,6 +13,14 @@ class AIConversationController {
     const result = await aiConversationService.handleChat(customerId ,message);
     res.json(ApiResponse.success('Chat successfully', result));
   }
+
+  getConversation  = async (req: Request, res: Response) => {
+    const customerId = req.customer!.id;
+    const result = await aiConversationService.getConversationByCustomerId(customerId);
+    res.json(ApiResponse.success('Get conversation successfully', {
+      conversation: result
+    }));
+  }
 }
 
 export default new AIConversationController();

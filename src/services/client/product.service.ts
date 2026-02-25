@@ -16,7 +16,10 @@ import { ProductConfigManufacturing } from '../../types/product/product/product.
 import redisService from '../redis.service';
 import cartService from './cart.service';
 import { Product } from '../../types/product/product/product';
-import { IProductDocument, ProductModel } from '../../models/product/product.model.mongo';
+import {
+    IProductDocument,
+    ProductModel,
+} from '../../models/product/product.model.mongo';
 import { Variant } from '../../types/product/variant/variant';
 import { preOrderImportRepository } from '../../repositories/pre-order-import/pre-order-import.repository';
 import { compareDate } from '../../utils/date.util';
@@ -288,11 +291,19 @@ class ProductService {
         }
 
         if (intent.color) {
-            query['variants.options.label'] = intent.color;
+            query.variants = {
+                $elemMatch: {
+                    options: {
+                        $elemMatch: {
+                            label: { $regex: intent.color, $options: 'i' },
+                        },
+                    },
+                },
+            };
         }
 
         if (intent.shape) {
-            query['spec.shape'] = intent.shape;
+            query['spec.shape'] = { $regex: intent.shape, $options: 'i' };
         }
 
         return ProductModel.find(query).limit(4);

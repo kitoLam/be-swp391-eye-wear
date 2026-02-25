@@ -515,6 +515,14 @@ class InvoiceService {
         });
         return updatedInvoice;
     };
+
+    getInvoiceDetail = async (invoiceId: string) => {
+        const invoiceDetail = await invoiceRepository.findById(invoiceId);
+        if (!invoiceDetail) {
+            throw new NotFoundRequestError('Invoice not found');
+        }
+        return invoiceDetail;
+    };
 }
 
 export default new InvoiceService();
