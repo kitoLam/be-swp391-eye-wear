@@ -15,7 +15,6 @@ import cookieParser from 'cookie-parser';
 import { configGooglePassport } from './config/google-oauth.config';
 import passport from 'passport';
 import session from 'express-session';
-import invoiceService from './services/client/invoice.service';
 // Tạo Express application
 const app: Application = express();
 // Tạo HTTP server từ Express app (cần cho Socket.IO)
