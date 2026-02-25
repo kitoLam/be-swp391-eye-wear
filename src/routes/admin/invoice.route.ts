@@ -10,7 +10,10 @@ import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware'
 import { ObjectIdSchema } from '../../types/common/objectId';
 import { requireAdminRoles } from '../../middlewares/admin/authorization.middleware';
 import { RoleType } from '../../config/enums/admin-account';
-import { InvoiceAssignHandleDeliverySchema, RejectInvoiceSchema } from '../../types/invoice/invoice.request';
+import {
+    InvoiceAssignHandleDeliverySchema,
+    RejectInvoiceSchema,
+} from '../../types/invoice/invoice.request';
 const router = Router();
 
 // Public route - NO AUTHENTICATION
@@ -31,17 +34,19 @@ router.get(
     validateQuery(InvoiceListQuerySchema),
     invoiceController.getListInvoice
 );
-router.get(
-    '/:id',
-    validateParams(ObjectIdSchema),
-    invoiceController.getInvoiceDetail
-)
-// api lấy danh sách hóa đơn theo staffHandleDelivery của staff đang đăng nhập
+
 router.get(
     '/handle-delivery',
     validateQuery(InvoiceListQuerySchema),
     invoiceController.getListInvoiceByDeliveryStaff
 );
+
+router.get(
+    '/:id',
+    validateParams(ObjectIdSchema),
+    invoiceController.getInvoiceDetail
+);
+// api lấy danh sách hóa đơn theo staffHandleDelivery của staff đang đăng nhập
 // =============== MANAGER ROLE =============
 router.get(
     '/manager',
