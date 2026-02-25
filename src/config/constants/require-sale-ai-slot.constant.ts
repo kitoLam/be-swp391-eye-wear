@@ -1,0 +1,1 @@
+export const REQUIRE_ASK_SLOT = ['type', 'gender'];

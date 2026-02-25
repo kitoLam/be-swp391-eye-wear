@@ -1,8 +1,11 @@
+import { REQUIRE_ASK_SLOT } from '../../config/constants/require-sale-ai-slot.constant';
 import { model } from '../../config/google-gemini-ai.config';
 import { AIConversationSessionModel } from '../../models/ai-conversation-session/ai-conversation-session.model';
 import { buildAnswerPrompt } from '../../utils/prompt.util';
 import {
+    askForMissingSlots,
     extractIntentByLLM,
+    getMissingRequiredSlots,
     isReadyToRecommend,
     mergeIntent,
 } from '../../utils/sale-ai.util';
@@ -10,6 +13,16 @@ import { isAISessionExpired, resetSession } from '../../utils/sale-ai.util';
 import aiMessageService from './ai-message.service';
 import productService from './product.service';
 class AIConversation {
+    async getConversationByCustomerId(customerId: string) {
+        let session = await AIConversationSessionModel.findOne({ customerId });
+
+        if (!session) {
+            session = await AIConversationSessionModel.create({ customerId });
+            await aiMessageService.createMessage('AI', customerId, "Xin chào tôi là nhân viên bán hàng chính quy của shop, tôi có thể giúp gì cho bạn!");
+        }
+        return session;
+    }
+
     async handleChat(customerId: string, message: string) {
         let session = await AIConversationSessionModel.findOne({ customerId });
 
@@ -41,10 +54,12 @@ class AIConversation {
          */
         if (session.stage === 'DISCOVERY') {
             if (!isReadyToRecommend(session.intent)) {
+                const missingSlots = getMissingRequiredSlots(session.intent, REQUIRE_ASK_SLOT);
+                const askToDiscoveryMessage = await askForMissingSlots(missingSlots[0], session.intent, message);
                 await session.save();
-                await aiMessageService.createMessage('AI', customerId, 'Bạn muốn kính mát hay kính gọng? Và dùng cho nam hay nữ ạ?');
+                await aiMessageService.createMessage('AI', customerId, askToDiscoveryMessage);
                 return {
-                    message: 'Bạn muốn kính mát hay kính gọng? Và dùng cho nam hay nữ ạ?',
+                    message: askToDiscoveryMessage,
                 };
             }
 
@@ -58,7 +73,10 @@ class AIConversation {
          */
         if (session.stage === 'REFINING') {
             const products = await productService.buildQueryForAISuggestion(session.intent);
-
+            console.log(">>>products::", products.length);
+            for (const item of products) {
+                console.log(">>>id match::", item._id);
+            }
             const prompt = buildAnswerPrompt(message, products);
             const result = await model.generateContent(prompt);
             const text = result.response.text();
@@ -71,10 +89,14 @@ class AIConversation {
 
         /**
          * =====================
-         * RECOMMENDING (default)
+         * RECOMMENDING 
          * =====================
          */
         const products = await productService.buildQueryForAISuggestion(session.intent);
+        console.log(">>>products::", products.length);
+        for (const item of products) {
+            console.log(">>>id match::", item._id);
+        }
 
         const prompt = buildAnswerPrompt(message, products);
         const result = await model.generateContent(prompt);

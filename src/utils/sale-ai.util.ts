@@ -1,5 +1,5 @@
 import { model } from '../config/google-gemini-ai.config';
-import { buildIntentPrompt } from './prompt.util';
+import { buildAskSlotPrompt, buildIntentPrompt } from './prompt.util';
 export function isAISessionExpired(lastInteractionAt: Date): boolean {
     const now = Date.now();
     const last = new Date(lastInteractionAt).getTime();
@@ -28,6 +28,15 @@ export async function extractIntentByLLM(message: string) {
 export function isReadyToRecommend(intent: any) {
     return intent.type && intent.gender;
 }
+export function getMissingRequiredSlots(
+  intent: Record<string, any>,
+  required: readonly string[]
+): string[] {
+  return required.filter((slot) => {
+    const value = intent[slot];
+    return value === undefined || value === null;
+  });
+}
 export function mergeIntent(oldIntent: any, patch: any) {
   const newIntent = { ...oldIntent };
 
@@ -40,4 +49,14 @@ export function mergeIntent(oldIntent: any, patch: any) {
   }
 
   return newIntent;
+}
+export async function askForMissingSlots(
+  missingSlot: string,
+  intent: any,
+  userMessage: string
+): Promise<string> {
+  const prompt = buildAskSlotPrompt(missingSlot, intent, userMessage);
+
+  const result = await model.generateContent(prompt);
+  return result.response.text().trim();
 }

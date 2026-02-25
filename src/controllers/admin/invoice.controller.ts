@@ -181,5 +181,11 @@ class InvoiceController {
             })
         );
     };
+
+    getInvoiceDetail = async (req: Request, res: Response) => {
+        const invoiceId = req.params.id as string;
+        const data = await invoiceService.getInvoiceDetail(invoiceId);
+        res.json(ApiResponse.success('Get invoice detail success', data));
+    };
 }
 export default new InvoiceController();
