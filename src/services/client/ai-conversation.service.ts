@@ -18,7 +18,7 @@ class AIConversation {
 
         if (!session) {
             session = await AIConversationSessionModel.create({ customerId });
-            await aiMessageService.createMessage('AI', customerId, "Xin chào tôi là nhân viên bán hàng chính quy của shop, tôi có thể giúp gì cho bạn!");
+            await aiMessageService.createMessage('AI', session._id.toString(), "Xin chào tôi là nhân viên bán hàng chính quy của shop, tôi có thể giúp gì cho bạn!");
         }
         return session;
     }
@@ -46,7 +46,7 @@ class AIConversation {
             session.stage = 'REFINING';
         }
         // end extracting intent from user message;
-        await aiMessageService.createMessage('CUSTOMER', customerId, message);
+        await aiMessageService.createMessage('CUSTOMER', session._id.toString(), message);
         /**
          * =====================
          * DISCOVERY
@@ -57,7 +57,7 @@ class AIConversation {
                 const missingSlots = getMissingRequiredSlots(session.intent, REQUIRE_ASK_SLOT);
                 const askToDiscoveryMessage = await askForMissingSlots(missingSlots[0], session.intent, message);
                 await session.save();
-                await aiMessageService.createMessage('AI', customerId, askToDiscoveryMessage);
+                await aiMessageService.createMessage('AI', session._id.toString(), askToDiscoveryMessage);
                 return {
                     message: askToDiscoveryMessage,
                 };
@@ -80,7 +80,7 @@ class AIConversation {
             const prompt = buildAnswerPrompt(message, products);
             const result = await model.generateContent(prompt);
             const text = result.response.text();
-            await aiMessageService.createMessage('AI', customerId, text);
+            await aiMessageService.createMessage('AI', session._id.toString(), text);
             session.stage = 'RECOMMENDING';
             await session.save();
 
