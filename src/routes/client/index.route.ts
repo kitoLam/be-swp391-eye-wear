@@ -10,6 +10,7 @@ import customerRouter from './customer.route';
 import wishlistRouter from './wishlist.route';
 import returnTicketRouter from './return-ticket.route';
 import aiConversationRouter from './ai-conversation.route';
+import aiMessageRouter from './ai-message.route';
 
 const router = Router();
 
@@ -24,4 +25,5 @@ router.use('/customer', customerRouter);
 router.use('/wishlist', wishlistRouter);
 router.use('/return-tickets', returnTicketRouter);
 router.use('/ai-conversation', aiConversationRouter);
+router.use('/ai-message', aiMessageRouter);
 export default router;
