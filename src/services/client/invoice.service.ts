@@ -424,7 +424,7 @@ class InvoiceClientService {
                     insertedOrders.push({
                         invoiceId: newInvoice._id,
                         orderCode: generateOrderCode(),
-                        type: [OrderType.NORMAL],
+                        type: [OrderType.MANUFACTURING],
                         products: skuProducts,
                         status:
                             manufacturingProducts.length == 0
