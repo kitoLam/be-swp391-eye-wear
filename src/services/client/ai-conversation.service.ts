@@ -7,6 +7,7 @@ import {
     mergeIntent,
 } from '../../utils/sale-ai.util';
 import { isAISessionExpired, resetSession } from '../../utils/sale-ai.util';
+import aiMessageService from './ai-message.service';
 import productService from './product.service';
 class AIConversation {
     async handleChat(customerId: string, message: string) {
@@ -32,7 +33,7 @@ class AIConversation {
             session.stage = 'REFINING';
         }
         // end extracting intent from user message;
-
+        await aiMessageService.createMessage('CUSTOMER', customerId, message);
         /**
          * =====================
          * DISCOVERY
@@ -41,7 +42,7 @@ class AIConversation {
         if (session.stage === 'DISCOVERY') {
             if (!isReadyToRecommend(session.intent)) {
                 await session.save();
-
+                await aiMessageService.createMessage('AI', customerId, 'Bạn muốn kính mát hay kính gọng? Và dùng cho nam hay nữ ạ?');
                 return {
                     message: 'Bạn muốn kính mát hay kính gọng? Và dùng cho nam hay nữ ạ?',
                 };
@@ -60,11 +61,12 @@ class AIConversation {
 
             const prompt = buildAnswerPrompt(message, products);
             const result = await model.generateContent(prompt);
-
+            const text = result.response.text();
+            await aiMessageService.createMessage('AI', customerId, text);
             session.stage = 'RECOMMENDING';
             await session.save();
 
-            return { message: result.response.text() };
+            return { message: text };
         }
 
         /**
@@ -76,6 +78,7 @@ class AIConversation {
 
         const prompt = buildAnswerPrompt(message, products);
         const result = await model.generateContent(prompt);
+        await aiMessageService.createMessage('AI', customerId, result.response.text());
         await session.save();
 
         return { message: result.response.text() };
