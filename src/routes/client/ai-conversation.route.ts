@@ -4,6 +4,7 @@ import { authenticateMiddlewareClient } from "../../middlewares/client/auth.midd
 
 const router = Router();
 router.use(authenticateMiddlewareClient);
+router.get('/', aiConversationController.getConversation);
 router.post('/chat', aiConversationController.chatWithSaleAISuggestion);
 
 export default router;
