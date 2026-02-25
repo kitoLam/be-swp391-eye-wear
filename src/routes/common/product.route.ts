@@ -1,13 +1,11 @@
 import { Router } from 'express';
 import {
-    validateBody,
     validateParams,
     validateQuery,
 } from '../../middlewares/share/validator.middleware';
 import productController from '../../controllers/common/product.controller';
 import { ObjectIdSchema } from '../../types/common/objectId';
 import { ProductListQuerySchema } from '../../types/product/product/product.query';
-import { ProductConfigManufacturingSchema } from '../../types/product/product/product.dto';
 
 const router = Router();
 
@@ -18,11 +16,8 @@ router.get(
     productController.getProductList
 );
 
-// router.post(
-//     '/config-manufacturing',
-//     validateBody(ProductConfigManufacturingSchema),
-//     productController.configProductManufacturing
-// );
+// Get all distinct product specs (for filter UI)
+router.get('/specs', productController.getProductSpecs);
 
 router.get(
     '/:id',
