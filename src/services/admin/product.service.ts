@@ -139,6 +139,42 @@ class ProductService {
             filter.nameBase = { $regex: query.search, $options: 'i' };
         }
 
+        // Spec filters for frame/sunglass
+        if (query.material) {
+            filter['spec.material'] = query.material;
+        }
+        if (query.shape) {
+            filter['spec.shape'] = query.shape;
+        }
+        if (query.gender) {
+            filter['spec.gender'] = query.gender;
+        }
+        if (query.style) {
+            filter['spec.style'] = query.style;
+        }
+
+        // Spec filters for lens
+        if (query.feature) {
+            filter['spec.feature'] = query.feature;
+        }
+        if (query.origin) {
+            filter['spec.origin'] = query.origin;
+        }
+
+        // General filters
+        if (query.category) {
+            filter.categories = query.category;
+        }
+        if (query.minPrice !== undefined || query.maxPrice !== undefined) {
+            filter['variants.finalPrice'] = {} as any;
+            if (query.minPrice !== undefined) {
+                filter['variants.finalPrice'].$gte = query.minPrice;
+            }
+            if (query.maxPrice !== undefined) {
+                filter['variants.finalPrice'].$lte = query.maxPrice;
+            }
+        }
+
         const paginationResult = await productRepository.find(filter, {
             page: query.page,
             limit: query.limit,
@@ -273,6 +309,14 @@ class ProductService {
             productDetail: product,
             variantDetail: variant,
         };
+    };
+
+    /**
+     * Lấy tất cả giá trị spec distinct hiện có trong DB
+     * Dùng cho filter UI
+     */
+    getProductSpecs = async () => {
+        return await productRepository.getDistinctSpecs();
     };
 }
 

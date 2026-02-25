@@ -49,6 +49,14 @@ class ProductController {
     //         productManufacturing: data,
     //     }));
     // }
+
+    /**
+     * Public: Get all distinct product specs
+     */
+    getProductSpecs = async (_req: Request, res: Response) => {
+        const data = await productService.getProductSpecs();
+        res.json(ApiResponse.success(ProductMessage.success.getSpecs, data));
+    };
 }
 
 export default new ProductController();

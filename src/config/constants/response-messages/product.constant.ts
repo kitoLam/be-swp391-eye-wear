@@ -7,6 +7,7 @@ export const ProductMessage = {
         getList: 'Lấy danh sách sản phẩm' + successSuffix,
         getDetail: 'Láy sản phẩm' + successSuffix,
         search: 'Tìm kiếm sản phẩm' + successSuffix,
+        getSpecs: 'Lấy thông số sản phẩm' + successSuffix,
     },
     error: {},
 };
