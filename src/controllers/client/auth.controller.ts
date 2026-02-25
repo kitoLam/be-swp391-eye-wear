@@ -49,7 +49,7 @@ class AuthController {
         const deviceId = req.headers['x-device-id'] as string;
         // lấy refreshToken (đã kiểm tra ở middleware)
         const refreshToken = req.cookies.refreshTokenClient as string;
-        const userId = req.adminAccount!.id;
+        const userId = req.customer!.id;
         const token = await authService.refreshAccessToken(
             userId,
             deviceId,
