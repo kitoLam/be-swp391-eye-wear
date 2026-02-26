@@ -1,16 +1,12 @@
 export const sortObject = (obj: Record<string, any>) => {
-  let sorted: any = {};
-    let str = [];
-    let key;
-    for (key in obj){
-        if (obj.hasOwnProperty(key)) {
-          str.push(encodeURIComponent(key)); // Lấy danh sách các key
+    const sorted: Record<string, any> = {};
+    const keys = Object.keys(obj).sort();
+
+    keys.forEach((key) => {
+        if (obj[key] !== "" && obj[key] !== undefined && obj[key] !== null) {
+            sorted[key] = encodeURIComponent(obj[key]).replace(/%20/g, "+");
         }
-    }
-    str.sort(); // Sắp xếp danh sách key theo alphabet
-    for (key = 0; key < str.length; key++) {
-        // Build lại object mới dựa trên danh sách key đã sắp xếp
-        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
-    }
+    });
+
     return sorted;
-}
+};
