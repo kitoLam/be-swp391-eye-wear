@@ -1,4 +1,9 @@
 import z from 'zod';
+import {
+    VoucherType,
+    VoucherStatus,
+    VoucherApplyScope,
+} from '../../config/enums/voucher.enum';
 
 // Voucher Schema
 export const VoucherSchema = z
@@ -7,7 +12,7 @@ export const VoucherSchema = z
         name: z.string().min(1, 'Voucher name is required'),
         description: z.string().min(1, 'Description is required'),
         code: z.string().min(1, 'Voucher code is required').toUpperCase(),
-        typeDiscount: z.enum(['FIXED', 'PERCENTAGE']),
+        typeDiscount: z.nativeEnum(VoucherType),
         value: z.number().min(0, 'Value must be non-negative'),
         usageLimit: z.number().int().min(1, 'Usage limit must be at least 1'),
         usageCount: z
@@ -23,8 +28,8 @@ export const VoucherSchema = z
         maxDiscountValue: z
             .number()
             .min(0, 'Maximum discount value must be non-negative'),
-        applyScope: z.enum(['ALL', 'SPECIFIC']),
-        status: z.enum(['DRAFT', 'ACTIVE', 'DISABLE']),
+        applyScope: z.nativeEnum(VoucherApplyScope),
+        status: z.nativeEnum(VoucherStatus),
         createdAt: z.date().optional(),
         updatedAt: z.date().optional(),
         deletedAt: z.date().nullable().optional(),
@@ -32,7 +37,7 @@ export const VoucherSchema = z
     .refine(
         data => {
             // If typeDiscount is PERCENTAGE, value must be <= 100
-            if (data.typeDiscount === 'PERCENTAGE') {
+            if (data.typeDiscount === VoucherType.PERCENTAGE) {
                 return data.value <= 100;
             }
             return true;
@@ -59,7 +64,7 @@ export const CreateVoucherSchema = z
         name: z.string().min(1, 'Voucher name is required'),
         description: z.string().min(1, 'Description is required'),
         code: z.string().min(1, 'Voucher code is required').toUpperCase(),
-        typeDiscount: z.enum(['FIXED', 'PERCENTAGE']),
+        typeDiscount: z.nativeEnum(VoucherType),
         value: z.number().min(0, 'Value must be non-negative'),
         usageLimit: z.number().int().min(1, 'Usage limit must be at least 1'),
         startedDate: z.coerce.date(),
@@ -71,12 +76,12 @@ export const CreateVoucherSchema = z
         maxDiscountValue: z
             .number()
             .min(0, 'Maximum discount value must be non-negative'),
-        applyScope: z.enum(['ALL', 'SPECIFIC']),
-        status: z.enum(['DRAFT', 'ACTIVE', 'DISABLE']).default('DRAFT'),
+        applyScope: z.nativeEnum(VoucherApplyScope),
+        status: z.nativeEnum(VoucherStatus).default(VoucherStatus.DRAFT),
     })
     .refine(
         data => {
-            if (data.typeDiscount === 'PERCENTAGE') {
+            if (data.typeDiscount === VoucherType.PERCENTAGE) {
                 return data.value <= 100;
             }
             return true;
@@ -100,7 +105,7 @@ export const CreateVoucherSchema = z
 export const UpdateVoucherSchema = z.object({
     name: z.string().min(1, 'Voucher name is required').optional(),
     description: z.string().min(1, 'Description is required').optional(),
-    typeDiscount: z.enum(['FIXED', 'PERCENTAGE']).optional(),
+    typeDiscount: z.nativeEnum(VoucherType).optional(),
     value: z.number().min(0, 'Value must be non-negative').optional(),
     usageLimit: z
         .number()
@@ -117,8 +122,8 @@ export const UpdateVoucherSchema = z.object({
         .number()
         .min(0, 'Maximum discount value must be non-negative')
         .optional(),
-    applyScope: z.enum(['ALL', 'SPECIFIC']).optional(),
-    status: z.enum(['DRAFT', 'ACTIVE', 'DISABLE']).optional(),
+    applyScope: z.nativeEnum(VoucherApplyScope).optional(),
+    status: z.nativeEnum(VoucherStatus).optional(),
 });
 
 export type Voucher = z.infer<typeof VoucherSchema>;
