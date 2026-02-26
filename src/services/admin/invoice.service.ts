@@ -34,6 +34,9 @@ class InvoiceService {
             const regex = new RegExp(query.search, 'gi');
             filter.$or = [{ invoiceCode: regex }, { fullName: regex }];
         }
+        if(query.invoiceCode){
+            filter.invoiceCode = new RegExp(query.invoiceCode, 'gi');
+        }
         if (query.status) {
             filter.status = query.status;
         }

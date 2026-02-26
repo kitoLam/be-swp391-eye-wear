@@ -5,6 +5,7 @@ export const InvoiceListQuerySchema = z.object({
     page: z.coerce.number().min(1).catch(1),
     limit: z.coerce.number().min(1).max(1000).catch(10),
     status: z.enum(InvoiceStatus).optional().catch(undefined),
+    invoiceCode: z.string().optional().catch(undefined),
     statuses: z
         .union([
             z.array(z.enum(InvoiceStatus)),

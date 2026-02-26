@@ -35,6 +35,7 @@ interface Config {
     // Cấu hình Redis
     redis: {
         url: string; // URL Redis Cloud
+        bullMQ_URL: string;
     };
 
     // Cấu hình JWT (JSON Web Token)
@@ -108,6 +109,7 @@ export const config: Config = {
     // Redis configuration
     redis: {
         url: process.env.REDIS_URL || '',
+        bullMQ_URL: process.env.REDIS_FOR_BULLMQ_URL || '',
     },
 
     // JWT configuration

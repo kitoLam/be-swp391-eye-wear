@@ -18,7 +18,7 @@ class AIConversation {
 
         if (!session) {
             session = await AIConversationSessionModel.create({ customerId });
-            await aiMessageService.createMessage('AI', session._id.toString(), "Xin chào tôi là nhân viên bán hàng chính quy của shop, tôi có thể giúp gì cho bạn!");
+            await aiMessageService.createMessage('AI', session._id.toString(), "Xin chào tôi là nhân viên bán của shop, tôi có thể giúp gì cho bạn ?");
         }
         return session;
     }
