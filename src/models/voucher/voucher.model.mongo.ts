@@ -1,5 +1,10 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Voucher } from '../../types/voucher/voucher';
+import {
+    VoucherType,
+    VoucherStatus,
+    VoucherApplyScope,
+} from '../../config/enums/voucher.enum';
 
 export type IVoucherDocument = Voucher & Document;
 
@@ -26,8 +31,8 @@ const VoucherSchema = new Schema<IVoucherDocument>(
         typeDiscount: {
             type: String,
             enum: {
-                values: ['FIXED', 'PERCENTAGE'],
-                message: 'Discount type must be FIXED or PERCENTAGE',
+                values: Object.values(VoucherType),
+                message: `Discount type must be ${Object.values(VoucherType).join(', ')}`,
             },
             required: [true, 'Discount type is required'],
         },
@@ -69,19 +74,19 @@ const VoucherSchema = new Schema<IVoucherDocument>(
         applyScope: {
             type: String,
             enum: {
-                values: ['ALL', 'SPECIFIC'],
-                message: 'Apply scope must be ALL or SPECIFIC',
+                values: Object.values(VoucherApplyScope),
+                message: `Apply scope must be ${Object.values(VoucherApplyScope).join(', ')}`,
             },
             required: [true, 'Apply scope is required'],
         },
         status: {
             type: String,
             enum: {
-                values: ['DRAFT', 'ACTIVE', 'DISABLE'],
-                message: 'Status must be DRAFT, ACTIVE, or DISABLE',
+                values: Object.values(VoucherStatus),
+                message: `Status must be ${Object.values(VoucherStatus).join(', ')}`,
             },
             required: [true, 'Status is required'],
-            default: 'DRAFT',
+            default: VoucherStatus.DRAFT,
         },
         deletedAt: {
             type: Date,
@@ -104,7 +109,7 @@ VoucherSchema.index({ startedDate: 1, endedDate: 1 });
 
 // Custom validation for percentage discount value
 VoucherSchema.pre('save', function (next) {
-    if (this.typeDiscount === 'PERCENTAGE' && this.value > 100) {
+    if (this.typeDiscount === VoucherType.PERCENTAGE && this.value > 100) {
         return next(new Error('Percentage discount value must not exceed 100'));
     }
     next();
@@ -130,7 +135,7 @@ VoucherSchema.pre('save', function (next) {
 VoucherSchema.methods.isValid = function (): boolean {
     const now = new Date();
     return (
-        this.status === 'ACTIVE' &&
+        this.status === VoucherStatus.ACTIVE &&
         this.deletedAt === null &&
         this.startedDate <= now &&
         this.endedDate >= now &&
@@ -152,10 +157,14 @@ VoucherSchema.methods.calculateDiscount = function (
     }
 
     let discount = 0;
-    if (this.typeDiscount === 'FIXED') {
+    if (this.typeDiscount === VoucherType.FIXED) {
         discount = this.value;
-    } else if (this.typeDiscount === 'PERCENTAGE') {
+    } else if (this.typeDiscount === VoucherType.PERCENTAGE) {
         discount = (orderValue * this.value) / 100;
+    } else if (this.typeDiscount === VoucherType.FREE_SHIP) {
+        // For FREE_SHIP, we handle it in the invoice service where feeShip is known.
+        // Here we return 0 or the value if it represents the shipping discount amount.
+        return this.value || 0;
     }
 
     // Apply max discount limit

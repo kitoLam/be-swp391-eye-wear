@@ -30,8 +30,12 @@ import {
 import { AuthCustomerContext } from '../../types/context/context';
 import productService from './product.service';
 import { ProductVariantMode } from '../../config/enums/product.enum';
-import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
 import { addInvoiceToTimeoutQueue } from '../../queues/invoice.queue';
+import {
+    VoucherType,
+    VoucherStatus,
+    VoucherApplyScope,
+} from '../../config/enums/voucher.enum';
 
 interface InvoiceProduct {
     productId: string;
@@ -99,10 +103,16 @@ class InvoiceClientService {
     private validateAndCalculateVoucher = async (
         voucherCodes: string[] | undefined,
         totalPrice: number,
-        customerId: string
-    ): Promise<{ discount: number; voucherId?: string; voucherDoc?: any }> => {
+        customerId: string,
+        currentFeeShip: number
+    ): Promise<{
+        discount: number;
+        voucherId?: string;
+        voucherDoc?: any;
+        finalFeeShip: number;
+    }> => {
         if (!voucherCodes || voucherCodes.length === 0) {
-            return { discount: 0 };
+            return { discount: 0, finalFeeShip: currentFeeShip };
         }
 
         const voucherCode = voucherCodes[0];
@@ -121,7 +131,7 @@ class InvoiceClientService {
         // 2. Check voucher ownership in Supabase (since IDs are same)
         // Even for ALL scope, we might want to check if it's assigned if the system requires it,
         // but typically SPECIFIC is the one that needs strict ownership check.
-        if (voucher.applyScope === 'SPECIFIC') {
+        if (voucher.applyScope === VoucherApplyScope.SPECIFIC) {
             const { data, error } = await supabase
                 .from('voucher_user')
                 .select('id')
@@ -139,7 +149,7 @@ class InvoiceClientService {
 
         // 3. Validate voucher conditions (Date, Status, Usage, MinOrder)
         const now = new Date();
-        if (voucher.status !== 'ACTIVE') {
+        if (voucher.status !== VoucherStatus.ACTIVE) {
             throw new BadRequestError('Voucher hiện không khả dụng');
         }
         if (now < voucher.startedDate || now > voucher.endedDate) {
@@ -158,19 +168,27 @@ class InvoiceClientService {
 
         // 4. Calculate discount
         let discount = 0;
-        if (voucher.typeDiscount === 'FIXED') {
+        let finalFeeShip = currentFeeShip;
+        if (voucher.typeDiscount === VoucherType.FIXED) {
             discount = voucher.value;
-        } else if (voucher.typeDiscount === 'PERCENTAGE') {
+        } else if (voucher.typeDiscount === VoucherType.PERCENTAGE) {
             discount = (totalPrice * voucher.value) / 100;
+        } else if (voucher.typeDiscount === VoucherType.FREE_SHIP) {
+            // If FREE_SHIP, feeShip becomes 0
+            finalFeeShip = 0;
+            discount = 0; // The discount is reflected in feeShip being 0
         }
 
-        discount = Math.min(discount, voucher.maxDiscountValue);
-        discount = Math.min(discount, totalPrice);
+        if (voucher.typeDiscount !== VoucherType.FREE_SHIP) {
+            discount = Math.min(discount, voucher.maxDiscountValue);
+            discount = Math.min(discount, totalPrice);
+        }
 
         return {
             discount,
             voucherId: voucher._id.toString(),
             voucherDoc: voucher,
+            finalFeeShip,
         };
     };
 
@@ -367,12 +385,16 @@ class InvoiceClientService {
             }
 
             // Apply Voucher
-            const { discount: totalDiscount, voucherId } =
-                await this.validateAndCalculateVoucher(
-                    payload.voucher,
-                    totalPrice,
-                    customerId
-                );
+            const {
+                discount: totalDiscount,
+                voucherId,
+                finalFeeShip,
+            } = await this.validateAndCalculateVoucher(
+                payload.voucher,
+                totalPrice,
+                customerId,
+                feeShip
+            );
 
             // Create Invoice
             const invoiceData = {
@@ -391,7 +413,7 @@ class InvoiceClientService {
                 phone: payload.phone,
                 invoiceCode: generateInvoiceCode(),
                 note: payload.note,
-                feeShip: feeShip
+                feeShip: finalFeeShip,
             };
 
             const newInvoice = await invoiceRepository.create(invoiceData);

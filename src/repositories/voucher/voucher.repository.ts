@@ -3,6 +3,7 @@ import {
     IVoucherDocument,
 } from '../../models/voucher/voucher.model.mongo';
 import { BaseRepository } from '../base.repository';
+import { VoucherStatus } from '../../config/enums/voucher.enum';
 
 export class VoucherRepository extends BaseRepository<IVoucherDocument> {
     constructor() {
@@ -36,7 +37,7 @@ export class VoucherRepository extends BaseRepository<IVoucherDocument> {
         // Check if voucher is valid
         const now = new Date();
         const isValid =
-            voucher.status === 'ACTIVE' &&
+            voucher.status === VoucherStatus.ACTIVE &&
             voucher.deletedAt === null &&
             voucher.startedDate <= now &&
             voucher.endedDate >= now &&

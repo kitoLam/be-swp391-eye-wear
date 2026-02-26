@@ -2,6 +2,10 @@ import { voucherRepository } from '../../repositories/voucher/voucher.repository
 import { supabase } from '../../config/supabase.config';
 import { CreateVoucher, UpdateVoucher } from '../../types/voucher/voucher';
 import {
+    VoucherStatus,
+    VoucherApplyScope,
+} from '../../config/enums/voucher.enum';
+import {
     NotFoundRequestError,
     BadRequestError,
 } from '../../errors/apiError/api-error';
@@ -44,8 +48,8 @@ class VoucherAdminService {
     getVouchers = async (
         page: number = 1,
         limit: number = 10,
-        status?: string,
-        applyScope?: string
+        status?: VoucherStatus,
+        applyScope?: VoucherApplyScope
     ) => {
         const filter: any = {
             deletedAt: null,
