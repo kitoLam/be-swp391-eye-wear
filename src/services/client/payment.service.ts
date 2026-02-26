@@ -223,7 +223,7 @@ class PaymentClientService {
             // XỬ LÍ LOGIC HẬU THANH TOÁN Ở ĐÂY
             console.log('>>> invoiceId::', invoiceId);
             const paymentDetail = await paymentRepository.findOne({
-                invoice: invoiceId,
+                invoiceId: invoiceId,
                 deletedAt: null
             });
             if(!paymentDetail){
