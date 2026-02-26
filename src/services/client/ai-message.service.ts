@@ -29,7 +29,7 @@ class AIMessageService {
                 hasNext: messages.length == limit,
                 lastItem:
                     messages.length != 0
-                        ? messages[messages.length - 1].createdAt.getTime()
+                        ? messages[0].createdAt.getTime()
                         : null,
             },
         };
