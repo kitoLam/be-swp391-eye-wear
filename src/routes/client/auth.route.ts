@@ -21,7 +21,7 @@ router.get('/google', (req, res, next) => {
   })(req, res, next);
 });
 router.get('/google/callback', passport.authenticate('google', {
-  failureRedirect: 'http://localhost:5173/auth/login',
+  failureRedirect: 'http://localhost:3000/login',
 }), authController.handleGoogleCallback);
 router.post('/request-merge-account', validateBody(LoginCustomerSchema), authController.handleRequestMergeAccount);
 router.post('/request-merge-account/verify-otp', validateBody(VerifyOTPSchema), authController.handleVerifyOtpForRequestMergeAccount);
