@@ -30,6 +30,7 @@ export const InvoiceSchema = z
         deletedAt: z.date().nullable(),
         note: z.string(),
         rejectedNote: z.string().optional(),
+        feeShip: z.number(),
     })
     .refine(data => data.totalDiscount <= data.totalPrice, {
         message: 'Total discount cannot exceed total price',
