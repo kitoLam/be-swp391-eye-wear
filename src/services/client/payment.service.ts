@@ -6,7 +6,7 @@ import {
 import moment from 'moment';
 import { orderRepository } from '../../repositories/order/order.repository';
 import * as objectUtil from '../../utils/object.util';
-import { createHmac } from 'node:crypto';
+import { constants, createHmac } from 'node:crypto';
 import axios from 'axios';
 // import { removeJobFromQueue } from '../../queues/invoice.queue';
 import { redisPrefix } from '../../config/constants/redis.constant';
@@ -18,6 +18,9 @@ import { productRepository } from '../../repositories/product/product.repository
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 import invoiceService from './invoice.service';
+import { removeJobFromQueue } from '../../queues/invoice.queue';
+import { ProductVariantMode } from '../../config/enums/product.enum';
+import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
 class PaymentClientService {
     getVnPayUrl = async (
         customerId: string,
@@ -192,9 +195,9 @@ class PaymentClientService {
                     : {};
                 const { invoiceId, paymentId } = embedData;
                 // xóa timeout job
-                // removeJobFromQueue({
-                //     invoiceId: invoiceId,
-                // });
+                removeJobFromQueue({
+                    invoiceId: invoiceId,
+                });
                 const invoiceDetail = await invoiceRepository.findOne({
                     _id: invoiceId,
                     deletedAt: null,
@@ -213,9 +216,11 @@ class PaymentClientService {
                         sku: string;
                         qty: number;
                     }[] = [];
-                    const orderList = await orderRepository.findAllNoPagination({
-                        invoiceId: invoiceDetail._id,
-                    })
+                    const orderList = await orderRepository.findAllNoPagination(
+                        {
+                            invoiceId: invoiceDetail._id,
+                        }
+                    );
                     for (const orderDetail of orderList) {
                         if (orderDetail) {
                             for (const item of orderDetail.products) {
@@ -248,6 +253,47 @@ class PaymentClientService {
                     }
                     // trừ stock trong mongo
                     for (const item of itemsUpdateMongo) {
+                        const foundProduct = await productRepository.findOne({
+                            _id: item.id,
+                            'variants.sku': item.sku,
+                        })!;
+                        if (!foundProduct) {
+                            throw new NotFoundRequestError('Not found product');
+                        }
+                        const productVariant = foundProduct.variants.find(
+                            v => v.sku === item.sku
+                        );
+                        if (!productVariant) {
+                            throw new NotFoundRequestError(
+                                `Product with sku ${item.sku} not found`
+                            );
+                        }
+                        if (
+                            productVariant.mode == ProductVariantMode.AVAILABLE
+                        ) {
+                            await productRepository.updateByFilter(
+                                {
+                                    _id: item.id,
+                                    'variants.sku': item.sku,
+                                },
+                                {
+                                    $inc: {
+                                        'variants.$.stock': item.qty,
+                                    },
+                                }
+                            );
+                        } else {
+                            await PreOrderImportModel.updateOne(
+                                {
+                                    sku: item.sku,
+                                },
+                                {
+                                    $inc: {
+                                        preOrderedQuantity: -item.qty,
+                                    },
+                                }
+                            );
+                        }
                         await productRepository.updateByFilter(
                             {
                                 _id: item.id,
@@ -265,7 +311,7 @@ class PaymentClientService {
                         { _id: paymentId },
                         { status: PaymentStatus.PAID }
                     );
-                    // Cập nhật invoice status 
+                    // Cập nhật invoice status
                     await invoiceRepository.updateByFilter(
                         { _id: invoiceId },
                         { status: InvoiceStatus.DEPOSITED }

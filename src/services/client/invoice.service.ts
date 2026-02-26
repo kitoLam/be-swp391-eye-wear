@@ -31,6 +31,7 @@ import { AuthCustomerContext } from '../../types/context/context';
 import productService from './product.service';
 import { ProductVariantMode } from '../../config/enums/product.enum';
 import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
+import { addInvoiceToTimeoutQueue } from '../../queues/invoice.queue';
 
 interface InvoiceProduct {
     productId: string;
@@ -499,9 +500,9 @@ class InvoiceClientService {
                 );
 
                 // Add to timeout queue
-                // await addInvoiceToTimeoutQueue({
-                //     invoiceId: newInvoice._id.toString(),
-                // });
+                await addInvoiceToTimeoutQueue({
+                    invoiceId: newInvoice._id.toString(),
+                });
             }
             // Create new payment
             const newPayment = await paymentRepository.create({
