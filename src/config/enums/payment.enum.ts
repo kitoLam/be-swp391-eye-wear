@@ -1,6 +1,5 @@
 export enum PaymentMethodType {
   COD = "COD",
-  ZALAPAY = "ZALAPAY",
   MOMO = "MOMO",
   VNPAY = "VNPAY",
   ZALOPAY = "ZALOPAY"

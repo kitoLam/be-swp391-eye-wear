@@ -24,15 +24,14 @@ import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-imp
 class PaymentClientService {
     getVnPayUrl = async (
         customerId: string,
-        orderCode: string,
+        invoiceId: string,
         ipAddr: string
     ) => {
-        const orderDetail = await orderRepository.findOne({
-            orderCode: orderCode,
-            deletedAt: null,
+        const invoiceDetail = await invoiceRepository.findOne({
+            _id: invoiceId,
             owner: customerId,
         });
-        if (!orderDetail)
+        if (!invoiceDetail)
             throw new NotFoundRequestError('Đơn hàng không tồn tại');
 
         let date = new Date();
@@ -40,12 +39,12 @@ class PaymentClientService {
         let tmnCode = process.env.VNPAY_TMN_CODE;
         let secretKey = process.env.VNPAY_SECRET;
         let vnpUrl = process.env.VNPAY_URL;
-        let returnUrl = 'https://552254cc937e.ngrok-free.app'; //process.env.VNPAY_RETURN_URL;
+        let returnUrl = 'https://0832-115-74-245-147.ngrok-free.app/api/v1/payments/vnpay/result-callback'; //process.env.VNPAY_RETURN_URL;
         // TODO: Fix - orderCode and payment properties don't exist on Order model
         // let orderId = `${orderDetail.orderCode}-${Date.now()}`;
         // let amount = orderDetail.payment.finalPrice;
-        let orderId = `ORDER-${Date.now()}`;
-        let amount = 0; // Placeholder
+        let vnPayOrderId = `ORDER-${Date.now()}`;
+        let amount = (invoiceDetail.totalPrice - invoiceDetail.totalDiscount) * 100;
         let bankCode = '';
 
         let locale = 'vi';
@@ -56,8 +55,8 @@ class PaymentClientService {
         vnp_Params['vnp_TmnCode'] = tmnCode;
         vnp_Params['vnp_Locale'] = locale;
         vnp_Params['vnp_CurrCode'] = currCode;
-        vnp_Params['vnp_TxnRef'] = orderId;
-        vnp_Params['vnp_OrderInfo'] = 'Thanh toan cho ma GD:' + orderId;
+        vnp_Params['vnp_TxnRef'] = vnPayOrderId;
+        vnp_Params['vnp_OrderInfo'] = 'Thanh toan cho ma GD:' + vnPayOrderId;
         vnp_Params['vnp_OrderType'] = 'other';
         vnp_Params['vnp_Amount'] = amount;
         vnp_Params['vnp_ReturnUrl'] = returnUrl;

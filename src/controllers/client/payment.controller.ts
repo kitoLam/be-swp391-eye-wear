@@ -8,8 +8,8 @@ class PaymentController {
       let ipAddr = req.headers['x-forwarded-for'] ||
             req.socket.remoteAddress;
       const customerId = req.customer!.id;
-      const orderCode = req.params.orderCode as string;
-      const url = await paymentClientService.getVnPayUrl(customerId, orderCode, ipAddr as string);
+      const invoiceId = req.params.invoiceId as string;
+      const url = await paymentClientService.getVnPayUrl(customerId, invoiceId, ipAddr as string);
       res.json(ApiResponse.success('Tạo cổng thanh toán vnpay', { url }));
     }
     handlePaymentWithVnPayResult = async (req: Request, res: Response) => {

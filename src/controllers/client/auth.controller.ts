@@ -90,7 +90,7 @@ class AuthController {
             sameSite: 'lax',
         });
         res.redirect(
-            `http://localhost:5173/google/oauth/callback?accessToken=${tokenPair.accessToken}`
+            `http://localhost:3000/google/oauth/callback?accessToken=${tokenPair.accessToken}`
         );
     }
 
