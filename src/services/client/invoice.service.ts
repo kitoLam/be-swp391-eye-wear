@@ -31,6 +31,7 @@ import { AuthCustomerContext } from '../../types/context/context';
 import productService from './product.service';
 import { ProductVariantMode } from '../../config/enums/product.enum';
 import { addInvoiceToTimeoutQueue } from '../../queues/invoice.queue';
+import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
 import {
     VoucherType,
     VoucherStatus,

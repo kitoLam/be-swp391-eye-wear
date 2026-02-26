@@ -2,6 +2,10 @@ import { Request, Response } from 'express';
 import voucherAdminService from '../../services/admin/voucher.service';
 import { ApiResponse } from '../../utils/api-response';
 import { CreateVoucher, UpdateVoucher } from '../../types/voucher/voucher';
+import {
+    VoucherStatus,
+    VoucherApplyScope,
+} from '../../config/enums/voucher.enum';
 
 class VoucherAdminController {
     /**
@@ -19,8 +23,8 @@ class VoucherAdminController {
     getVouchers = async (req: Request, res: Response) => {
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 10;
-        const status = req.query.status as string;
-        const applyScope = req.query.applyScope as string;
+        const status = req.query.status as VoucherStatus;
+        const applyScope = req.query.applyScope as VoucherApplyScope;
 
         const result = await voucherAdminService.getVouchers(
             page,
