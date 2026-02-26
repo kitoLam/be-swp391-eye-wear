@@ -67,6 +67,11 @@ class ProductService {
             variants: variantsWithGenerated,
             createdBy: new Types.ObjectId(context.id),
         } as any);
+
+        // 5. Return variant SKUs
+        return {
+            variantSkus: variantsWithGenerated.map(v => v.sku),
+        };
     };
 
     /**
