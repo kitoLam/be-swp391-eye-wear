@@ -58,7 +58,7 @@ class ReportTicketService {
   processReportTicket = async (id: string, adminContext: AuthAdminContext) => {
     const reportTicket = await ReportTicketModel.findById(id);
     if(!reportTicket) throw new NotFoundRequestError('Report ticket not found');
-    if(reportTicket.status == ReportTicketStatus.PENDING){
+    if(!(reportTicket.status == ReportTicketStatus.PENDING)){
       throw new ConflictRequestError("Only process report ticket in PENDING status");
     }
     reportTicket.status = ReportTicketStatus.PROCESSING;
@@ -69,7 +69,7 @@ class ReportTicketService {
   rejectReportTicket = async (id: string, adminContext: AuthAdminContext) => {
     const reportTicket = await ReportTicketModel.findById(id);
     if(!reportTicket) throw new NotFoundRequestError('Report ticket not found');
-    if(reportTicket.status == ReportTicketStatus.PENDING){
+    if(!(reportTicket.status == ReportTicketStatus.PENDING)){
       throw new ConflictRequestError("Only reject report ticket in PENDING status");
     }
     reportTicket.processedBy = adminContext.id;
@@ -80,8 +80,8 @@ class ReportTicketService {
   resolveReportTicket = async (id: string, adminContext: AuthAdminContext) => {
     const reportTicket = await ReportTicketModel.findById(id);
     if(!reportTicket) throw new NotFoundRequestError('Report ticket not found');
-    if(reportTicket.status == ReportTicketStatus.PENDING){
-      throw new ConflictRequestError("Only resolve report ticket in PENDING status");
+    if(!(reportTicket.status == ReportTicketStatus.PROCESSING)){
+      throw new ConflictRequestError("Only resolve report ticket in PROCESSING status");
     }
     if(reportTicket.processedBy != adminContext.id){
       throw new ConflictRequestError("Only manager is processing this report ticket can resolve it");

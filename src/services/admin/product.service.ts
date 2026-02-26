@@ -375,7 +375,7 @@ class ProductService {
         if (!product) {
             throw new NotFoundRequestError('Product not found');
         }
-        const variant = product.variants.find(v => v.sku === sku);
+        const variant = product.variants.find(v => v.sku == sku);
         if (!variant) {
             throw new NotFoundRequestError('Variant not found');
         }
