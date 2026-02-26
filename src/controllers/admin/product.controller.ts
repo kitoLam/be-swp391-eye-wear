@@ -52,7 +52,8 @@ class ProductController {
         const productId = req.params.id as string;
         await productService.updateProduct(
             productId,
-            req.body as ProductUpdateDTO
+            req.body as ProductUpdateDTO,
+            req.adminAccount!
         );
         res.json(ApiResponse.success(ProductMessage.success.update, {}));
     };

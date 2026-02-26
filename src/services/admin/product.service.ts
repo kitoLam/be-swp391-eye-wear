@@ -73,16 +73,90 @@ class ProductService {
      * Cập nhật sản phẩm
      * @param id - id sản phẩm
      * @param payload - thông tin cập nhật
+     * @param context - thông tin admin đã login
      */
-    updateProduct = async (id: string, payload: ProductUpdateDTO) => {
+    updateProduct = async (
+        id: string,
+        payload: ProductUpdateDTO,
+        context: AuthAdminContext
+    ) => {
         const foundProduct = await productRepository.findOne({
             _id: id,
+            deletedAt: null,
         });
         if (!foundProduct) throw new NotFoundRequestError('Product not found');
 
-        await productRepository.update(id, {
+        let updateData: any = {
             ...payload,
-        } as any);
+            updatedBy: new Types.ObjectId(context.id),
+        };
+
+        const type = payload.type || foundProduct.type;
+        const nameBase = payload.nameBase || foundProduct.nameBase;
+
+        let currentSkuBase = foundProduct.skuBase;
+        let currentSlugBase = foundProduct.slugBase;
+
+        // 1. If nameBase or type changed, regenerate slugBase and skuBase
+        if (
+            (payload.nameBase && payload.nameBase !== foundProduct.nameBase) ||
+            (payload.type && payload.type !== foundProduct.type)
+        ) {
+            const baseSlug = slugify(nameBase);
+            currentSlugBase = generateUniqueSlug(baseSlug);
+            currentSkuBase = generateSkuBase(type, nameBase, currentSlugBase);
+
+            updateData.slugBase = currentSlugBase;
+            updateData.skuBase = currentSkuBase;
+        }
+
+        // 2. Handle variants
+        if (payload.variants) {
+            // If variants provided in payload, regenerate their info
+            updateData.variants = payload.variants.map(variant => {
+                const variantSku = generateVariantSku(
+                    currentSkuBase,
+                    variant.options
+                );
+                const variantName =
+                    variant.name ||
+                    `${nameBase} - ${variant.options
+                        .map(o => o.label)
+                        .join(' - ')}`;
+                const variantSlug = variant.slug || slugify(variantName);
+
+                return {
+                    ...variant,
+                    sku: variantSku,
+                    name: variantName,
+                    slug: variantSlug,
+                };
+            });
+        } else if (
+            payload.nameBase &&
+            payload.nameBase !== foundProduct.nameBase
+        ) {
+            // If nameBase changed but variants were NOT provided, update existing variants
+            updateData.variants = foundProduct.variants.map(variant => {
+                const variantSku = generateVariantSku(
+                    currentSkuBase,
+                    variant.options
+                );
+                const variantName = `${nameBase} - ${variant.options
+                    .map(o => o.label)
+                    .join(' - ')}`;
+                const variantSlug = slugify(variantName);
+
+                return {
+                    ...(variant as any).toObject(),
+                    sku: variantSku,
+                    name: variantName,
+                    slug: variantSlug,
+                };
+            });
+        }
+
+        await productRepository.update(id, updateData);
     };
 
     /**
