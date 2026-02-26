@@ -22,6 +22,125 @@ import { removeJobFromQueue } from '../../queues/invoice.queue';
 import { ProductVariantMode } from '../../config/enums/product.enum';
 import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
 class PaymentClientService {
+    handlePaymentCallback = async (invoiceId: string, paymentId: string) => {
+        // xóa timeout job
+        removeJobFromQueue({
+            invoiceId: invoiceId,
+        });
+        const invoiceDetail = await invoiceRepository.findOne({
+            _id: invoiceId,
+            deletedAt: null,
+        });
+        const paymentDetail = await paymentRepository.findOne({
+            _id: paymentId,
+            paymentMethod: PaymentMethodType.ZALOPAY,
+            status: PaymentStatus.UNPAID,
+            deletedAt: null,
+        });
+        if (invoiceDetail && paymentDetail) {
+            // trừ stock thật mongo
+            const itemsUpdateRedis: { key: string; qty: number }[] = [];
+            const itemsUpdateMongo: {
+                id: string;
+                sku: string;
+                qty: number;
+            }[] = [];
+            const orderList = await orderRepository.findAllNoPagination({
+                invoiceId: invoiceDetail._id,
+            });
+            for (const orderDetail of orderList) {
+                if (orderDetail) {
+                    for (const item of orderDetail.products) {
+                        if (item.lens) {
+                            const key = `${redisPrefix.productLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
+                            itemsUpdateRedis.push({
+                                key,
+                                qty: item.quantity,
+                            });
+                            itemsUpdateMongo.push({
+                                id: item.lens.lens_id,
+                                sku: item.lens.sku,
+                                qty: item.quantity,
+                            });
+                        }
+                        if (item.product) {
+                            const key = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
+                            itemsUpdateRedis.push({
+                                key,
+                                qty: item.quantity,
+                            });
+                            itemsUpdateMongo.push({
+                                id: item.product.product_id,
+                                sku: item.product.sku,
+                                qty: item.quantity,
+                            });
+                        }
+                    }
+                }
+            }
+            // trừ stock trong mongo
+            for (const item of itemsUpdateMongo) {
+                const foundProduct = await productRepository.findOne({
+                    _id: item.id,
+                    'variants.sku': item.sku,
+                })!;
+                if (!foundProduct) {
+                    throw new NotFoundRequestError('Not found product');
+                }
+                const productVariant = foundProduct.variants.find(
+                    v => v.sku === item.sku
+                );
+                if (!productVariant) {
+                    throw new NotFoundRequestError(
+                        `Product with sku ${item.sku} not found`
+                    );
+                }
+                if (productVariant.mode == ProductVariantMode.AVAILABLE) {
+                    await productRepository.updateByFilter(
+                        {
+                            _id: item.id,
+                            'variants.sku': item.sku,
+                        },
+                        {
+                            $inc: {
+                                'variants.$.stock': item.qty,
+                            },
+                        }
+                    );
+                } else {
+                    await PreOrderImportModel.updateOne(
+                        {
+                            sku: item.sku,
+                        },
+                        {
+                            $inc: {
+                                preOrderedQuantity: -item.qty,
+                            },
+                        }
+                    );
+                }
+                await productRepository.updateByFilter(
+                    {
+                        _id: item.id,
+                        'variants.sku': item.sku,
+                    },
+                    { $inc: { 'variants.$.stock': -item.qty } }
+                );
+            }
+            await invoiceService.releaseProductLock(itemsUpdateRedis, 'online');
+            // cập nhật payment thành PAID
+            await paymentRepository.updateByFilter(
+                { _id: paymentId },
+                { status: PaymentStatus.PAID }
+            );
+            // Cập nhật invoice status
+            await invoiceRepository.updateByFilter(
+                { _id: invoiceId },
+                { status: InvoiceStatus.DEPOSITED }
+            );
+        }
+    };
+
     getVnPayUrl = async (
         customerId: string,
         invoiceId: string,
@@ -39,12 +158,13 @@ class PaymentClientService {
         let tmnCode = process.env.VNPAY_TMN_CODE;
         let secretKey = process.env.VNPAY_SECRET;
         let vnpUrl = process.env.VNPAY_URL;
-        let returnUrl = 'https://0832-115-74-245-147.ngrok-free.app/api/v1/payments/vnpay/result-callback'; //process.env.VNPAY_RETURN_URL;
+        let returnUrl = process.env.VNPAY_RETURN_URL; //process.env.VNPAY_RETURN_URL;
         // TODO: Fix - orderCode and payment properties don't exist on Order model
         // let orderId = `${orderDetail.orderCode}-${Date.now()}`;
         // let amount = orderDetail.payment.finalPrice;
-        let vnPayOrderId = `ORDER-${Date.now()}`;
-        let amount = (invoiceDetail.totalPrice - invoiceDetail.totalDiscount) * 100;
+        let vnPayOrderId = `${invoiceDetail._id.toString()}-${Date.now()}`;
+        let amount =
+            (invoiceDetail.totalPrice - invoiceDetail.totalDiscount) * 100;
         let bankCode = '';
 
         let locale = 'vi';
@@ -99,9 +219,17 @@ class PaymentClientService {
             vnp_Params.vnp_ResponseCode == '00' &&
             vnp_Params.vnp_TransactionStatus == '00'
         ) {
-            const [orderCode, date] = vnp_Params.vnp_TxnRef.split('-');
+            const [invoiceId, date] = vnp_Params.vnp_TxnRef.split('-');
             // XỬ LÍ LOGIC HẬU THANH TOÁN Ở ĐÂY
-            console.log('>>> orderCode::', orderCode);
+            console.log('>>> invoiceId::', invoiceId);
+            const paymentDetail = await paymentRepository.findOne({
+                invoice: invoiceId,
+                deletedAt: null
+            });
+            if(!paymentDetail){
+                throw new NotFoundRequestError("Not found payment to handle");
+            }
+            await this.handlePaymentCallback(invoiceId, paymentDetail._id.toString());
             // END XỬ LÍ LOGIC HẬU THANH TOÁN
         } else {
             throw new ForbiddenRequestError('Thanh toán khỏng thành công');
@@ -193,129 +321,7 @@ class PaymentClientService {
                     ? JSON.parse(dataJson.embed_data)
                     : {};
                 const { invoiceId, paymentId } = embedData;
-                // xóa timeout job
-                removeJobFromQueue({
-                    invoiceId: invoiceId,
-                });
-                const invoiceDetail = await invoiceRepository.findOne({
-                    _id: invoiceId,
-                    deletedAt: null,
-                });
-                const paymentDetail = await paymentRepository.findOne({
-                    _id: paymentId,
-                    paymentMethod: PaymentMethodType.ZALOPAY,
-                    status: PaymentStatus.UNPAID,
-                    deletedAt: null,
-                });
-                if (invoiceDetail && paymentDetail) {
-                    // trừ stock thật mongo
-                    const itemsUpdateRedis: { key: string; qty: number }[] = [];
-                    const itemsUpdateMongo: {
-                        id: string;
-                        sku: string;
-                        qty: number;
-                    }[] = [];
-                    const orderList = await orderRepository.findAllNoPagination(
-                        {
-                            invoiceId: invoiceDetail._id,
-                        }
-                    );
-                    for (const orderDetail of orderList) {
-                        if (orderDetail) {
-                            for (const item of orderDetail.products) {
-                                if (item.lens) {
-                                    const key = `${redisPrefix.productLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
-                                    itemsUpdateRedis.push({
-                                        key,
-                                        qty: item.quantity,
-                                    });
-                                    itemsUpdateMongo.push({
-                                        id: item.lens.lens_id,
-                                        sku: item.lens.sku,
-                                        qty: item.quantity,
-                                    });
-                                }
-                                if (item.product) {
-                                    const key = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
-                                    itemsUpdateRedis.push({
-                                        key,
-                                        qty: item.quantity,
-                                    });
-                                    itemsUpdateMongo.push({
-                                        id: item.product.product_id,
-                                        sku: item.product.sku,
-                                        qty: item.quantity,
-                                    });
-                                }
-                            }
-                        }
-                    }
-                    // trừ stock trong mongo
-                    for (const item of itemsUpdateMongo) {
-                        const foundProduct = await productRepository.findOne({
-                            _id: item.id,
-                            'variants.sku': item.sku,
-                        })!;
-                        if (!foundProduct) {
-                            throw new NotFoundRequestError('Not found product');
-                        }
-                        const productVariant = foundProduct.variants.find(
-                            v => v.sku === item.sku
-                        );
-                        if (!productVariant) {
-                            throw new NotFoundRequestError(
-                                `Product with sku ${item.sku} not found`
-                            );
-                        }
-                        if (
-                            productVariant.mode == ProductVariantMode.AVAILABLE
-                        ) {
-                            await productRepository.updateByFilter(
-                                {
-                                    _id: item.id,
-                                    'variants.sku': item.sku,
-                                },
-                                {
-                                    $inc: {
-                                        'variants.$.stock': item.qty,
-                                    },
-                                }
-                            );
-                        } else {
-                            await PreOrderImportModel.updateOne(
-                                {
-                                    sku: item.sku,
-                                },
-                                {
-                                    $inc: {
-                                        preOrderedQuantity: -item.qty,
-                                    },
-                                }
-                            );
-                        }
-                        await productRepository.updateByFilter(
-                            {
-                                _id: item.id,
-                                'variants.sku': item.sku,
-                            },
-                            { $inc: { 'variants.$.stock': -item.qty } }
-                        );
-                    }
-                    await invoiceService.releaseProductLock(
-                        itemsUpdateRedis,
-                        'online'
-                    );
-                    // cập nhật payment thành PAID
-                    await paymentRepository.updateByFilter(
-                        { _id: paymentId },
-                        { status: PaymentStatus.PAID }
-                    );
-                    // Cập nhật invoice status
-                    await invoiceRepository.updateByFilter(
-                        { _id: invoiceId },
-                        { status: InvoiceStatus.DEPOSITED }
-                    );
-                }
+                await this.handlePaymentCallback(invoiceId, paymentId);
                 // cập nhật payment là đã thanh toán
                 result.return_code = 1;
                 result.return_message = 'success';
