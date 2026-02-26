@@ -225,6 +225,7 @@ class InvoiceClientService {
         customerId: string,
         payload: ClientCreateInvoice
     ) => {
+        const feeShip = 10000;
         const acquiredLocks: { key: string; qty: number }[] = [];
         const alreadyDecreasedItems: {
             _id: string;
@@ -376,7 +377,7 @@ class InvoiceClientService {
             // Create Invoice
             const invoiceData = {
                 owner: customerId,
-                totalPrice,
+                totalPrice: totalPrice + feeShip,
                 totalDiscount,
                 voucher: voucherId ? [voucherId] : [],
                 address: payload.address,
@@ -390,6 +391,7 @@ class InvoiceClientService {
                 phone: payload.phone,
                 invoiceCode: generateInvoiceCode(),
                 note: payload.note,
+                feeShip: feeShip
             };
 
             const newInvoice = await invoiceRepository.create(invoiceData);

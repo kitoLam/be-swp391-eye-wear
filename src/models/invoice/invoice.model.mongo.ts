@@ -87,6 +87,11 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
         rejectedNote: {
             type: String,
             required: false,
+        },
+        feeShip: {
+            type: Number,
+            required: false,
+            default: 10000,
         }
     },
     {
