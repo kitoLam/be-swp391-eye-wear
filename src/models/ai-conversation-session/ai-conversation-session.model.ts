@@ -1,7 +1,7 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface IConversationSession extends Document {
-  customerId: string;
+  customerId: Types.ObjectId;
 
   intent: {
     type?: "frame" | "sunglass";
@@ -15,11 +15,13 @@ export interface IConversationSession extends Document {
   stage: "DISCOVERY" | "RECOMMENDING" | "REFINING";
 
   lastInteractionAt: Date; 
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const schema = new Schema<IConversationSession>(
   {
-    customerId: { type: String, required: true, unique: true },
+    customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true, unique: true },
     intent: { type: Object, default: {} },
     stage: { type: String, default: "DISCOVERY" },
     lastInteractionAt: { type: Date, default: Date.now }

@@ -12,10 +12,12 @@ export class AIMessageRepository extends BaseRepository<IAIMessage> {
         conversationId,
         limit = 10,
         lastMessageAt = undefined,
+        search,
     }: {
         conversationId: string;
         lastMessageAt: number | undefined;
         limit?: number;
+        search?: string;
     }) => {
         const dbFilter: { [key: string]: any } = {
             conversationId,
@@ -35,7 +37,9 @@ export class AIMessageRepository extends BaseRepository<IAIMessage> {
                 };
             }
         }
-
+        if(search){
+            dbFilter.content = new RegExp(search, 'gi');
+        }
         const messageList = await AIMessageModel.find(dbFilter)
             .sort({ createdAt: -1 })
             .limit(limit)
