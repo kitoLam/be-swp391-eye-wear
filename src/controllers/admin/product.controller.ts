@@ -14,35 +14,35 @@ class ProductController {
      * Tạo sản phẩm mới
      */
     createProduct = async (req: Request, res: Response) => {
-        await productService.createProduct(
+        const result = await productService.createProduct(
             req.body as ProductCreateDTO,
             req.adminAccount!
         );
-        res.json(ApiResponse.success(ProductMessage.success.create, {}));
+        res.json(ApiResponse.success(ProductMessage.success.create, result));
     };
 
     /**
      * Tạo sản phẩm mới - auto set tất cả variants mode = AVAILABLE
      */
     createProductAvailable = async (req: Request, res: Response) => {
-        await productService.createProduct(
+        const result = await productService.createProduct(
             req.body as ProductCreateDTO,
             req.adminAccount!,
             ProductVariantMode.AVAILABLE
         );
-        res.json(ApiResponse.success(ProductMessage.success.create, {}));
+        res.json(ApiResponse.success(ProductMessage.success.create, result));
     };
 
     /**
      * Tạo sản phẩm mới - auto set tất cả variants mode = PRE_ORDER
      */
     createProductPreOrder = async (req: Request, res: Response) => {
-        await productService.createProduct(
+        const result = await productService.createProduct(
             req.body as ProductCreateDTO,
             req.adminAccount!,
             ProductVariantMode.PRE_ORDER
         );
-        res.json(ApiResponse.success(ProductMessage.success.create, {}));
+        res.json(ApiResponse.success(ProductMessage.success.create, result));
     };
 
     /**
