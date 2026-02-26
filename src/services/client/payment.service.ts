@@ -33,7 +33,6 @@ class PaymentClientService {
         });
         const paymentDetail = await paymentRepository.findOne({
             _id: paymentId,
-            paymentMethod: PaymentMethodType.ZALOPAY,
             status: PaymentStatus.UNPAID,
             deletedAt: null,
         });
