@@ -180,6 +180,11 @@ class OrderService {
         if(query.status){
             filter.status = query.status;
         }
+        if(query.type){
+            filter.type = {
+                $in: [`${query.type}`]
+            }
+        }
         if(role == RoleType.OPERATION_STAFF){
             filter.assignedStaff = staffId;
         }
