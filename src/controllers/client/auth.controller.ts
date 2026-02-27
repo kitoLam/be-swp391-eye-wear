@@ -10,7 +10,6 @@ import authService from '../../services/client/auth.service';
 import { ApiResponse } from '../../utils/api-response';
 import { config } from '../../config/env.config';
 import { LoginBodyDTO } from '../../types/auth/admin/auth';
-
 class AuthController {
     registerCustomerAccount = async (req: Request, res: Response) => {
         const body = req.body as RegisterCustomerDTO;
@@ -90,7 +89,7 @@ class AuthController {
             sameSite: 'lax',
         });
         res.redirect(
-            `http://localhost:3000/google/oauth/callback?accessToken=${tokenPair.accessToken}`
+            `${config.cors.origin[2]}/google/oauth/callback?accessToken=${tokenPair.accessToken}`
         );
     }
 

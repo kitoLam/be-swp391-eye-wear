@@ -4,6 +4,7 @@ import { ForgetPasswordSchema, LoginCustomerSchema, RegisterCustomerSchema, Rese
 import { validateBody } from "../../middlewares/share/validator.middleware";
 import { authenticateMiddlewareClient, verifyRefreshTokenMiddlewareClient, verifyResetPasswordTokenMiddleware } from "../../middlewares/client/auth.middleware";
 import passport from "passport";
+import { config } from "../../config/env.config";
 
 const router = Router();
 router.post('/register', validateBody(RegisterCustomerSchema), authController.registerCustomerAccount);
@@ -21,7 +22,7 @@ router.get('/google', (req, res, next) => {
   })(req, res, next);
 });
 router.get('/google/callback', passport.authenticate('google', {
-  failureRedirect: 'http://localhost:3000/login',
+  failureRedirect: `${config.cors.origin[2]}:3000/login`,
 }), authController.handleGoogleCallback);
 router.post('/request-merge-account', validateBody(LoginCustomerSchema), authController.handleRequestMergeAccount);
 router.post('/request-merge-account/verify-otp', validateBody(VerifyOTPSchema), authController.handleVerifyOtpForRequestMergeAccount);
