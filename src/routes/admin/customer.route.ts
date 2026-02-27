@@ -19,8 +19,6 @@ const router = Router();
 
 // Tất cả các route customer đều yêu cầu đăng nhập và role SYSTEM_ADMIN
 router.use(authenticateMiddleware);
-router.use(requireAdminRoles([RoleType.SYSTEM_ADMIN]));
-
 router.get(
     '/',
     validateQuery(CustomerListQuerySchema),
@@ -32,7 +30,7 @@ router.get(
     validateParams(ObjectIdSchema),
     customerController.getDetail
 );
-
+router.use(requireAdminRoles([RoleType.SYSTEM_ADMIN]));
 router.post('/', validateBody(CreateCustomerSchema), customerController.create);
 
 router.patch(
