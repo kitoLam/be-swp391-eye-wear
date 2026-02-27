@@ -67,21 +67,21 @@ interface Config {
     mail: {
         sender: string;
         pass: string;
-    },
+    };
 
     otp: {
         waitingMinute: number;
-    },
+    };
 
     shipment: {
         createApi: string;
-    },
+    };
 
     googleOAuth20: {
-        client_id: string,
-        client_secret: string,
-        callback_url: string,
-    }
+        client_id: string;
+        client_secret: string;
+        callback_url: string;
+    };
 }
 
 // =====================================================
@@ -138,6 +138,8 @@ export const config: Config = {
         origin: [
             process.env.FE_CLIENT_DOMAIN || '',
             process.env.FE_ADMIN_DOMAIN || '',
+            'https://eyewear-optic.shop',
+            'https://www.eyewear-optic.shop',
         ],
     },
 
@@ -160,17 +162,17 @@ export const config: Config = {
     otp: {
         waitingMinute: process.env.OTP_WAITING_MINUTE
             ? Number(process.env.OTP_WAITING_MINUTE)
-            : 5
+            : 5,
     },
     shipment: {
-        createApi: process.env.SHIPMENT_CREATE_API || ''
+        createApi: process.env.SHIPMENT_CREATE_API || '',
     },
 
     googleOAuth20: {
         client_id: process.env.GOOGLE_CLIENT_ID || '',
         client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
         callback_url: process.env.GOOGLE_CALLBACK_URL || '',
-    }
+    },
 };
 
 // =====================================================
