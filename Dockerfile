@@ -29,5 +29,5 @@ COPY --from=builder /app/dist ./dist
 # Expose port
 EXPOSE 5000
 
-# Start command
-CMD ["npm", "start"]
+# Start command with memory limit
+CMD ["node", "--max-old-space-size=512", "dist/server.js"]
