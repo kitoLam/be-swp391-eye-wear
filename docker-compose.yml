@@ -9,12 +9,12 @@ services:
         env_file:
             - .env
         restart: always
-        mem_limit: 800m
-        memswap_limit: 800m
+        mem_limit: 1.5G
+        memswap_limit: 1.5G
         deploy:
             resources:
                 limits:
-                    memory: 800M
+                    memory: 1.5G
         networks:
             - eyewear-network
 
