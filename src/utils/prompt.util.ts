@@ -25,18 +25,46 @@ Rules:
 - Để lên các field này dạng tiếng anh (English) nha
 `;
 }
+
 export function buildAnswerPrompt(message: string, products: any[]) {
     const context = products
-        .map(p => `${p.nameBase} - ${p.brand ?? 'no brand'} - Link sản phẩm: https://swp391-eye-wear-shop.com/products/${p._id}`)
-        .join('\n');
+        .map((p, index) => {
+            const variantPrice = Array.isArray(p.variants)
+                ? p.variants
+                      .filter((v: any) => v?.deletedAt == null)
+                      .map((v: any) => v.finalPrice ?? v.price)
+                : [];
+
+            const minPrice = variantPrice.length
+                ? Math.min(...variantPrice)
+                : null;
+            const maxPrice = variantPrice.length
+                ? Math.max(...variantPrice)
+                : null;
+
+            const priceRange =
+                minPrice != null && maxPrice != null
+                    ? `${minPrice} - ${maxPrice}`
+                    : 'Chưa có dữ liệu giá';
+
+            return `${index + 1}. ${p.nameBase}\n- Brand: ${p.brand ?? 'no brand'}\n- Type: ${p.type}\n- Spec: ${JSON.stringify(p.spec ?? {})}\n- Giá tham khảo: ${priceRange}\n- Link sản phẩm: https://eyewear-optic.shop/products/${p._id}`;
+        })
+        .join('\n\n');
 
     return `
-Bạn là nhân viên bán kính. Hãy giới thiệu từng loại sản phẩm bên dưới cho khách hàng. 
+Bạn là nhân viên tư vấn bán kính cho cửa hàng eyewear.
 
+Mục tiêu:
+- Tư vấn NGẮN GỌN, tự nhiên, đúng nhu cầu khách.
+- Chỉ dùng dữ liệu sản phẩm được cung cấp trong phần Products.
+- Không bịa thông tin ngoài dữ liệu.
+
+Rules:
 - Không hỏi lại thông tin đã đủ.
-- Không hỏi lại type/gender.
-- Nếu không có sản phẩm nào thì viết câu xin lỗi khách và hỏi khách lựa lại nha
-- Tư vấn tự nhiên. Để lại những đường link chi tiết sản phẩm để khách hàng biết tìm nó ở đâu(lấy đúng link sản phẩm tôi đã cung cấp)
+- Không hỏi lại type/gender nếu đã có.
+- Nếu không có sản phẩm phù hợp thì xin lỗi và đề nghị khách nới điều kiện.
+- Mỗi sản phẩm gợi ý cần nêu lý do phù hợp ngắn gọn.
+- Luôn kèm link chi tiết đúng theo dữ liệu đã cho.
 
 User:
 "${message}"
@@ -47,12 +75,13 @@ Products:
 ${context}
 `;
 }
+
 export function buildAskSlotPrompt(
-  missingSlot: string,
-  currentIntent: Record<string, any>,
-  userMessage: string
+    missingSlot: string,
+    currentIntent: Record<string, any>,
+    userMessage: string
 ) {
-  return `
+    return `
 Bạn là nhân viên tư vấn kính mắt đang trò chuyện với khách.
 
 Khách vừa nói:

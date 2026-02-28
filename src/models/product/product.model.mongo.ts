@@ -126,6 +126,18 @@ const ProductSchema = new Schema<IProductDocument>(
             type: Date,
             default: null,
         },
+        embedding: {
+            type: [Number],
+            default: null,
+        },
+        embeddingModel: {
+            type: String,
+            default: null,
+        },
+        embeddingUpdatedAt: {
+            type: Date,
+            default: null,
+        },
     },
     {
         timestamps: true,

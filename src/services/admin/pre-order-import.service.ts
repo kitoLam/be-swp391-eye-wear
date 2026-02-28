@@ -43,20 +43,31 @@ class PreOrderImportService {
                 `Product variant with SKU: ${sku} not found`
             );
         }
-        const variantDetail = product.variants.find((v) => v.sku === sku);
-        if(!variantDetail || variantDetail.mode != ProductVariantMode.PRE_ORDER){
-            throw new BadRequestError(`Product variant with SKU: ${sku} is not a pre-order variant`);
+        const variantDetail = product.variants.find(v => v.sku === sku);
+        if (
+            !variantDetail ||
+            variantDetail.mode != ProductVariantMode.PRE_ORDER
+        ) {
+            throw new BadRequestError(
+                `Product variant with SKU: ${sku} is not a pre-order variant`
+            );
         }
         // 3. Create the pre-order-import record
         const preOrderImport = await preOrderImportRepository.create({
             sku,
             description,
-            targetDate: moment(payload.targetDate, 'DD-MM-YYYY').startOf('date').toDate(),
+            targetDate: moment(payload.targetDate, 'DD-MM-YYYY')
+                .startOf('date')
+                .toDate(),
             targetQuantity,
             managerResponsibility: context.id,
             status: PreOrderImportStatus.PENDING,
-            startedDate: moment(payload.startedDate, 'DD-MM-YYYY').startOf('date').toDate(),
-            endedDate: moment(payload.endedDate, 'DD-MM-YYYY').endOf('date').toDate()
+            startedDate: moment(payload.startedDate, 'DD-MM-YYYY')
+                .startOf('date')
+                .toDate(),
+            endedDate: moment(payload.endedDate, 'DD-MM-YYYY')
+                .endOf('date')
+                .toDate(),
         });
 
         return preOrderImport;
@@ -80,9 +91,8 @@ class PreOrderImportService {
         }
 
         // 2. Verify pre-order exists
-        const preOrderImport = await preOrderImportRepository.findById(
-            preOrderImportId
-        );
+        const preOrderImport =
+            await preOrderImportRepository.findById(preOrderImportId);
 
         if (!preOrderImport) {
             throw new NotFoundRequestError(

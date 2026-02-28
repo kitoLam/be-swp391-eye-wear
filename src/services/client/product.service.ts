@@ -24,6 +24,7 @@ import { Variant } from '../../types/product/variant/variant';
 import { preOrderImportRepository } from '../../repositories/pre-order-import/pre-order-import.repository';
 import { compareDate } from '../../utils/date.util';
 import { PreOrderImportStatus } from '../../config/enums/pre-order-import.enum';
+import { embeddingModel } from '../../config/google-gemini-ai.config';
 
 class ProductService {
     /**
@@ -276,13 +277,47 @@ class ProductService {
         return dataFinal;
     };
 
-    buildQueryForAISuggestion = async (intent: any) => {
+    private cosineSimilarity(a: number[], b: number[]): number {
+        if (a.length !== b.length || a.length === 0) return -1;
+
+        let dot = 0;
+        let normA = 0;
+        let normB = 0;
+
+        for (let i = 0; i < a.length; i++) {
+            dot += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+
+        const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+        if (denominator === 0) return -1;
+
+        return dot / denominator;
+    }
+
+    private async embedQueryText(text: string): Promise<number[]> {
+        const result = await embeddingModel.embedContent(text);
+        const values = (result as any)?.embedding?.values;
+
+        if (!Array.isArray(values) || values.length === 0) {
+            throw new Error('Embedding result is empty or invalid');
+        }
+
+        return values as number[];
+    }
+
+    private buildMongoFilterFromIntent(intent: any) {
         const query: any = {
-            type: intent.type,
             deletedAt: null,
+            embedding: { $exists: true, $ne: null },
         };
 
-        if (intent.priceLower || intent.priceUpper) {
+        if (intent?.type) {
+            query.type = intent.type;
+        }
+
+        if (intent?.priceLower || intent?.priceUpper) {
             query['variants.finalPrice'] = {};
             if (intent.priceLower)
                 query['variants.finalPrice'].$gte = intent.priceLower;
@@ -290,7 +325,7 @@ class ProductService {
                 query['variants.finalPrice'].$lte = intent.priceUpper;
         }
 
-        if (intent.color) {
+        if (intent?.color) {
             query.variants = {
                 $elemMatch: {
                     options: {
@@ -302,11 +337,55 @@ class ProductService {
             };
         }
 
-        if (intent.shape) {
+        if (intent?.shape) {
             query['spec.shape'] = { $regex: intent.shape, $options: 'i' };
         }
 
-        return ProductModel.find(query).limit(4);
+        return query;
+    }
+
+    buildQueryForAISuggestion = async (intent: any, userMessage?: string) => {
+        const query = this.buildMongoFilterFromIntent(intent);
+
+        const queryText = [
+            userMessage ?? '',
+            `type=${intent?.type ?? ''}`,
+            `gender=${intent?.gender ?? ''}`,
+            `color=${intent?.color ?? ''}`,
+            `shape=${intent?.shape ?? ''}`,
+            `priceLower=${intent?.priceLower ?? ''}`,
+            `priceUpper=${intent?.priceUpper ?? ''}`,
+        ]
+            .filter(Boolean)
+            .join(' | ');
+
+        const queryEmbedding = await this.embedQueryText(queryText);
+        const candidates = await ProductModel.find(query).limit(80);
+
+        const ranked = candidates
+            .map(item => {
+                const embedding = Array.isArray((item as any).embedding)
+                    ? ((item as any).embedding as number[])
+                    : [];
+
+                return {
+                    item,
+                    score: this.cosineSimilarity(queryEmbedding, embedding),
+                };
+            })
+            .filter(x => x.score > -1)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 4)
+            .map(x => x.item);
+
+        if (ranked.length > 0) {
+            return ranked;
+        }
+
+        return ProductModel.find({
+            ...query,
+            embedding: { $exists: false },
+        }).limit(4);
     };
 }
 export default new ProductService();

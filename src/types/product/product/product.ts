@@ -20,6 +20,9 @@ export const ProductSchema = z.discriminatedUnion('type', [
         updatedAt: z.date().optional(),
         createdAt: z.date().optional(),
         deletedAt: z.date().nullable().optional(),
+        embedding: z.array(z.number()).nullable().optional(),
+        embeddingModel: z.string().nullable().optional(),
+        embeddingUpdatedAt: z.date().nullable().optional(),
     }),
     //Neu la sunglass thi object se la dang nay (same spec as frame)
     z.object({
@@ -37,6 +40,9 @@ export const ProductSchema = z.discriminatedUnion('type', [
         updatedAt: z.date().optional(),
         createdAt: z.date().optional(),
         deletedAt: z.date().nullable().optional(),
+        embedding: z.array(z.number()).nullable().optional(),
+        embeddingModel: z.string().nullable().optional(),
+        embeddingUpdatedAt: z.date().nullable().optional(),
     }),
     //Neu la len thi object se la dang nay
     z.object({
@@ -54,6 +60,9 @@ export const ProductSchema = z.discriminatedUnion('type', [
         updatedAt: z.date().optional(),
         createdAt: z.date().optional(),
         deletedAt: z.date().nullable().optional(),
+        embedding: z.array(z.number()).nullable().optional(),
+        embeddingModel: z.string().nullable().optional(),
+        embeddingUpdatedAt: z.date().nullable().optional(),
     }),
 ]);
 

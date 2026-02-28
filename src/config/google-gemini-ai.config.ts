@@ -1,7 +1,13 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+export const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export const model = genAI.getGenerativeModel({
-  model: "gemma-3-27b-it",
+    model: 'gemma-3-27b-it',
+});
+
+export const EMBEDDING_MODEL_NAME = 'gemini-embedding-001';
+
+export const embeddingModel = genAI.getGenerativeModel({
+    model: EMBEDDING_MODEL_NAME,
 });
