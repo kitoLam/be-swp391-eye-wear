@@ -315,8 +315,34 @@ class ProductService {
 
         if (intent?.type) {
             query.type = intent.type;
+            if (intent.type == 'lens') {
+                if (intent.feature) {
+                    query['spec.feature'] = {
+                        $regex: intent.feature,
+                        $options: 'i',
+                    };
+                }
+            } else {
+                if (intent.gender) {
+                    query['spec.gender'] = { $regex: intent.gender, $options: 'i' };
+                }
+                if (intent?.shape) {
+                    query['spec.shape'] = {
+                        $regex: intent.shape,
+                        $options: 'i',
+                    };
+                }
+                if (intent?.style) {
+                    query['spec.style'] = {
+                        $regex: intent.style,
+                        $options: 'i',
+                    };
+                }
+            }
         }
-
+        if (intent.brand) {
+            query.brand = { $regex: intent.brand, $options: 'i' };
+        }
         if (intent?.priceLower || intent?.priceUpper) {
             query['variants.finalPrice'] = {};
             if (intent.priceLower)
@@ -324,7 +350,6 @@ class ProductService {
             if (intent.priceUpper)
                 query['variants.finalPrice'].$lte = intent.priceUpper;
         }
-
         if (intent?.color) {
             query.variants = {
                 $elemMatch: {
@@ -335,10 +360,6 @@ class ProductService {
                     },
                 },
             };
-        }
-
-        if (intent?.shape) {
-            query['spec.shape'] = { $regex: intent.shape, $options: 'i' };
         }
 
         return query;
@@ -355,13 +376,15 @@ class ProductService {
             `shape=${intent?.shape ?? ''}`,
             `priceLower=${intent?.priceLower ?? ''}`,
             `priceUpper=${intent?.priceUpper ?? ''}`,
+            `style=${intent?.style ?? ''}`,
+            `brand=${intent?.brand ?? ''}`,
+            `feature=${intent?.feature ?? ''}`,
         ]
             .filter(Boolean)
             .join(' | ');
 
         const queryEmbedding = await this.embedQueryText(queryText);
         const candidates = await ProductModel.find(query).limit(80);
-
         const ranked = candidates
             .map(item => {
                 const embedding = Array.isArray((item as any).embedding)
@@ -377,11 +400,10 @@ class ProductService {
             .sort((a, b) => b.score - a.score)
             .slice(0, 4)
             .map(x => x.item);
-
         if (ranked.length > 0) {
             return ranked;
         }
-
+        
         return ProductModel.find({
             ...query,
             embedding: { $exists: false },

@@ -26,7 +26,7 @@ export async function extractIntentByLLM(message: string) {
     }
 }
 export function isReadyToRecommend(intent: any) {
-    return intent.type && intent.gender;
+    return intent.type;
 }
 export function getMissingRequiredSlots(
   intent: Record<string, any>,

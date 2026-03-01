@@ -8,12 +8,15 @@ User message:
 Trả về JSON DUY NHẤT theo schema:
 
 {
-  "type": "frame | sunglass | null | undefined",
-  "gender": "M | F | unisex | null | undefined",
+  "type": "frame | sunglass | lens " |  null | undefined,
+  "gender": "M | F | unisex " | null | undefined,
   "priceLower": number | null | undefined,
   "priceUpper": number | null | undefined,
   "color": string | null | undefined,
   "shape": string | null | undefined,
+  "style": string | undefined,
+  "brand": string | undefined,
+  "feature": string | undefined,
   "isRefinement": boolean
 }
 

@@ -4,12 +4,15 @@ export interface IConversationSession extends Document {
   customerId: Types.ObjectId;
 
   intent: {
-    type?: "frame" | "sunglass";
+    type?: "frame" | "sunglass" | "lens";
     gender?: "male" | "female" | "unisex";
     priceLower?: number;
     priceUpper?: number;
     color?: string;
     shape?: string;
+    style?: string;
+    brand?: string;
+    feature?: string;
   };
 
   stage: "DISCOVERY" | "RECOMMENDING" | "REFINING";
