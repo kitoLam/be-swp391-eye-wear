@@ -17,6 +17,10 @@ import passport from 'passport';
 import session from 'express-session';
 // Tạo Express application
 const app: Application = express();
+
+// Khi deploy sau reverse proxy (Nginx, Cloudflare, Render...),
+// Express cần trust proxy để nhận đúng req.secure/x-forwarded-proto
+app.set('trust proxy', 1);
 // Tạo HTTP server từ Express app (cần cho Socket.IO)
 const httpServer = createServer(app);
 export const io = new Server(httpServer, {
