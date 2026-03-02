@@ -36,6 +36,7 @@ import {
     VoucherType,
     VoucherStatus,
     VoucherApplyScope,
+    VoucherClaimStatus,
 } from '../../config/enums/voucher.enum';
 
 interface InvoiceProduct {
@@ -135,7 +136,7 @@ class InvoiceClientService {
         if (voucher.applyScope === VoucherApplyScope.SPECIFIC) {
             const { data, error } = await supabase
                 .from('voucher_user')
-                .select('id')
+                .select('*')
                 .eq('customer_id', customerId)
                 .eq('voucher_id', voucher._id.toString())
                 .is('deleted_at', null)
@@ -144,6 +145,14 @@ class InvoiceClientService {
             if (error || !data) {
                 throw new BadRequestError(
                     'Bạn không có quyền sử dụng voucher này hoặc voucher không thuộc về bạn'
+                );
+            }
+
+            // Check if voucher has been claimed
+            const claimStatus = data.metadata?.status;
+            if (claimStatus !== VoucherClaimStatus.CLAIMED) {
+                throw new BadRequestError(
+                    'Voucher chưa được claim. Vui lòng claim voucher trước khi sử dụng'
                 );
             }
         }

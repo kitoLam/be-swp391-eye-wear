@@ -78,6 +78,21 @@ class ReturnTicketController {
         );
     };
 
+    getReturnedOrders = async (req: Request, res: Response) => {
+        const query = req.validatedQuery as ReturnTicketListQuery;
+        const result = await returnTicketService.getReturnedOrders(query);
+
+        res.json(
+            ApiResponse.success('Get returned orders successfully', {
+                pagination: result.pagination,
+                returnedOrders: result.returnedOrders.map(item => ({
+                    returnTicket: this.mapResponse(item.returnTicket),
+                    order: item.order,
+                })),
+            })
+        );
+    };
+
     approveReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
         const updatedTicket = await returnTicketService.updateStatus(

@@ -4,6 +4,7 @@ import { CreateVoucher, UpdateVoucher } from '../../types/voucher/voucher';
 import {
     VoucherStatus,
     VoucherApplyScope,
+    VoucherClaimStatus,
 } from '../../config/enums/voucher.enum';
 import {
     NotFoundRequestError,
@@ -152,7 +153,10 @@ class VoucherAdminService {
             id: crypto.randomUUID(),
             customer_id: userId,
             voucher_id: voucherId,
-            metadata: { granted_by: grantedBy },
+            metadata: {
+                granted_by: grantedBy,
+                status: VoucherClaimStatus.WAITING_CLAIM,
+            },
             created_at: new Date(),
             updated_at: new Date(),
         }));

@@ -17,3 +17,9 @@ export enum VoucherApplyScope {
     ALL = 'ALL',
     SPECIFIC = 'SPECIFIC',
 }
+
+// Voucher Claim Status Enum
+export enum VoucherClaimStatus {
+    WAITING_CLAIM = 'WAITING_CLAIM',
+    CLAIMED = 'CLAIMED',
+}
