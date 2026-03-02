@@ -13,5 +13,6 @@ router.get('/my-vouchers', voucherClientController.getMyVouchers);
 router.get('/client/:clientId', voucherClientController.getVouchersByClientId);
 router.post('/validate', voucherClientController.validateVoucher);
 router.post('/assign', voucherClientController.assignVoucher); // Add voucher to client
+router.post('/claim-voucher', voucherClientController.claimVoucher); // Claim voucher
 
 export default router;

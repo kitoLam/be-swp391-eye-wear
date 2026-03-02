@@ -20,7 +20,7 @@ import {
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 import { ReturnTicketStatus } from '../../config/enums/return-ticket.enum';
-import { OrderStatus, OrderType } from '../../config/enums/order.enum';
+import { OrderStatus } from '../../config/enums/order.enum';
 
 class ReturnTicketService {
     /**
@@ -28,7 +28,7 @@ class ReturnTicketService {
      * Conditions:
      * - Order status must be COMPLETED
      * - Invoice containing this order must be DELIVERED
-     * - If order type is NORMAL and has more than 1 product, require requestBody.skus
+     * - Trả hàng theo toàn bộ order
      */
     createReturnTicket = async (
         customerContext: AuthCustomerContext,
@@ -75,53 +75,30 @@ class ReturnTicketService {
             );
         }
 
-        const orderTypes = Array.isArray(order.type)
-            ? order.type
-            : [order.type];
-        const isNormalOrder = orderTypes.includes(OrderType.NORMAL);
-        const hasMultipleProducts =
-            Array.isArray(order.products) && order.products.length > 1;
+        // Trả hàng theo toàn bộ order, không hỗ trợ trả SKU lẻ.
+        // Doanh thu tính theo tiền hàng sau giảm giá, KHÔNG tính phí ship.
+        // Phân bổ discount theo tỷ trọng giá order trong tổng tiền hàng của invoice.
+        const allOrdersInInvoice = await orderRepository.findAllNoPagination({
+            invoiceId: invoice._id,
+            deletedAt: null,
+        });
 
-        if (isNormalOrder && hasMultipleProducts) {
-            if (!requestBody.skus || requestBody.skus.length === 0) {
-                throw new ConflictRequestError(
-                    'This order contains multiple products. Please provide skus to return.'
-                );
-            }
-        }
+        const grossItemsAmount = allOrdersInInvoice.reduce(
+            (sum, currentOrder) => sum + (currentOrder.price || 0),
+            0
+        );
 
-        // Calculate money for return ticket
-        // Formula: money = (totalPrice - totalDiscount) * skuPrice / totalPrice
-        let skuPrice = 0;
-        if (requestBody.skus && requestBody.skus.length > 0) {
-            // Sum pricePerUnit * quantity for matching SKUs
-            for (const orderProduct of order.products) {
-                if (
-                    orderProduct.product &&
-                    requestBody.skus.includes(orderProduct.product.sku)
-                ) {
-                    skuPrice +=
-                        orderProduct.product.pricePerUnit *
-                        orderProduct.quantity;
-                }
-                if (
-                    orderProduct.lens &&
-                    requestBody.skus.includes(orderProduct.lens.sku)
-                ) {
-                    skuPrice +=
-                        orderProduct.lens.pricePerUnit * orderProduct.quantity;
-                }
-            }
-        } else {
-            // No skus specified → use entire order price
-            skuPrice = order.price;
-        }
+        const orderGrossAmount = order.price || 0;
 
-        const money =
-            invoice.totalPrice > 0
-                ? ((invoice.totalPrice - invoice.totalDiscount) * skuPrice) /
-                  invoice.totalPrice
+        const discountAllocatedToOrder =
+            grossItemsAmount > 0
+                ? (invoice.totalDiscount * orderGrossAmount) / grossItemsAmount
                 : 0;
+
+        const netOrderAmount = Math.max(
+            0,
+            orderGrossAmount - discountAllocatedToOrder
+        );
 
         const returnTicket = new ReturnTicketModel({
             orderId: requestBody.orderId,
@@ -129,8 +106,8 @@ class ReturnTicketService {
             reason: requestBody.reason,
             description: requestBody.description,
             media: requestBody.media,
-            skus: requestBody.skus ?? null,
-            money: Math.round(money),
+            skus: [],
+            money: Math.round(netOrderAmount),
             status: ReturnTicketStatus.PENDING,
         });
 
@@ -217,6 +194,48 @@ class ReturnTicketService {
 
         returnTicket.staffVerify = adminContext.id;
         return await returnTicket.save();
+    };
+
+    getReturnedOrders = async (query: ReturnTicketListQuery) => {
+        const filter: FilterQuery<IReturnTicketDocument> = {
+            deletedAt: null,
+            status: ReturnTicketStatus.RETURNED,
+        };
+
+        if (query.search) {
+            const regex = new RegExp(query.search, 'gi');
+            filter.$or = [{ orderId: regex }, { reason: regex }];
+        }
+
+        const result = await returnTicketRepository.find(filter, {
+            limit: query.limit,
+            page: query.page,
+            sortBy: 'createdAt',
+            sortOrder: 'desc',
+        });
+
+        const returnedOrderIds = result.data.map(item => item.orderId);
+        const returnedOrders = await orderRepository.findAllNoPagination({
+            _id: { $in: returnedOrderIds },
+            deletedAt: null,
+        });
+
+        const orderMap = new Map(
+            returnedOrders.map(order => [order._id.toString(), order])
+        );
+
+        return {
+            returnedOrders: result.data.map(ticket => ({
+                returnTicket: ticket,
+                order: orderMap.get(ticket.orderId) ?? null,
+            })),
+            pagination: {
+                page: result.page,
+                limit: result.limit,
+                total: result.total,
+                totalPages: result.totalPages,
+            },
+        };
     };
 
     /**

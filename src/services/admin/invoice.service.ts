@@ -34,7 +34,7 @@ class InvoiceService {
             const regex = new RegExp(query.search, 'gi');
             filter.$or = [{ invoiceCode: regex }, { fullName: regex }];
         }
-        if(query.invoiceCode){
+        if (query.invoiceCode) {
             filter.invoiceCode = new RegExp(query.invoiceCode, 'gi');
         }
         if (query.status) {
@@ -127,7 +127,7 @@ class InvoiceService {
         // Cập nhật các order trong invoice này thành waiting assign
         await orderRepository.updateMany(
             {
-                invoiceId: invoiceId,
+                invoiceId: invoiceDetail._id,
             },
             {
                 status: OrderStatus.WAITING_ASSIGN,

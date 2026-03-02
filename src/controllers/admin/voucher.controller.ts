@@ -78,7 +78,7 @@ class VoucherAdminController {
     grantVoucher = async (req: Request, res: Response) => {
         const voucherId = req.params.id as string;
         const { userIds } = req.body;
-        const grantedBy = (req as any).staff?.id || 'admin'; // Admin ID from auth
+        const grantedBy = (req as any).adminAccount?.id || 'admin'; // Admin ID from auth
 
         const result = await voucherAdminService.grantVoucherToUsers(
             voucherId,

@@ -62,6 +62,23 @@ class VoucherClientController {
         );
         res.json(ApiResponse.success('Assign voucher success', result));
     };
+
+    /**
+     * Claim voucher - Update status from WAITING_CLAIM to CLAIMED
+     */
+    claimVoucher = async (req: Request, res: Response) => {
+        const customerId = req.customer!.id;
+        const { voucherCode } = req.body;
+
+        if (!voucherCode) {
+            return res.status(400).json(
+                ApiResponse.error('Vui lòng cung cấp mã voucher')
+            );
+        }
+
+        const result = await voucherClientService.claimVoucher(customerId, voucherCode);
+        res.json(ApiResponse.success('Claim voucher thành công!', result));
+    };
 }
 
 export default new VoucherClientController();

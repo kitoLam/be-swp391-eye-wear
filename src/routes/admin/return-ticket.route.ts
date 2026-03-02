@@ -26,6 +26,12 @@ router.get(
     returnTicketController.getReturnTicketsByStaff
 );
 
+router.get(
+    '/returned-orders',
+    validateQuery(ReturnTicketListQuerySchema),
+    returnTicketController.getReturnedOrders
+);
+
 // [PATCH] staffVerify: update staffVerify from token
 router.patch(
     '/:id/staff-verify',

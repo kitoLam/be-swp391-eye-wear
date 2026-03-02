@@ -5,6 +5,7 @@ import {
     NotFoundRequestError,
     BadRequestError,
 } from '../../errors/apiError/api-error';
+import { VoucherClaimStatus } from '../../config/enums/voucher.enum';
 
 interface ValidateVoucherPayload {
     code: string;
@@ -232,6 +233,73 @@ class VoucherClientService {
         );
 
         return { vouchers: available };
+    };
+
+    /**
+     * Claim voucher - Update status from WAITING_CLAIM to CLAIMED
+     */
+    claimVoucher = async (customerId: string, voucherCode: string) => {
+        // 1. Find voucher by code
+        const voucher = await voucherRepository.findOne({
+            code: voucherCode.toUpperCase(),
+            deletedAt: null,
+        });
+
+        if (!voucher) {
+            throw new NotFoundRequestError('Voucher không tồn tại');
+        }
+
+        // 2. Check if user has this voucher in Supabase
+        const { data: voucherUser, error: fetchError } = await supabase
+            .from('voucher_user')
+            .select('*')
+            .eq('customer_id', customerId)
+            .eq('voucher_id', voucher._id.toString())
+            .is('deleted_at', null)
+            .single();
+
+        if (fetchError || !voucherUser) {
+            throw new BadRequestError('Bạn không có voucher này');
+        }
+
+        // 3. Check current status in metadata
+        const currentStatus = voucherUser.metadata?.status;
+
+        if (currentStatus === VoucherClaimStatus.CLAIMED) {
+            throw new BadRequestError('Voucher đã được claim rồi');
+        }
+
+        if (currentStatus !== VoucherClaimStatus.WAITING_CLAIM) {
+            throw new BadRequestError('Voucher không ở trạng thái chờ claim');
+        }
+
+        // 4. Update status to CLAIMED
+        const updatedMetadata = {
+            ...voucherUser.metadata,
+            status: VoucherClaimStatus.CLAIMED,
+            claimed_at: new Date().toISOString(),
+        };
+
+        const { error: updateError } = await supabase
+            .from('voucher_user')
+            .update({
+                metadata: updatedMetadata,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('customer_id', customerId)
+            .eq('voucher_id', voucher._id.toString());
+
+        if (updateError) {
+            throw new BadRequestError('Không thể claim voucher: ' + updateError.message);
+        }
+
+        return {
+            message: 'Claim voucher thành công',
+            voucher: {
+                code: voucher.code,
+                name: voucher.name,
+            },
+        };
     };
 }
 
