@@ -1,22 +1,32 @@
-import { Request, Response } from 'express';
+import { CookieOptions, Request, Response } from 'express';
 import { LoginBodyDTO } from '../../types/auth/admin/auth';
 import authService from '../../services/admin/auth.service';
 import { ApiResponse } from '../../utils/api-response';
 import { authMessage } from '../../config/constants/response-messages/auth.constant';
 import { config } from '../../config/env.config';
 import staffService from '../../services/admin/staff.service';
+
+const isSecureRequest = (req: Request) =>
+    req.secure || req.headers['x-forwarded-proto'] === 'https';
+
+const getCrossSiteCookieOptions = (req: Request): CookieOptions => {
+    const secure = isSecureRequest(req);
+
+    return {
+        httpOnly: true,
+        secure,
+        sameSite: secure ? 'none' : 'lax',
+        maxAge: config.jwt.refreshExpiresInSecond * 1000,
+        path: '/api/v1/admin',
+    };
+};
+
 class AuthController {
     login = async (req: Request, res: Response) => {
         const body = req.body as LoginBodyDTO;
         const deviceId = req.headers['x-device-id'];
         const data = await authService.login(body, deviceId);
-        res.cookie('refreshToken', data.refreshToken, {
-            httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
-            maxAge: config.jwt.refreshExpiresInSecond * 1000,
-            path: '/api/v1/admin',
-        });
+        res.cookie('refreshToken', data.refreshToken, getCrossSiteCookieOptions(req));
         res.json(
             ApiResponse.success(authMessage.success.login, {
                 accessToken: data.accessToken,
@@ -31,7 +41,7 @@ class AuthController {
         const adminAccount = req.adminAccount!.id;
         await authService.logout(adminAccount, accessToken, refreshToken);
         // xóa refreshToken lưu trong cookie
-        res.clearCookie('refreshToken');
+        res.clearCookie('refreshToken', getCrossSiteCookieOptions(req));
         res.json(ApiResponse.success('Logout successfully', null));
     };
     refreshAccessToken = async (req: Request, res: Response): Promise<void> => {
