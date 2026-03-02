@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { CookieOptions, Request, Response } from 'express';
 import {
     ForgetPasswordDTO,
     LoginCustomerDTO,
@@ -10,6 +10,21 @@ import authService from '../../services/client/auth.service';
 import { ApiResponse } from '../../utils/api-response';
 import { config } from '../../config/env.config';
 import { LoginBodyDTO } from '../../types/auth/admin/auth';
+
+const isSecureRequest = (req: Request) =>
+    req.secure || req.headers['x-forwarded-proto'] === 'https';
+
+const getCrossSiteCookieOptions = (req: Request): CookieOptions => {
+    const secure = isSecureRequest(req);
+
+    return {
+        httpOnly: true,
+        secure,
+        sameSite: secure ? 'none' : 'lax',
+        maxAge: config.jwt.refreshExpiresInSecond * 1000,
+    };
+};
+
 class AuthController {
     registerCustomerAccount = async (req: Request, res: Response) => {
         const body = req.body as RegisterCustomerDTO;
@@ -20,12 +35,11 @@ class AuthController {
         const body = req.body as LoginCustomerDTO;
         const deviceId = req.headers['x-device-id'];
         const tokenPair = await authService.login(body, deviceId);
-        res.cookie('refreshTokenClient', tokenPair.refreshToken, {
-            httpOnly: true,
-            secure: config.env == 'deployment' ? true : false,
-            maxAge: config.jwt.refreshExpiresInSecond * 1000,
-            sameSite: 'none',
-        });
+        res.cookie(
+            'refreshTokenClient',
+            tokenPair.refreshToken,
+            getCrossSiteCookieOptions(req)
+        );
         res.json(
             ApiResponse.success('Login successfully', {
                 accessToken: tokenPair.accessToken,
@@ -69,10 +83,15 @@ class AuthController {
     };
     verifyOTP = async (req: Request, res: Response) => {
         const body = req.body as VerifyOTP;
-        const resetPasswordToken = await authService.verifyOTP(body.email, body.otp);
-        res.json(ApiResponse.success('Verify OTP success', {
-            resetPasswordToken: resetPasswordToken,
-        }));
+        const resetPasswordToken = await authService.verifyOTP(
+            body.email,
+            body.otp
+        );
+        res.json(
+            ApiResponse.success('Verify OTP success', {
+                resetPasswordToken: resetPasswordToken,
+            })
+        );
     };
     resetPassword = async (req: Request, res: Response) => {
         const body = req.body as ResetPassword;
@@ -80,30 +99,37 @@ class AuthController {
         res.json(ApiResponse.success('Reset password success', null));
     };
     handleGoogleCallback = async (req: Request, res: Response) => {
-        const deviceId =  req.query.state as string;
-        const tokenPair = await authService.loginWithGoogle(req.user as any, deviceId);
-        res.cookie('refreshTokenClient', tokenPair.refreshToken, {
-            httpOnly: true,
-            secure: config.env == 'deployment' ? true : false,
-            maxAge: config.jwt.refreshExpiresInSecond * 1000,
-            sameSite: 'lax',
-        });
+        const deviceId = req.query.state as string;
+        const tokenPair = await authService.loginWithGoogle(
+            req.user as any,
+            deviceId
+        );
+        res.cookie(
+            'refreshTokenClient',
+            tokenPair.refreshToken,
+            getCrossSiteCookieOptions(req)
+        );
         res.redirect(
             `${config.cors.origin[2]}/google/oauth/callback?accessToken=${tokenPair.accessToken}`
         );
-    }
+    };
 
     handleRequestMergeAccount = async (req: Request, res: Response) => {
         const body = req.body as LoginBodyDTO;
         await authService.handleRequestMergeAccount(body);
-        res.json(ApiResponse.success('Send merge request success success', null));
-    }
+        res.json(
+            ApiResponse.success('Send merge request success success', null)
+        );
+    };
 
-    handleVerifyOtpForRequestMergeAccount = async (req: Request, res: Response) => {
+    handleVerifyOtpForRequestMergeAccount = async (
+        req: Request,
+        res: Response
+    ) => {
         const body = req.body as VerifyOTP;
         await authService.verifyOTPForRequestMergeAccount(body.email, body.otp);
         res.json(ApiResponse.success('Merge account success', null));
-    }
+    };
 }
 
 export default new AuthController();
