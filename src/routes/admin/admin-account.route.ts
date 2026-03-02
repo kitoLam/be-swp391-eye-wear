@@ -19,8 +19,6 @@ const router = Router();
 
 // Tất cả các route admin account đều yêu cầu đăng nhập và role SYSTEM_ADMIN
 router.use(authenticateMiddleware);
-router.use(requireAdminRoles([RoleType.SYSTEM_ADMIN]));
-
 router.get(
     '/',
     validateQuery(AdminAccountListQuerySchema),
@@ -32,6 +30,7 @@ router.get(
     validateParams(ObjectIdSchema),
     adminAccountController.getDetail
 );
+router.use(requireAdminRoles([RoleType.SYSTEM_ADMIN]));
 
 router.post(
     '/',
