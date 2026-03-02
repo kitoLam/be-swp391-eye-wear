@@ -300,7 +300,9 @@ class OrderService {
         foundOrder.verifiedAt = new Date(),
         // update order status 
         foundOrder.status = OrderStatus.APPROVED;
+        foundOrder.staffNote = payload.note ?? '';
         await foundOrder.save();
+        return foundOrder;
     }
 
     countTotalOrders = async (query: OrderCountTotalQuery) => {

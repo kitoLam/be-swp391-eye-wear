@@ -81,8 +81,10 @@ class OrderController {
         const adminContext = req.adminAccount!;
         const orderId = req.params.id as string;
         const body = req.body as ApproveOrderDTO;
-        await orderService.approveOrder(adminContext, orderId, body);
-        res.json(ApiResponse.success('Approve order successfully', null));
+        const updatedOrder = await orderService.approveOrder(adminContext, orderId, body);
+        res.json(ApiResponse.success('Approve order successfully', {
+            updatedOrder
+        }));
     }
 
     countTotalOrders = async (req: Request, res: Response) => {

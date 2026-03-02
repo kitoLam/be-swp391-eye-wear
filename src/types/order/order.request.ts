@@ -14,7 +14,8 @@ export type ClientUpdateOrder = z.infer<typeof ClientUpdateOrderPrescriptionSche
 
 // ========= Admin Request Schema ==================
 export const ApproveOrderSchema = z.object({
-    parameters: LensParametersSchema
+    parameters: LensParametersSchema,
+    note: z.string().max(500, 'Note must not exceed 500 characters').optional(),
 });
 
 export const AssignOrderSchema = z.object({

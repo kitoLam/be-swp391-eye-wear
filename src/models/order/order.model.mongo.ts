@@ -136,6 +136,10 @@ const OrderSchema = new Schema<IOrderDocument>(
             type: Date,
             default: null,
         },
+        staffNote: {
+            type: String,
+            default: null,
+        }
     },
     {
         timestamps: true,

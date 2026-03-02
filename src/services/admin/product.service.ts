@@ -203,6 +203,7 @@ class ProductService {
      * @returns Danh sách sản phẩm và thông tin phân trang
      */
     getProductList = async (query: ProductListQuery) => {
+        console.log(query)
         // Xây dựng filter
         const filter: any = {};
 
@@ -211,30 +212,30 @@ class ProductService {
         }
 
         if (query.brand) {
-            filter.brand = query.brand;
+            filter.brand = {$in: query.brand}
         }
-
+        
         if (query.search) {
             filter.nameBase = { $regex: query.search, $options: 'i' };
         }
 
         // Spec filters for frame/sunglass
         if (query.material) {
-            filter['spec.material'] = query.material;
+            filter['spec.material'] = {$in: query.material};
         }
         if (query.shape) {
-            filter['spec.shape'] = query.shape;
+            filter['spec.shape'] = {$in: query.shape};
         }
         if (query.gender) {
-            filter['spec.gender'] = query.gender;
+            filter['spec.gender'] = {$in: query.gender};
         }
         if (query.style) {
-            filter['spec.style'] = query.style;
+            filter['spec.style'] = {$in: query.style};
         }
 
         // Spec filters for lens
         if (query.feature) {
-            filter['spec.feature'] = query.feature;
+            filter['spec.feature'] = {$in: query.feature};
         }
         if (query.origin) {
             filter['spec.origin'] = query.origin;
