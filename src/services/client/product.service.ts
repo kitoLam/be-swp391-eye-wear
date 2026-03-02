@@ -384,24 +384,19 @@ class ProductService {
             .join(' | ');
 
         const queryEmbedding = await this.embedQueryText(queryText);
-        const candidates = await ProductModel.find(query).limit(80);
-        const ranked = candidates
-            .map(item => {
-                const embedding = Array.isArray((item as any).embedding)
-                    ? ((item as any).embedding as number[])
-                    : [];
-
-                return {
-                    item,
-                    score: this.cosineSimilarity(queryEmbedding, embedding),
-                };
-            })
-            .filter(x => x.score > -1)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 4)
-            .map(x => x.item);
-        if (ranked.length > 0) {
-            return ranked;
+        const candidates = await ProductModel.aggregate([
+            {
+                $vectorSearch: {
+                    index: "vector_index_embedding", // Tên index bạn tạo trên Atlas
+                    path: "embedding",    // Trường chứa vector trong DB
+                    queryVector: queryEmbedding,
+                    numCandidates: 100,    // Số lượng ứng viên để xem xét
+                    limit: 4,              // Lấy ra đúng 4 kết quả tốt nhất
+                }
+            }
+        ]);
+        if (candidates.length > 0) {
+            return candidates;
         }
         
         return ProductModel.find({
