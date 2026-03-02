@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import paymentClientService from '../../services/client/payment.service';
 import { ApiResponse } from '../../utils/api-response';
 import { CreatePayment } from '../../types/payment/payment';
+import { config } from '../../config/env.config';
 
 class PaymentController {
     getVnpayPaymentUrl = async (req: Request, res: Response) => {
@@ -15,7 +16,7 @@ class PaymentController {
     handlePaymentWithVnPayResult = async (req: Request, res: Response) => {
       let vnp_Params = req.query;
       const result = await paymentClientService.handleVnpayPaymentResultCallback(vnp_Params);
-      res.json(ApiResponse.success('Thanh toán vnpay thanh cong', result));
+      res.redirect(`${config.cors.origin[2]}/payment-result`);
     }
 
     getZaloPaymentUrl = async (req: Request, res: Response) => {
