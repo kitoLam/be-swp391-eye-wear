@@ -10,10 +10,9 @@ class ShipService {
         }
 
         return {
-            shipId: ship._id,
+            shipCode: ship._id,
         };
     };
 }
 
 export default new ShipService();
-
