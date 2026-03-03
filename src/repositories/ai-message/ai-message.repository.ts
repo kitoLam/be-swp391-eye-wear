@@ -47,6 +47,16 @@ export class AIMessageRepository extends BaseRepository<IAIMessage> {
 
         return messageList;
     };
+
+    getRecentMessages = async (conversationId: string, limit: number = 10) => {
+        const messages = await AIMessageModel.find({ conversationId })
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .lean();
+
+        // Return in chronological order (oldest first)
+        return messages.reverse();
+    };
 }
 
 export const aiMessageRepository = new AIMessageRepository();

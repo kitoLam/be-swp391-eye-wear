@@ -24,7 +24,7 @@ import { Variant } from '../../types/product/variant/variant';
 import { preOrderImportRepository } from '../../repositories/pre-order-import/pre-order-import.repository';
 import { compareDate } from '../../utils/date.util';
 import { PreOrderImportStatus } from '../../config/enums/pre-order-import.enum';
-import { embeddingModel } from '../../config/google-gemini-ai.config';
+import { embeddingModel, model } from '../../config/google-gemini-ai.config';
 
 class ProductService {
     /**
@@ -365,23 +365,61 @@ class ProductService {
         return query;
     }
 
-    buildQueryForAISuggestion = async (intent: any, userMessage?: string) => {
+    private async generateQueryFromHistory(messageHistory: any[]): Promise<string> {
+        const conversationText = messageHistory
+            .map(msg => `${msg.role}: ${msg.content}`)
+            .join('\n');
+
+        const prompt = `Based on the following conversation between a customer and an AI eyewear sales assistant, extract and summarize the customer's current product requirements in a concise format.
+
+Conversation:
+${conversationText}
+
+Please provide a brief summary (1-2 sentences) that captures:
+- Product type (frame/sunglass/lens)
+- Gender preference (male/female/unisex)
+- Price range
+- Color preference
+- Shape preference
+- Style preference
+- Brand preference
+- Special features
+
+Only include information that was explicitly mentioned or clearly implied. If something wasn't discussed, don't include it.
+
+Summary:`;
+
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+    }
+
+    buildQueryForAISuggestion = async (intent: any, userMessage?: string, messageHistory?: any[]) => {
         const query = this.buildMongoFilterFromIntent(intent);
 
-        const queryText = [
-            userMessage ?? '',
-            `type=${intent?.type ?? ''}`,
-            `gender=${intent?.gender ?? ''}`,
-            `color=${intent?.color ?? ''}`,
-            `shape=${intent?.shape ?? ''}`,
-            `priceLower=${intent?.priceLower ?? ''}`,
-            `priceUpper=${intent?.priceUpper ?? ''}`,
-            `style=${intent?.style ?? ''}`,
-            `brand=${intent?.brand ?? ''}`,
-            `feature=${intent?.feature ?? ''}`,
-        ]
-            .filter(Boolean)
-            .join(' | ');
+        let queryText = '';
+
+        // If message history is provided, use AI to generate a summary of requirements
+        if (messageHistory && messageHistory.length > 0) {
+            queryText = await this.generateQueryFromHistory(messageHistory);
+            console.log(">>>Generated query from history::", queryText);
+        } else {
+            // Fallback to the old approach if no message history
+            queryText = [
+                userMessage ?? '',
+                `type=${intent?.type ?? ''}`,
+                `gender=${intent?.gender ?? ''}`,
+                `color=${intent?.color ?? ''}`,
+                `shape=${intent?.shape ?? ''}`,
+                `priceLower=${intent?.priceLower ?? ''}`,
+                `priceUpper=${intent?.priceUpper ?? ''}`,
+                `style=${intent?.style ?? ''}`,
+                `brand=${intent?.brand ?? ''}`,
+                `feature=${intent?.feature ?? ''}`,
+            ]
+                .filter(Boolean)
+                .join(' | ');
+            console.log(">>> use intent");
+        }
 
         const queryEmbedding = await this.embedQueryText(queryText);
         const candidates = await ProductModel.aggregate([
@@ -398,7 +436,7 @@ class ProductService {
         if (candidates.length > 0) {
             return candidates;
         }
-        
+
         return ProductModel.find({
             ...query,
             embedding: { $exists: false },

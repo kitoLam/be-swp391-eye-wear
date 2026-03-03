@@ -72,7 +72,8 @@ class AIConversation {
          * =====================
          */
         if (session.stage === 'REFINING') {
-            const products = await productService.buildQueryForAISuggestion(session.intent, message);
+            const messageHistory = await aiMessageService.getRecentMessages(session._id.toString(), 10);
+            const products = await productService.buildQueryForAISuggestion(session.intent, message, messageHistory);
             console.log(">>>products::", products.length);
             for (const item of products) {
                 console.log(">>>id match::", item._id);
@@ -89,10 +90,11 @@ class AIConversation {
 
         /**
          * =====================
-         * RECOMMENDING 
+         * RECOMMENDING
          * =====================
          */
-        const products = await productService.buildQueryForAISuggestion(session.intent, message);
+        const messageHistory = await aiMessageService.getRecentMessages(session._id.toString(), 10);
+        const products = await productService.buildQueryForAISuggestion(session.intent, message, messageHistory);
         console.log(">>>products::", products.length);
         for (const item of products) {
             console.log(">>>id match::", item._id);
