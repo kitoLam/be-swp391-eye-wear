@@ -37,7 +37,7 @@ class AuthController {
         const tokenPair = await authService.login(body, deviceId);
         res.cookie('refreshTokenClient', tokenPair.refreshToken, {
             httpOnly: true,
-            secure: config.env == 'production' ? true : false,
+            secure: config.env == 'deployment' ? true : false,
             maxAge: config.jwt.refreshExpiresInSecond * 1000,
             sameSite: config.env == 'deployment' ? 'none' : 'lax',
         });
