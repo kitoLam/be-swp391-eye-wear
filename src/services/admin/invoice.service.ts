@@ -111,12 +111,18 @@ class InvoiceService {
                 'You can not approve invoice if current status is not DEPOSITED'
             );
         }
+        // Tương thích cả dữ liệu cũ lưu invoiceId dạng string và dữ liệu mới dạng ObjectId
+        const invoiceOrderFilter = {
+            $or: [
+                { invoiceId: invoiceDetail._id },
+                { invoiceId: invoiceDetail._id.toString() },
+            ],
+        };
+
         // tất cả Order phải được approve rồi
-        const totalAllOrders = await orderRepository.count({
-            invoiceId: invoiceDetail._id,
-        });
+        const totalAllOrders = await orderRepository.count(invoiceOrderFilter);
         const totalApprovedOrders = await orderRepository.count({
-            invoiceId: invoiceDetail._id,
+            ...invoiceOrderFilter,
             status: OrderStatus.APPROVED,
         });
         if (totalAllOrders != totalApprovedOrders) {
@@ -125,14 +131,9 @@ class InvoiceService {
             );
         }
         // Cập nhật các order trong invoice này thành waiting assign
-        await orderRepository.updateMany(
-            {
-                invoiceId: invoiceDetail._id,
-            },
-            {
-                status: OrderStatus.WAITING_ASSIGN,
-            }
-        );
+        await orderRepository.updateMany(invoiceOrderFilter, {
+            status: OrderStatus.WAITING_ASSIGN,
+        });
         // Cập nhật trạng thái approve
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.APPROVED,
