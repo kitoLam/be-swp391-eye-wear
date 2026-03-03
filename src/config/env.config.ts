@@ -140,7 +140,7 @@ export const config: Config = {
             process.env.FE_ADMIN_DOMAIN || '',
             'https://eyewear-optic.shop',
             'https://www.eyewear-optic.shop',
-            'https://test-auth-proj.vercel.app/'
+            'https://test-auth-proj.vercel.app'
         ],
     },
 
