@@ -5,7 +5,7 @@ services:
         ports:
             - '5000:5000'
         environment:
-            - NODE_ENV=production
+            - NODE_ENV=deployment
         env_file:
             - .env
         restart: always
