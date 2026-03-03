@@ -35,11 +35,12 @@ class AuthController {
         const body = req.body as LoginCustomerDTO;
         const deviceId = req.headers['x-device-id'];
         const tokenPair = await authService.login(body, deviceId);
-        res.cookie(
-            'refreshTokenClient',
-            tokenPair.refreshToken,
-            getCrossSiteCookieOptions(req)
-        );
+        res.cookie('refreshTokenClient', tokenPair.refreshToken, {
+            httpOnly: true,
+            secure: config.env == 'deployment' ? true : false,
+            maxAge: config.jwt.refreshExpiresInSecond * 1000,
+            sameSite: 'none',
+        });
         res.json(
             ApiResponse.success('Login successfully', {
                 accessToken: tokenPair.accessToken,
@@ -104,11 +105,12 @@ class AuthController {
             req.user as any,
             deviceId
         );
-        res.cookie(
-            'refreshTokenClient',
-            tokenPair.refreshToken,
-            getCrossSiteCookieOptions(req)
-        );
+        res.cookie('refreshTokenClient', tokenPair.refreshToken, {
+            httpOnly: true,
+            secure: config.env == 'deployment' ? true : false,
+            maxAge: config.jwt.refreshExpiresInSecond * 1000,
+            sameSite: 'none',
+        });
         res.redirect(
             `${config.cors.origin[2]}/google/oauth/callback?accessToken=${tokenPair.accessToken}`
         );
