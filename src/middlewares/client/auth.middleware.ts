@@ -62,6 +62,7 @@ const verifyRefreshTokenMiddlewareClient = async (
         }
         // check token and device id in headers
         const refreshToken = req.cookies.refreshTokenClient;
+        console.log(">>>refreshToken::", refreshToken);
         if (!refreshToken) {
             throw new UnauthorizedRequestError('Invalid refresh token');
         }
