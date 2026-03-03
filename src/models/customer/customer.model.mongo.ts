@@ -40,6 +40,10 @@ const ParametersSchema = new Schema({
         ADD: { type: Number, required: true },
     },
     PD: { type: Number, required: true },
+    isDefault: {
+        type: Boolean,
+        default: false
+    }
 }, {_id: true});
 // Main Customer Schema
 const CustomerSchema = new Schema<ICustomerDocument>(

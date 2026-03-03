@@ -49,6 +49,11 @@ class CustomerController {
         res.json(ApiResponse.success('Get default address successfully', { address }));
     };
 
+    updateCustomerAddress = async (req: Request, res: Response) => {
+        await customerService.updateCustomerAddress(req.customer!, req.params.id as string, req.body);
+        res.json(ApiResponse.success('Update address successfully', null));
+    };
+
     resetAddressDefault = async (req: Request, res: Response) => {
         await customerService.resetAddressDefault(req.customer!, req.params.id as string);
         res.json(ApiResponse.success('Reset default address successfully', null));
@@ -59,7 +64,35 @@ class CustomerController {
         res.json(ApiResponse.success('Remove address successfully', null));
     };
 
-    addCustomerPrescription = async (req: Request, res: Response) => {};
+    addCustomerPrescription = async (req: Request, res: Response) => {
+        await customerService.addCustomerPrescription(req.customer!, req.body);
+        res.json(ApiResponse.success('Add prescription successfully', null));
+    };
+
+    getCustomerPrescriptions = async (req: Request, res: Response) => {
+        const prescriptions = await customerService.getCustomerPrescriptions(req.customer!);
+        res.json(ApiResponse.success('Get prescriptions successfully', { prescriptions }));
+    };
+
+    getCustomerPrescriptionDefault = async (req: Request, res: Response) => {
+        const prescription = await customerService.getCustomerPrescriptionDefault(req.customer!);
+        res.json(ApiResponse.success('Get default prescription successfully', { prescription }));
+    };
+
+    updateCustomerPrescription = async (req: Request, res: Response) => {
+        await customerService.updateCustomerPrescription(req.customer!, req.params.id as string, req.body);
+        res.json(ApiResponse.success('Update prescription successfully', null));
+    };
+
+    resetPrescriptionDefault = async (req: Request, res: Response) => {
+        await customerService.resetPrescriptionDefault(req.customer!, req.params.id as string);
+        res.json(ApiResponse.success('Reset default prescription successfully', null));
+    };
+
+    removeCustomerPrescription = async (req: Request, res: Response) => {
+        await customerService.removeCustomerPrescription(req.customer!, req.params.id as string);
+        res.json(ApiResponse.success('Remove prescription successfully', null));
+    };
 }
 
 export default new CustomerController();
