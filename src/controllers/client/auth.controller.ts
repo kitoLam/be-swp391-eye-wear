@@ -39,7 +39,7 @@ class AuthController {
             httpOnly: true,
             secure: config.env == 'deployment' ? true : false,
             maxAge: config.jwt.refreshExpiresInSecond * 1000,
-            sameSite: 'none',
+            sameSite: config.env == 'deployment' ? 'none' : 'lax',
         });
         res.json(
             ApiResponse.success('Login successfully', {
@@ -109,7 +109,7 @@ class AuthController {
             httpOnly: true,
             secure: config.env == 'deployment' ? true : false,
             maxAge: config.jwt.refreshExpiresInSecond * 1000,
-            sameSite: 'none',
+            sameSite: config.env == 'deployment' ? 'none' : 'lax',
         });
         res.redirect(
             `${config.cors.origin[2]}/google/oauth/callback?accessToken=${tokenPair.accessToken}`
