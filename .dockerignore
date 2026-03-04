@@ -1,0 +1,4 @@
+# Documentation (ignore when building Docker image)
+docs
+*.md
+
