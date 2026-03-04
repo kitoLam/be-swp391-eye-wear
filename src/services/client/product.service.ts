@@ -307,63 +307,6 @@ class ProductService {
         return values as number[];
     }
 
-    private buildMongoFilterFromIntent(intent: any) {
-        const query: any = {
-            deletedAt: null,
-            embedding: { $exists: true, $ne: null },
-        };
-
-        if (intent?.type) {
-            query.type = intent.type;
-            if (intent.type == 'lens') {
-                if (intent.feature) {
-                    query['spec.feature'] = {
-                        $regex: intent.feature,
-                        $options: 'i',
-                    };
-                }
-            } else {
-                if (intent.gender) {
-                    query['spec.gender'] = { $regex: intent.gender, $options: 'i' };
-                }
-                if (intent?.shape) {
-                    query['spec.shape'] = {
-                        $regex: intent.shape,
-                        $options: 'i',
-                    };
-                }
-                if (intent?.style) {
-                    query['spec.style'] = {
-                        $regex: intent.style,
-                        $options: 'i',
-                    };
-                }
-            }
-        }
-        if (intent.brand) {
-            query.brand = { $regex: intent.brand, $options: 'i' };
-        }
-        if (intent?.priceLower || intent?.priceUpper) {
-            query['variants.finalPrice'] = {};
-            if (intent.priceLower)
-                query['variants.finalPrice'].$gte = intent.priceLower;
-            if (intent.priceUpper)
-                query['variants.finalPrice'].$lte = intent.priceUpper;
-        }
-        if (intent?.color) {
-            query.variants = {
-                $elemMatch: {
-                    options: {
-                        $elemMatch: {
-                            label: { $regex: intent.color, $options: 'i' },
-                        },
-                    },
-                },
-            };
-        }
-
-        return query;
-    }
 
     private async generateQueryFromHistory(messageHistory: any[]): Promise<string> {
         const conversationText = messageHistory
@@ -393,32 +336,14 @@ Summary:`;
         return result.response.text();
     }
 
-    buildQueryForAISuggestion = async (intent: any, userMessage?: string, messageHistory?: any[]) => {
-        const query = this.buildMongoFilterFromIntent(intent);
-
+    buildQueryForAISuggestion = async (messageHistory?: any[]) => {
         let queryText = '';
 
-        // If message history is provided, use AI to generate a summary of requirements
+        // Generate query from message history
         if (messageHistory && messageHistory.length > 0) {
             queryText = await this.generateQueryFromHistory(messageHistory);
-            console.log(">>>Generated query from history::", queryText);
         } else {
-            // Fallback to the old approach if no message history
-            queryText = [
-                userMessage ?? '',
-                `type=${intent?.type ?? ''}`,
-                `gender=${intent?.gender ?? ''}`,
-                `color=${intent?.color ?? ''}`,
-                `shape=${intent?.shape ?? ''}`,
-                `priceLower=${intent?.priceLower ?? ''}`,
-                `priceUpper=${intent?.priceUpper ?? ''}`,
-                `style=${intent?.style ?? ''}`,
-                `brand=${intent?.brand ?? ''}`,
-                `feature=${intent?.feature ?? ''}`,
-            ]
-                .filter(Boolean)
-                .join(' | ');
-            console.log(">>> use intent");
+            throw new Error('Message history is required for AI suggestions');
         }
 
         const queryEmbedding = await this.embedQueryText(queryText);
@@ -433,14 +358,22 @@ Summary:`;
                 }
             }
         ]);
+
+        let products;
         if (candidates.length > 0) {
-            return candidates;
+            products = candidates;
+        } else {
+            // Fallback to any products with embeddings if no candidates found
+            products = await ProductModel.find({
+                deletedAt: null,
+                embedding: { $exists: true, $ne: null },
+            }).limit(4);
         }
 
-        return ProductModel.find({
-            ...query,
-            embedding: { $exists: false },
-        }).limit(4);
+        return {
+            paraphrasedIntent: queryText,
+            products: products
+        };
     };
 }
 export default new ProductService();

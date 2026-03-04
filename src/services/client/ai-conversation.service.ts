@@ -1,14 +1,6 @@
-import { REQUIRE_ASK_SLOT } from '../../config/constants/require-sale-ai-slot.constant';
 import { model } from '../../config/google-gemini-ai.config';
 import { AIConversationSessionModel } from '../../models/ai-conversation-session/ai-conversation-session.model';
-import { buildAnswerPrompt } from '../../utils/prompt.util';
-import {
-    askForMissingSlots,
-    extractIntentByLLM,
-    getMissingRequiredSlots,
-    isReadyToRecommend,
-    mergeIntent,
-} from '../../utils/sale-ai.util';
+import { buildAnswerPrompt, buildIntentClassificationPrompt, buildInfoResponsePrompt } from '../../utils/prompt.util';
 import { isAISessionExpired, resetSession } from '../../utils/sale-ai.util';
 import aiMessageService from './ai-message.service';
 import productService from './product.service';
@@ -37,75 +29,53 @@ class AIConversation {
         session.lastInteractionAt = new Date();
         // end checkout timeout
 
-        // extract intent from user message
-        const extracted = await extractIntentByLLM(message);
-        console.log(">>>extracted::", extracted);
-        session.intent = mergeIntent(session.intent, extracted );
-        console.log("current intent::", session.intent);
-        if (extracted.isRefinement && session.stage === 'RECOMMENDING') {
-            session.stage = 'REFINING';
-        }
-        // end extracting intent from user message;
+        // Save user message
         await aiMessageService.createMessage('CUSTOMER', session._id.toString(), message);
-        /**
-         * =====================
-         * DISCOVERY
-         * =====================
-         */
-        if (session.stage === 'DISCOVERY') {
-            if (!isReadyToRecommend(session.intent)) {
-                const missingSlots = getMissingRequiredSlots(session.intent, REQUIRE_ASK_SLOT);
-                const askToDiscoveryMessage = await askForMissingSlots(missingSlots[0], session.intent, message);
-                await session.save();
-                await aiMessageService.createMessage('AI', session._id.toString(), askToDiscoveryMessage);
-                return {
-                    message: askToDiscoveryMessage,
-                };
-            }
+        // Step 1: Classify intent (SHOPPING or INFO)
+        const classificationPrompt = buildIntentClassificationPrompt(message);
+        const classificationResult = await model.generateContent(classificationPrompt);
+        const classificationText = classificationResult.response.text();
 
-            session.stage = 'RECOMMENDING';
+        let intentClassification;
+        try {
+            const jsonMatch = classificationText.match(/\{[\s\S]*\}/);
+            intentClassification = jsonMatch ? JSON.parse(jsonMatch[0]) : { intentType: 'SHOPPING' };
+        } catch (error) {
+            console.error('Error parsing intent classification:', error);
+            intentClassification = { intentType: 'SHOPPING' }; // Default to SHOPPING if parsing fails
         }
 
-        /**
-         * =====================
-         * REFINING
-         * =====================
-         */
-        if (session.stage === 'REFINING') {
+        console.log('>>> Intent Classification:', intentClassification);
+
+        let aiResponse: string;
+
+        if (intentClassification.intentType === 'INFO') {
+            // Handle INFO: Direct response without product search
+            const infoPrompt = buildInfoResponsePrompt(message);
+            const infoResult = await model.generateContent(infoPrompt);
+            aiResponse = infoResult.response.text();
+            console.log('>>> INFO intent - Direct response');
+        } else {
+            // Get message history for intent classification
             const messageHistory = await aiMessageService.getRecentMessages(session._id.toString(), 10);
-            const products = await productService.buildQueryForAISuggestion(session.intent, message, messageHistory);
-            console.log(">>>products::", products.length);
-            for (const item of products) {
-                console.log(">>>id match::", item._id);
-            }
-            const prompt = buildAnswerPrompt(message, products);
+            const formattedHistory = messageHistory
+                .map((msg: any) => `${msg.sender === 'CUSTOMER' ? 'Khách' : 'AI'}: ${msg.message}`)
+                .join('\n');
+            // Handle SHOPPING: Original flow with embedding and product search
+            const { paraphrasedIntent, products } = await productService.buildQueryForAISuggestion(messageHistory);
+            console.log(">>>paraphrased intent::", paraphrasedIntent);
+            console.log(`>>> id match:${products.length} products:`, products.map(item => item._id.toString()).join(","));
+
+            const prompt = buildAnswerPrompt(paraphrasedIntent, products);
             const result = await model.generateContent(prompt);
-            const text = result.response.text();
-            await aiMessageService.createMessage('AI', session._id.toString(), text);
-            session.stage = 'RECOMMENDING';
-            await session.save();
-
-            return { message: text };
+            aiResponse = result.response.text();
+            console.log('>>> SHOPPING intent - Product search executed');
         }
 
-        /**
-         * =====================
-         * RECOMMENDING
-         * =====================
-         */
-        const messageHistory = await aiMessageService.getRecentMessages(session._id.toString(), 10);
-        const products = await productService.buildQueryForAISuggestion(session.intent, message, messageHistory);
-        console.log(">>>products::", products.length);
-        for (const item of products) {
-            console.log(">>>id match::", item._id);
-        }
-
-        const prompt = buildAnswerPrompt(message, products);
-        const result = await model.generateContent(prompt);
-        await aiMessageService.createMessage('AI', customerId, result.response.text());
+        await aiMessageService.createMessage('AI', session._id.toString(), aiResponse);
         await session.save();
 
-        return { message: result.response.text() };
+        return { message: aiResponse };
     }
 }
 

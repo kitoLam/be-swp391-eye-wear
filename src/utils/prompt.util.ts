@@ -29,7 +29,7 @@ Rules:
 `;
 }
 
-export function buildAnswerPrompt(message: string, products: any[]) {
+export function buildAnswerPrompt(paraphrasedIntent: string, products: any[]) {
     const context = products
         .map((p, index) => {
             const variantPrice = Array.isArray(p.variants)
@@ -69,8 +69,8 @@ Rules:
 - Mỗi sản phẩm gợi ý cần nêu lý do phù hợp ngắn gọn.
 - Luôn kèm link chi tiết đúng theo dữ liệu đã cho.
 
-User:
-"${message}"
+Customer Intent Summary:
+"${paraphrasedIntent}"
 
 Product Length: ${products.length}
 
@@ -107,5 +107,58 @@ Nhiệm vụ của bạn:
 - Không nói bạn là AI.
 
 Chỉ trả về câu hỏi.
+`;
+}
+
+export function buildIntentClassificationPrompt(messageHistory: string) {
+    return `
+Bạn là trợ lý AI phân loại ý định khách hàng.
+
+Lịch sử chat gần đây:
+${messageHistory}
+
+Phân loại câu hỏi/yêu cầu cuối cùng của khách vào 1 trong 2 loại:
+
+1. SHOPPING: Khách muốn tìm/mua/được tư vấn sản phẩm kính (gọng kính, kính râm, tròng kính)
+   VD: "Tìm kính râm nam", "Có kính gì giá rẻ không", "Muốn mua gọng kính Rayban", "Xem kính nữ đẹp"
+
+2. INFO: Khách hỏi thông tin chung về shop, chính sách, dịch vụ, hoặc chào hỏi
+   VD: "Shop mở cửa mấy giờ?", "Có ship hàng không?", "Địa chỉ shop ở đâu?", "Xin chào", "Bảo hành như thế nào?"
+
+Trả về JSON duy nhất:
+{
+  "intentType": "SHOPPING" | "INFO",
+  "confidence": "high" | "medium" | "low"
+}
+
+Không giải thích. Chỉ trả JSON.
+`;
+}
+
+export function buildInfoResponsePrompt(messageHistory: string) {
+    return `
+Bạn là nhân viên tư vấn của shop kính Optic View.
+
+Thông tin shop:
+- Tên shop: Optic View
+- Địa chỉ: Nhà Văn hóa sinh viên, Quận 9, TP. HCM
+- Giờ mở cửa: 9:00 - 21:00 (Thứ 2 - Chủ nhật)
+- Hotline: 1900 xxxx
+- Dịch vụ: Bán kính gọng, kính râm, tròng kính. Có dịch vụ đo mắt và cắt kính theo yêu cầu
+- Thanh toán: Tiền mặt, chuyển khoản, thẻ
+- Giao hàng: Giao hàng toàn quốc với đồng giá shop 10.000 VND
+
+KHÁCH GHI: 
+${messageHistory}
+
+Nhiệm vụ:
+- Trả lời NGẮN GỌN, TỰ NHIÊN câu hỏi của khách
+- CÓ THỂ LẤY 1 TRONG NHỮNG THÔNG TIN Ở TRÊN TÔI ĐÃ CUNG CẤP NẾU CẦN CÒN KHÔNG THÌ ĐỪNG CUNG CẤP CHO KHÁCH
+- Chỉ dùng thông tin đã cung cấp ở trên
+- Nếu không biết thông tin, hãy lịch sự xin lỗi và đề nghị khách liên hệ hotline
+- Không nói bạn là AI
+- Giọng điệu thân thiện, chuyên nghiệp
+- QUAN TRỌNG: KHÔNG TRẢ LỜI NHỮNG THỨ THỪA THẢI, VÍ DỤ KHÁCH HỎI XIN CHÀO THÌ CHỈ CẦN TRẢ LỜI LẠI KHÁCH KHÔNG CẦN HIỆN THÔNG TIN GÌ THÊM
+Chỉ trả về câu trả lời.
 `;
 }
