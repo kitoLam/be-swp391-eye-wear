@@ -33,6 +33,15 @@ class OrderService {
         if (!foundOrder) {
             throw new NotFoundRequestError('Order not found');
         }
+        const foundInvoice = await invoiceRepository.findOne({
+            _id: foundOrder.invoiceId
+        });
+        if(!foundInvoice){
+            throw new NotFoundRequestError('Invoice of order not found');
+        }
+        if(foundInvoice.status != InvoiceStatus.ONBOARD){
+            throw new ConflictRequestError('Invoice of order need to be onboard before assigning order to staff');
+        }
         if(foundOrder.status != OrderStatus.WAITING_ASSIGN){
             throw new ConflictRequestError('Only waiting assigned order can move to this step');
         }

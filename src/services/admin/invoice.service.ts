@@ -96,15 +96,6 @@ class InvoiceService {
         if (!invoiceDetail) {
             throw new NotFoundRequestError('Invoice not found');
         }
-        // Đơn bị hủy rồi thì ko cho approve
-        if (
-            invoiceDetail.status == InvoiceStatus.CANCELED ||
-            invoiceDetail.status == InvoiceStatus.REJECTED
-        ) {
-            throw new ConflictRequestError(
-                'Invoice is canceled or rejected , you can not change status anymore'
-            );
-        }
         // Muốn approve thì khách hiện tại phải đã cọc xong rồi
         if (!(invoiceDetail.status == InvoiceStatus.DEPOSITED)) {
             throw new ConflictRequestError(
@@ -296,6 +287,13 @@ class InvoiceService {
         invoiceId: string,
         adminContext: AuthAdminContext
     ) => {
+        const foundInvoice = await invoiceRepository.findById(invoiceId);
+        if(!foundInvoice){
+            throw new NotFoundRequestError('Invoice not found');
+        }
+        if(foundInvoice.status !== InvoiceStatus.APPROVED){
+            throw new ConflictRequestError('Invoice need to be approved before onboard');
+        }
         await orderRepository.updateByFilter(
             {
                 invoiceId: invoiceId,
@@ -324,17 +322,9 @@ class InvoiceService {
         if (!invoiceDetail) {
             throw new NotFoundRequestError('Invoice not found');
         }
-
-        // Check if invoice is already canceled or rejected
-        if (
-            invoiceDetail.status === InvoiceStatus.CANCELED ||
-            invoiceDetail.status === InvoiceStatus.REJECTED
-        ) {
-            throw new ConflictRequestError(
-                'Cannot complete a canceled or rejected invoice'
-            );
+        if(invoiceDetail.status !== InvoiceStatus.ONBOARD){
+            throw new ConflictRequestError('Invoice need to be onboarding before being complete');
         }
-
         // Enforce all orders must be completed
         const totalAllOrders = await orderRepository.count({
             invoiceId: invoiceDetail._id,

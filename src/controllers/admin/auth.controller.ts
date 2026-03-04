@@ -26,7 +26,12 @@ class AuthController {
         const body = req.body as LoginBodyDTO;
         const deviceId = req.headers['x-device-id'];
         const data = await authService.login(body, deviceId);
-        res.cookie('refreshToken', data.refreshToken, getCrossSiteCookieOptions(req));
+        res.cookie('refreshToken', data.refreshToken, {
+            httpOnly: true,
+            secure: config.env == 'deployment' ? true : false,
+            maxAge: config.jwt.refreshExpiresInSecond * 1000,
+            sameSite: config.env == 'deployment' ? 'none' : 'lax',
+        });
         res.json(
             ApiResponse.success(authMessage.success.login, {
                 accessToken: data.accessToken,
