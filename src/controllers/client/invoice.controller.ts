@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import invoiceClientService from '../../services/client/invoice.service';
 import { ApiResponse } from '../../utils/api-response';
 import { ClientUpdateInvoice } from '../../types/invoice/client-invoice';
+import { mailAdminService } from '../../services/admin/mail.service';
 
 class InvoiceController {
     /**
@@ -17,6 +18,12 @@ class InvoiceController {
         );
 
         res.json(ApiResponse.success('Tạo hóa đơn thành công!', data));
+
+        // Notify customer via email (asynchronous queue-based)
+        // data contains { invoice, payment }
+        if (data && data.invoice) {
+            mailAdminService.sendInvoiceConfirmation(data.invoice);
+        }
     };
 
     /**
@@ -51,9 +58,9 @@ class InvoiceController {
         );
 
         res.json(
-            ApiResponse.success('Lấy chi tiết hóa đơn thành công!', { 
-                ...data
-             })
+            ApiResponse.success('Lấy chi tiết hóa đơn thành công!', {
+                ...data,
+            })
         );
     };
 
@@ -63,9 +70,7 @@ class InvoiceController {
             invoiceId as string,
             req.customer!
         );
-        res.json(
-            ApiResponse.success('Cancel invoice successfully', null)
-        );
+        res.json(ApiResponse.success('Cancel invoice successfully', null));
     };
 
     updateInvoice = async (req: Request, res: Response) => {
@@ -74,10 +79,10 @@ class InvoiceController {
         const data = await invoiceClientService.updateInvoice(
             req.customer!,
             invoiceId as string,
-            payload,
+            payload
         );
         res.json(ApiResponse.success('Update invoice successfully', data));
-    }
+    };
 }
 
 export default new InvoiceController();
