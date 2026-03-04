@@ -4,6 +4,7 @@ import { connectMongoDB } from './config/database/mongodb.config';
 import { redisClient } from './config/database/redis.config';
 import { checkSupabaseConnection } from './config/supabase.config';
 import './queues/invoice.worker';
+import './queues/mail.worker';
 const startServer = async () => {
     try {
         // Connect to databases
