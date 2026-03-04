@@ -24,6 +24,7 @@ import { Variant } from '../../types/product/variant/variant';
 import { preOrderImportRepository } from '../../repositories/pre-order-import/pre-order-import.repository';
 import { compareDate } from '../../utils/date.util';
 import { PreOrderImportStatus } from '../../config/enums/pre-order-import.enum';
+import { embeddingModel, model } from '../../config/google-gemini-ai.config';
 
 class ProductService {
     /**
@@ -276,37 +277,103 @@ class ProductService {
         return dataFinal;
     };
 
-    buildQueryForAISuggestion = async (intent: any) => {
-        const query: any = {
-            type: intent.type,
-            deletedAt: null,
+    private cosineSimilarity(a: number[], b: number[]): number {
+        if (a.length !== b.length || a.length === 0) return -1;
+
+        let dot = 0;
+        let normA = 0;
+        let normB = 0;
+
+        for (let i = 0; i < a.length; i++) {
+            dot += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+
+        const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+        if (denominator === 0) return -1;
+
+        return dot / denominator;
+    }
+
+    private async embedQueryText(text: string): Promise<number[]> {
+        const result = await embeddingModel.embedContent(text);
+        const values = (result as any)?.embedding?.values;
+
+        if (!Array.isArray(values) || values.length === 0) {
+            throw new Error('Embedding result is empty or invalid');
+        }
+
+        return values as number[];
+    }
+
+
+    private async generateQueryFromHistory(messageHistory: any[]): Promise<string> {
+        const conversationText = messageHistory
+            .map(msg => `${msg.role}: ${msg.content}`)
+            .join('\n');
+
+        const prompt = `Based on the following conversation between a customer and an AI eyewear sales assistant, extract and summarize the customer's current product requirements in a concise format.
+
+Conversation:
+${conversationText}
+
+Please provide a brief summary (1-2 sentences) that captures:
+- Product type (frame/sunglass/lens)
+- Gender preference (male/female/unisex)
+- Price range
+- Color preference
+- Shape preference
+- Style preference
+- Brand preference
+- Special features
+
+Only include information that was explicitly mentioned or clearly implied. If something wasn't discussed, don't include it.
+
+Summary:`;
+
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+    }
+
+    buildQueryForAISuggestion = async (messageHistory?: any[]) => {
+        let queryText = '';
+
+        // Generate query from message history
+        if (messageHistory && messageHistory.length > 0) {
+            queryText = await this.generateQueryFromHistory(messageHistory);
+        } else {
+            throw new Error('Message history is required for AI suggestions');
+        }
+
+        const queryEmbedding = await this.embedQueryText(queryText);
+        const candidates = await ProductModel.aggregate([
+            {
+                $vectorSearch: {
+                    index: "vector_index_embedding", // Tên index bạn tạo trên Atlas
+                    path: "embedding",    // Trường chứa vector trong DB
+                    queryVector: queryEmbedding,
+                    numCandidates: 100,    // Số lượng ứng viên để xem xét
+                    limit: 4,              // Lấy ra đúng 4 kết quả tốt nhất
+                }
+            }
+        ]);
+
+        let products;
+        if (candidates.length > 0) {
+            products = candidates;
+        } else {
+            // Fallback to any products with embeddings if no candidates found
+            products = await ProductModel.find({
+                deletedAt: null,
+                embedding: { $exists: true, $ne: null },
+            }).limit(4);
+        }
+
+        return {
+            paraphrasedIntent: queryText,
+            products: products
         };
-
-        if (intent.priceLower || intent.priceUpper) {
-            query['variants.finalPrice'] = {};
-            if (intent.priceLower)
-                query['variants.finalPrice'].$gte = intent.priceLower;
-            if (intent.priceUpper)
-                query['variants.finalPrice'].$lte = intent.priceUpper;
-        }
-
-        if (intent.color) {
-            query.variants = {
-                $elemMatch: {
-                    options: {
-                        $elemMatch: {
-                            label: { $regex: intent.color, $options: 'i' },
-                        },
-                    },
-                },
-            };
-        }
-
-        if (intent.shape) {
-            query['spec.shape'] = { $regex: intent.shape, $options: 'i' };
-        }
-
-        return ProductModel.find(query).limit(4);
     };
 }
 export default new ProductService();

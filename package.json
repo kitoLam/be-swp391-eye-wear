@@ -9,7 +9,9 @@
         "start": "node dist/server.js",
         "lint": "eslint . --ext .ts",
         "lint:fix": "eslint . --ext .ts --fix",
-        "seed": "ts-node -r tsconfig-paths/register src/seed-data.ts"
+        "seed": "ts-node -r tsconfig-paths/register src/seed-data.ts",
+        "backup:products": "ts-node -r tsconfig-paths/register src/scripts/backup-products-collection.ts",
+        "embed:products": "ts-node -r tsconfig-paths/register src/scripts/embed-products.ts"
     },
     "dependencies": {
         "@google/generative-ai": "^0.24.1",

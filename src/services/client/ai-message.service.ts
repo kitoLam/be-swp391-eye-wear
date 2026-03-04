@@ -47,6 +47,11 @@ class AIMessageService {
         });
         return newMessage;
     };
+
+    getRecentMessages = async (conversationId: string, limit: number = 10) => {
+        const messages = await aiMessageRepository.getRecentMessages(conversationId, limit);
+        return messages;
+    };
 }
 
 export default new AIMessageService();
