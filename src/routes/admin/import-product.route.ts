@@ -3,12 +3,15 @@ import { ImportProductRequestSchema } from '../../types/import-product/import-pr
 import { validateBody } from '../../middlewares/share/validator.middleware';
 import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware';
 import importProductController from '../../controllers/admin/import-product.controller';
+import { RoleType } from '../../config/enums/admin-account';
+import { requireAdminRoles } from '../../middlewares/admin/authorization.middleware';
 
 const router = Router();
 
 router.post(
     '/',
     authenticateMiddleware,
+    requireAdminRoles([RoleType.OPERATION_STAFF]),
     validateBody(ImportProductRequestSchema),
     importProductController.importProduct
 );

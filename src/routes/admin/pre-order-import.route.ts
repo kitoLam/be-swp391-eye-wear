@@ -3,6 +3,8 @@ import { PreOrderImportRequestSchema } from '../../types/pre-order-import/pre-or
 import { validateBody } from '../../middlewares/share/validator.middleware';
 import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware';
 import preOrderImportController from '../../controllers/admin/pre-order-import.controller';
+import { requireAdminRoles } from '../../middlewares/admin/authorization.middleware';
+import { RoleType } from '../../config/enums/admin-account';
 
 const router = Router();
 
@@ -28,6 +30,7 @@ router.post(
      */
     '/',
     authenticateMiddleware,
+    requireAdminRoles([RoleType.MANAGER]),
     validateBody(PreOrderImportRequestSchema),
     preOrderImportController.createPreOrderImport
 );
@@ -35,12 +38,14 @@ router.post(
 router.patch(
     '/:id/cancel',
     authenticateMiddleware,
+    requireAdminRoles([RoleType.MANAGER]),
     preOrderImportController.cancelPreOrderImport
 );
 
 router.get(
     '/',
     authenticateMiddleware,
+    requireAdminRoles([RoleType.MANAGER]),
     preOrderImportController.getPreOrderImportsBySku
 );
 
