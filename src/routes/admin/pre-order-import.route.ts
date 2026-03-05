@@ -45,7 +45,7 @@ router.patch(
 router.get(
     '/',
     authenticateMiddleware,
-    requireAdminRoles([RoleType.MANAGER]),
+    // requireAdminRoles([RoleType.MANAGER]),
     preOrderImportController.getPreOrderImportsBySku
 );
 
