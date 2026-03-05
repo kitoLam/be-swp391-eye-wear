@@ -9,6 +9,8 @@ import { CreateReportTicketSchema } from '../../types/report-ticket/report-ticke
 import { ObjectIdSchema } from '../../types/common/objectId';
 import reportTicketController from '../../controllers/admin/report-ticket.controller';
 import { ReportTicketListQuerySchema } from '../../types/report-ticket/report-ticket.query';
+import { requireAdminRoles } from '../../middlewares/admin/authorization.middleware';
+import { RoleType } from '../../config/enums/admin-account';
 const router = Router();
 router.use(authenticateMiddleware);
 router.post(
@@ -33,16 +35,19 @@ router.get(
 );
 router.patch(
     '/:id/status/resolve',
+    requireAdminRoles([RoleType.SYSTEM_ADMIN]),
     validateParams(ObjectIdSchema),
     reportTicketController.resolveReportTicket
 );
 router.patch(
     '/:id/status/processing',
+    requireAdminRoles([RoleType.SYSTEM_ADMIN]),
     validateParams(ObjectIdSchema),
     reportTicketController.processReportTicket
 );
 router.patch(
     '/:id/status/reject',
+    requireAdminRoles([RoleType.SYSTEM_ADMIN]),
     validateParams(ObjectIdSchema),
     reportTicketController.rejectReportTicket
 );

@@ -57,11 +57,13 @@ router.get(
 // =============== SALE ROLE ===============
 router.patch(
     '/:id/status/approve',
+    requireAdminRoles([RoleType.SALE_STAFF]),
     validateParams(ObjectIdSchema),
     invoiceController.approveInvoice
 );
 router.patch(
     '/:id/status/reject',
+    requireAdminRoles([RoleType.SALE_STAFF]),
     validateParams(ObjectIdSchema),
     validateBody(RejectInvoiceSchema),
     invoiceController.rejectInvoice
@@ -71,12 +73,14 @@ router.patch(
 // =============== MANAGER ROLE =============
 router.patch(
     '/:id/assign/handle-delivery',
+    requireAdminRoles([RoleType.MANAGER]), 
     validateParams(ObjectIdSchema),
     validateBody(InvoiceAssignHandleDeliverySchema),
     invoiceController.assignInvoiceToHandleDelivery
 );
 router.patch(
     '/:id/status/onboard',
+    requireAdminRoles([RoleType.MANAGER]),
     validateParams(ObjectIdSchema),
     invoiceController.onboardInvoice
 );
@@ -90,6 +94,7 @@ router.patch(
 // =============== OPERATION ROLE =============
 router.patch(
     '/:id/status/ready-to-ship',
+    requireAdminRoles([RoleType.OPERATION_STAFF]),
     validateParams(ObjectIdSchema),
     invoiceController.readyToShipInvoice
 );
