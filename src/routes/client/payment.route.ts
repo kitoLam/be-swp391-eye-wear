@@ -10,14 +10,30 @@ router.get(
     '/vnpay/result-callback',
     paymentController.handlePaymentWithVnPayResult
 );
-router.post('/zalopay/result-callback', paymentController.handleZalopayResultCallback);
+router.post(
+    '/zalopay/result-callback',
+    paymentController.handleZalopayResultCallback
+);
+router.post(
+    '/payos/result-callback',
+    paymentController.handlePayOsResultCallback
+);
 // Create payment
 router.use(authenticateMiddlewareClient);
 router.get(
     '/vnpay/url/:invoiceId/:paymentId',
     paymentController.getVnpayPaymentUrl
 );
-router.get('/zalopay/url/:invoiceId/:paymentId', authenticateMiddlewareClient, paymentController.getZaloPaymentUrl);
+router.get(
+    '/zalopay/url/:invoiceId/:paymentId',
+    authenticateMiddlewareClient,
+    paymentController.getZaloPaymentUrl
+);
+router.get(
+    '/payos/url/:invoiceId/:paymentId',
+    authenticateMiddlewareClient,
+    paymentController.getPayosPaymentUrl
+);
 router.get('/:paymentId', paymentController.getPaymentDetail);
 
 export default router;

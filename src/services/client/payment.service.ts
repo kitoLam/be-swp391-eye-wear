@@ -21,6 +21,8 @@ import invoiceService from './invoice.service';
 import { removeJobFromQueue } from '../../queues/invoice.queue';
 import { ProductVariantMode } from '../../config/enums/product.enum';
 import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
+import { payOS } from '../../config/payos.config';
+import { config } from '../../config/env.config';
 class PaymentClientService {
     handlePaymentCallback = async (invoiceId: string, paymentId: string) => {
         // xóa timeout job
@@ -314,7 +316,48 @@ class PaymentClientService {
         console.log(resAxios);
         return resAxios.data.order_url;
     };
+    getPayosUrl = async (
+        customerId: string,
+        invoiceId: string,
+        paymentId: string
+    ) => {
+        const existInvoice = await invoiceRepository.findOne({
+            _id: invoiceId,
+            owner: customerId,
+            deletedAt: null,
+        });
+        if (!existInvoice) {
+            throw new NotFoundRequestError('Đơn hàng không tồn tại');
+        }
 
+        const orderForPayos = {
+            orderCode: new Date().getTime(),
+            amount: 2000,
+            description: `${paymentId}`,
+            items: [],
+            cancelUrl: `${config.cors.origin[2]}/payment-result?isSuccess=true&invoiceId=${invoiceId}`,
+            returnUrl: `${config.cors.origin[2]}/payment-result?isSuccess=false&invoiceId=${invoiceId}`,
+        }
+
+        const paymentUrl = await payOS.paymentRequests.create(orderForPayos);
+        return paymentUrl.checkoutUrl;
+    }
+    handlePayosResultCallback = async (paymentId: string) => {
+        const foundPayment = await paymentRepository.findOne({
+            _id: paymentId,
+            deletedAt: null,
+        });
+        if(!foundPayment){
+            throw new NotFoundRequestError('Thanh toán khỏng thông tin');
+        } else {
+            await this.handlePaymentCallback(
+                foundPayment.invoiceId,
+                foundPayment._id.toString()
+            );
+            console.log(">>>paymentId payos::", foundPayment._id.toString());
+            console.log(">>>invoiceId payos::", foundPayment.invoiceId);
+        }
+    }
     handleZalopayResultCallback = async (zaloPayload: {
         reqMac: string;
         dataStr: string;
