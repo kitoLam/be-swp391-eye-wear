@@ -93,6 +93,11 @@ class CustomerController {
         await customerService.removeCustomerPrescription(req.customer!, req.params.id as string);
         res.json(ApiResponse.success('Remove prescription successfully', null));
     };
+
+    changePassword = async (req: Request, res: Response) => {
+        await customerService.changePassword(req.customer!, req.body);
+        res.json(ApiResponse.success('Change password successfully', null));
+    }
 }
 
 export default new CustomerController();

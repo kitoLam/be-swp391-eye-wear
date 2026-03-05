@@ -8,6 +8,10 @@ export const UpdateCustomerProfileSchema = z.object({
     gender: z.enum(['F', 'M', 'N']),
     hobbies: z.array(z.string()).optional()
 });
+export const UpdateCustomerPasswordSchema = z.object({
+    oldPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+})
 export const AddCustomerAddressSchema = z.object({
     street: z.string().min(1, 'Street is required'),
     ward: z.string().min(1, 'Ward is required'),
@@ -61,3 +65,4 @@ export type AddCustomerPrescription = z.infer<typeof AddCustomerPrescriptionSche
 export type UpdateCustomerPrescription = z.infer<typeof UpdateCustomerPrescriptionSchema>;
 export type AddCustomerAddress = z.infer<typeof AddCustomerAddressSchema>;
 export type UpdateCustomerAddress = z.infer<typeof UpdateCustomerAddressSchema>;
+export type UpdateCustomerPassword = z.infer<typeof UpdateCustomerPasswordSchema>;
