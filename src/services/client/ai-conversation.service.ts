@@ -7,6 +7,7 @@ import {
 import { isAISessionExpired, resetSession } from '../../utils/sale-ai.util';
 import aiMessageService from './ai-message.service';
 import productService from './product.service';
+import { ProductModel } from '../../models/product/product.model.mongo';
 
 type ChatCompletionResponse = {
     choices?: Array<{
@@ -144,7 +145,7 @@ class AIConversation {
         } else {
             const messageHistory = await aiMessageService.getRecentMessages(
                 session._id.toString(),
-                10
+                1
             );
 
             const { paraphrasedIntent, products } =
@@ -155,7 +156,26 @@ class AIConversation {
                 products.map(item => item._id.toString()).join(',')
             );
 
-            const prompt = buildAnswerPrompt(paraphrasedIntent, products);
+            // Re-hydrate bằng product detail để đảm bảo có đủ variants/options mới nhất trước khi prompt AI
+            const productIds = products.map(item => item._id);
+            const productDetails = await ProductModel.find({
+                _id: { $in: productIds },
+                deletedAt: null,
+            }).lean();
+
+            const productDetailMap = new Map<string, any>(
+                productDetails.map(item => [String(item._id), item])
+            );
+
+            const enrichedProducts = products.map(item => {
+                const detailed = productDetailMap.get(String(item._id));
+                return detailed ?? item;
+            });
+
+            const prompt = buildAnswerPrompt(
+                paraphrasedIntent,
+                enrichedProducts
+            );
             aiResponse =
                 (await callAishopTextCompletion(
                     prompt,

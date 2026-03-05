@@ -32,11 +32,13 @@ Rules:
 export function buildAnswerPrompt(paraphrasedIntent: string, products: any[]) {
     const context = products
         .map((p, index) => {
-            const variantPrice = Array.isArray(p.variants)
-                ? p.variants
-                      .filter((v: any) => v?.deletedAt == null)
-                      .map((v: any) => v.finalPrice ?? v.price)
+            const validVariants = Array.isArray(p.variants)
+                ? p.variants.filter((v: any) => v?.deletedAt == null)
                 : [];
+
+            const variantPrice = validVariants.map(
+                (v: any) => v.finalPrice ?? v.price
+            );
 
             const minPrice = variantPrice.length
                 ? Math.min(...variantPrice)
@@ -58,9 +60,45 @@ export function buildAnswerPrompt(paraphrasedIntent: string, products: any[]) {
                 spec.suitableFaceShapes ??
                 spec.fitFaceShape ??
                 spec.fitFaceShapes ??
+                spec.shape ??
                 null;
 
-            return `${index + 1}. ${p.nameBase}\n- Brand: ${p.brand ?? 'no brand'}\n- Type: ${p.type}\n- Product name/slug gốc: ${p.nameBase ?? ''} / ${p.slugBase ?? ''}\n- Spec: ${JSON.stringify(spec)}\n- Face-shape data (nếu có): ${JSON.stringify(faceShapeInfo)}\n- Giá tham khảo: ${priceRange}\n- Link sản phẩm: https://eyewear-optic.shop/products/${p._id}`;
+            const variantSummary = validVariants
+                .map((v: any) => {
+                    const options = Array.isArray(v.options) ? v.options : [];
+                    const optionText = options
+                        .map((o: any) => {
+                            const attribute = (
+                                o?.attributeName ?? ''
+                            ).toString();
+                            const label = (o?.label ?? '').toString();
+                            const value = (o?.value ?? '').toString();
+                            const showType = (o?.showType ?? '').toString();
+                            return `${attribute}=${label}${
+                                value ? `(${value})` : ''
+                            }${showType ? `[${showType}]` : ''}`;
+                        })
+                        .join(', ');
+
+                    return `sku=${v.sku}, mode=${v.mode}, stock=${
+                        v.stock
+                    }, price=${v.price}, finalPrice=${v.finalPrice}, options=[${
+                        optionText || 'none'
+                    }]`;
+                })
+                .join(' | ');
+
+            return `${index + 1}. ${p.nameBase}\n- Brand: ${
+                p.brand ?? 'no brand'
+            }\n- Type: ${p.type}\n- Product name/slug gốc: ${
+                p.nameBase ?? ''
+            } / ${p.slugBase ?? ''}\n- Spec: ${JSON.stringify(
+                spec
+            )}\n- Face-shape data (nếu có): ${JSON.stringify(
+                faceShapeInfo
+            )}\n- Giá tham khảo: ${priceRange}\n- Variants chi tiết: ${
+                variantSummary || 'không có variant'
+            }\n- Link sản phẩm: https://eyewear-optic.shop/products/${p._id}`;
         })
         .join('\n\n');
 
@@ -78,9 +116,12 @@ Rules:
 - Nếu không có sản phẩm phù hợp thì xin lỗi và đề nghị khách nới điều kiện.
 - Mỗi sản phẩm gợi ý cần nêu lý do phù hợp ngắn gọn.
 - Luôn kèm link chi tiết đúng theo dữ liệu đã cho.
-- TUYỆT ĐỐI không tự suy luận quy tắc thẩm mỹ (ví dụ mặt vuông hợp/không hợp dáng nào) nếu dữ liệu Products không nói rõ.
-- Chỉ được kết luận hợp/không hợp khuôn mặt khi trong 'Spec' hoặc 'Face-shape data' có thông tin trực tiếp.
-- Nếu thiếu dữ liệu về khuôn mặt, phải nói rõ: "chưa đủ dữ liệu shape trong sản phẩm để kết luận chính xác" và tư vấn trung lập.
+- Ưu tiên dùng spec.shape để tư vấn độ phù hợp khuôn mặt khi khách có yêu cầu về face shape.
+- Có thể dùng quy tắc tư vấn phổ biến sau khi spec.shape đã có: round → ưu tiên square/rectangle/cat-eye; square → ưu tiên round/oval; oval → đa số shape phù hợp; heart → ưu tiên oval/round/aviator.
+- Nếu spec.shape trùng hoặc gần trùng với nhu cầu khuôn mặt khách, hãy nói rõ "phù hợp" và nêu lý do ngắn.
+- Nếu spec.shape không trùng nhu cầu, nói "chưa tối ưu bằng" thay vì phủ định tuyệt đối.
+- Chỉ khi thiếu spec.shape và không có dữ liệu face-shape khác thì mới nói: "chưa đủ dữ liệu shape trong sản phẩm để kết luận chính xác".
+- Không được nói "không có màu X" nếu trong variants/options có label hoặc value thể hiện màu đó (ví dụ Red, #FF0000, đỏ).
 
 Customer Intent Summary:
 "${paraphrasedIntent}"
