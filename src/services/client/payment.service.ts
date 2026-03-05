@@ -229,6 +229,7 @@ class PaymentClientService {
                 throw new NotFoundRequestError("Not found payment to handle");
             }
             await this.handlePaymentCallback(invoiceId, paymentDetail._id.toString());
+            return paymentDetail._id.toString();
             // END XỬ LÍ LOGIC HẬU THANH TOÁN
         } else {
             throw new ForbiddenRequestError('Thanh toán khỏng thành công');
