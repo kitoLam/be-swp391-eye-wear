@@ -10,6 +10,7 @@ import {
     NotFoundRequestError,
     BadRequestError,
 } from '../../errors/apiError/api-error';
+import moment from 'moment';
 
 class VoucherAdminService {
     /**
@@ -17,6 +18,12 @@ class VoucherAdminService {
      */
     createVoucher = async (payload: CreateVoucher) => {
         try {
+            if(moment(payload.startedDate).isBefore(moment(new Date()).startOf('date').toDate())) {
+                throw new BadRequestError('Started date must be after today');   
+            }
+            if(!moment(moment(payload.startedDate).startOf('date').toDate()).isAfter(moment(new Date()).endOf('date').toDate())) {
+                throw new BadRequestError('Started date must be after today');   
+            }
             // 1. Create in MongoDB
             const voucher = await voucherRepository.create(payload as any);
 
