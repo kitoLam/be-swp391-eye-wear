@@ -14,9 +14,13 @@ class PaymentController {
       res.json(ApiResponse.success('Tạo cổng thanh toán vnpay', { url }));
     }
     handlePaymentWithVnPayResult = async (req: Request, res: Response) => {
-      let vnp_Params = req.query;
-      const result = await paymentClientService.handleVnpayPaymentResultCallback(vnp_Params);
-      res.redirect(`${config.cors.origin[2]}/payment-result`);
+      try {
+        let vnp_Params = req.query;
+        const paymentId = await paymentClientService.handleVnpayPaymentResultCallback(vnp_Params);
+        res.redirect(`${config.cors.origin[2]}/payment-result?isSuccess=true?paymentId=${paymentId}`);
+      } catch (error) {
+        res.redirect(`${config.cors.origin[2]}/payment-result?isSuccess=false`);
+      }
     }
 
     getZaloPaymentUrl = async (req: Request, res: Response) => {
