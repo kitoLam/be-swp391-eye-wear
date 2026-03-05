@@ -13,6 +13,12 @@ import { OrderStatus, OrderType } from '../../config/enums/order.enum';
 import { ProductVariantMode } from '../../config/enums/product.enum';
 
 class ImportProductService {
+    async getImportProducts() {
+        return await importProductRepository.findAllNoPagination({
+            deletedAt: null,
+        });
+    }
+
     async importProduct(
         payload: ImportProductRequest,
         context: AuthAdminContext

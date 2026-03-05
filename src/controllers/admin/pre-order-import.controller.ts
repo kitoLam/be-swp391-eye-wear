@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import preOrderImportService from '../../services/admin/pre-order-import.service';
 import { ApiResponse } from '../../utils/api-response';
 import { PreOrderImportRequest } from '../../types/pre-order-import/pre-order-import';
+import { PreOrderImportQuery } from '../../types/pre-order-import/pre-order-import.query';
 import { BadRequestError } from '../../errors/apiError/api-error';
 
 class PreOrderImportController {
@@ -48,22 +49,16 @@ class PreOrderImportController {
         }
     };
 
-    getPreOrderImportsBySku = async (
+    getPreOrderImports = async (
         req: Request,
         res: Response,
         next: NextFunction
     ) => {
         try {
-            const { sku, targetDate } = req.query;
+            const query = req.validatedQuery as PreOrderImportQuery;
 
-            if (!sku) {
-                throw new BadRequestError('SKU is required');
-            }
-
-            const result = await preOrderImportService.getPreOrderImportsBySku(
-                sku as string,
-                targetDate as string
-            );
+            const result =
+                await preOrderImportService.getPreOrderImports(query);
 
             res.json(
                 ApiResponse.success(

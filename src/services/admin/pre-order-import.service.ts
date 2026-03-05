@@ -2,6 +2,7 @@ import { productRepository } from '../../repositories/product/product.repository
 import { preOrderImportRepository } from '../../repositories/pre-order-import/pre-order-import.repository';
 import { adminAccountRepository } from '../../repositories/admin-account/admin-account.repository';
 import { PreOrderImportRequest } from '../../types/pre-order-import/pre-order-import';
+import { PreOrderImportQuery } from '../../types/pre-order-import/pre-order-import.query';
 import { AuthAdminContext } from '../../types/context/context';
 import {
     NotFoundRequestError,
@@ -118,11 +119,15 @@ class PreOrderImportService {
         return updatedPreOrder;
     }
 
-    async getPreOrderImportsBySku(sku: string, targetDate?: string) {
-        const filter: any = { sku };
+    async getPreOrderImports(query: PreOrderImportQuery) {
+        const filter: any = {};
 
-        if (targetDate) {
-            const queryDate = new Date(targetDate);
+        if (query.sku) {
+            filter.sku = query.sku;
+        }
+
+        if (query.targetDate) {
+            const queryDate = new Date(query.targetDate);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
@@ -135,7 +140,20 @@ class PreOrderImportService {
             filter.targetDate = { $eq: queryDate };
         }
 
-        return await preOrderImportRepository.findAllNoPagination(filter);
+        const paginationResult = await preOrderImportRepository.find(filter, {
+            page: query.page,
+            limit: query.limit,
+        });
+
+        return {
+            preOrderImports: paginationResult.data,
+            pagination: {
+                page: paginationResult.page,
+                limit: paginationResult.limit,
+                total: paginationResult.total,
+                totalPages: paginationResult.totalPages,
+            },
+        };
     }
 }
 
