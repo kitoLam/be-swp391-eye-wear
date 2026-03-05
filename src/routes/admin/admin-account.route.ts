@@ -34,6 +34,7 @@ router.use(requireAdminRoles([RoleType.SYSTEM_ADMIN]));
 
 router.post(
     '/',
+    requireAdminRoles([RoleType.SYSTEM_ADMIN]),
     validateBody(AdminAccountCreateSchema),
     adminAccountController.create
 );
@@ -41,6 +42,7 @@ router.post(
 //update account
 router.patch(
     '/:id',
+    requireAdminRoles([RoleType.SYSTEM_ADMIN]),
     validateParams(ObjectIdSchema),
     validateBody(AdminAccountUpdateSchema),
     adminAccountController.update
@@ -48,6 +50,7 @@ router.patch(
 //delete account
 router.delete(
     '/:id',
+    requireAdminRoles([RoleType.SYSTEM_ADMIN, RoleType.SYSTEM_ADMIN]),
     validateParams(ObjectIdSchema),
     adminAccountController.delete
 );
