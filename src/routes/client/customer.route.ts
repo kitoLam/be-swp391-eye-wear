@@ -2,12 +2,12 @@ import { Router } from 'express';
 import customerController from '../../controllers/client/customer.controller';
 import { authenticateMiddlewareClient as authMiddleware } from '../../middlewares/client/auth.middleware';
 import { validateBody } from '../../middlewares/share/validator.middleware';
-import { AddCustomerAddressSchema, AddCustomerPrescriptionSchema, UpdateCustomerAddressSchema, UpdateCustomerPrescriptionSchema } from '../../types/customer/customer.request';
+import { AddCustomerAddressSchema, AddCustomerPrescriptionSchema, UpdateCustomerAddressSchema, UpdateCustomerPrescriptionSchema, UpdateCustomerProfileSchema } from '../../types/customer/customer.request';
 
 const router = Router();
 
 router.get('/', authMiddleware, customerController.getCustomerProfile);
-router.patch('/profile', authMiddleware, customerController.updateCustomerProfile);
+router.patch('/profile', authMiddleware, validateBody(UpdateCustomerProfileSchema), customerController.updateCustomerProfile);
 
 // Address routes
 router.post('/profile/address', authMiddleware, validateBody(AddCustomerAddressSchema), customerController.addCustomerAddress);
