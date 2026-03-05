@@ -48,7 +48,7 @@ class PreOrderImportController {
         }
     };
 
-    getPreOrderImportsBySku = async (
+    getPreOrderImports = async (
         req: Request,
         res: Response,
         next: NextFunction
@@ -56,11 +56,7 @@ class PreOrderImportController {
         try {
             const { sku, targetDate } = req.query;
 
-            if (!sku) {
-                throw new BadRequestError('SKU is required');
-            }
-
-            const result = await preOrderImportService.getPreOrderImportsBySku(
+            const result = await preOrderImportService.getPreOrderImports(
                 sku as string,
                 targetDate as string
             );

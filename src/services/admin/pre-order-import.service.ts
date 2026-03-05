@@ -118,8 +118,12 @@ class PreOrderImportService {
         return updatedPreOrder;
     }
 
-    async getPreOrderImportsBySku(sku: string, targetDate?: string) {
-        const filter: any = { sku };
+    async getPreOrderImports(sku?: string, targetDate?: string) {
+        const filter: any = {};
+
+        if (sku) {
+            filter.sku = sku;
+        }
 
         if (targetDate) {
             const queryDate = new Date(targetDate);

@@ -4,6 +4,24 @@ import { ApiResponse } from '../../utils/api-response';
 import { ImportProductRequest } from '../../types/import-product/import-product';
 
 class ImportProductController {
+    getImportProducts = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const result = await importProductService.getImportProducts();
+            res.json(
+                ApiResponse.success(
+                    'Import products retrieved successfully',
+                    result
+                )
+            );
+        } catch (error) {
+            next(error);
+        }
+    };
+
     importProduct = async (req: Request, res: Response, next: NextFunction) => {
         try {
             await importProductService.importProduct(

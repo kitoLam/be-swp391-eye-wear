@@ -8,6 +8,13 @@ import { requireAdminRoles } from '../../middlewares/admin/authorization.middlew
 
 const router = Router();
 
+router.get(
+    '/',
+    authenticateMiddleware,
+    requireAdminRoles([RoleType.OPERATION_STAFF, RoleType.MANAGER]),
+    importProductController.getImportProducts
+);
+
 router.post(
     '/',
     authenticateMiddleware,

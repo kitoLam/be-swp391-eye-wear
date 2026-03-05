@@ -46,7 +46,7 @@ router.get(
     '/',
     authenticateMiddleware,
     // requireAdminRoles([RoleType.MANAGER]),
-    preOrderImportController.getPreOrderImportsBySku
+    preOrderImportController.getPreOrderImports
 );
 
 export default router;
