@@ -18,5 +18,6 @@ router.get(
     paymentController.getVnpayPaymentUrl
 );
 router.get('/zalopay/url/:invoiceId/:paymentId', authenticateMiddlewareClient, paymentController.getZaloPaymentUrl);
+router.get('/:paymentId', paymentController.getPaymentDetail);
 
 export default router;
