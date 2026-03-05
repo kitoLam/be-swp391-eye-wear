@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { PreOrderImportRequestSchema } from '../../types/pre-order-import/pre-order-import';
-import { validateBody } from '../../middlewares/share/validator.middleware';
+import {
+    validateBody,
+    validateQuery,
+} from '../../middlewares/share/validator.middleware';
 import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware';
 import preOrderImportController from '../../controllers/admin/pre-order-import.controller';
+import { PreOrderImportQuerySchema } from '../../types/pre-order-import/pre-order-import.query';
 import { requireAdminRoles } from '../../middlewares/admin/authorization.middleware';
 import { RoleType } from '../../config/enums/admin-account';
 
@@ -46,6 +50,7 @@ router.get(
     '/',
     authenticateMiddleware,
     // requireAdminRoles([RoleType.MANAGER]),
+    validateQuery(PreOrderImportQuerySchema),
     preOrderImportController.getPreOrderImports
 );
 
