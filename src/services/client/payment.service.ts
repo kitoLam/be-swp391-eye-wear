@@ -207,32 +207,49 @@ class PaymentClientService {
 
         let querystring = require('qs');
         let signData = querystring.stringify(vnp_Params, { encode: false });
-        let crypto = require('crypto');
-        let hmac = crypto.createHmac('sha512', secretKey);
-        let signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
-        if (secureHash != signed) {
-            // chữ kí không hợp lệ
-            throw new ForbiddenRequestError('Chữ kí không hợp lệ');
-        }
-        if (
-            vnp_Params.vnp_ResponseCode == '00' &&
-            vnp_Params.vnp_TransactionStatus == '00'
-        ) {
-            const [invoiceId, date] = vnp_Params.vnp_TxnRef.split('-');
-            // XỬ LÍ LOGIC HẬU THANH TOÁN Ở ĐÂY
-            console.log('>>> invoiceId::', invoiceId);
-            const paymentDetail = await paymentRepository.findOne({
-                invoiceId: invoiceId,
-                deletedAt: null
-            });
-            if(!paymentDetail){
-                throw new NotFoundRequestError("Not found payment to handle");
+        const [invoiceId, date] = vnp_Params.vnp_TxnRef.split('-');
+        try {
+            let crypto = require('crypto');
+            let hmac = crypto.createHmac('sha512', secretKey);
+            let signed = hmac
+                .update(Buffer.from(signData, 'utf-8'))
+                .digest('hex');
+            if (secureHash != signed) {
+                // chữ kí không hợp lệ
+                throw new ForbiddenRequestError('Chữ kí không hợp lệ');
             }
-            await this.handlePaymentCallback(invoiceId, paymentDetail._id.toString());
-            return paymentDetail._id.toString();
-            // END XỬ LÍ LOGIC HẬU THANH TOÁN
-        } else {
-            throw new ForbiddenRequestError('Thanh toán khỏng thành công');
+            if (
+                vnp_Params.vnp_ResponseCode == '00' &&
+                vnp_Params.vnp_TransactionStatus == '00'
+            ) {
+                // XỬ LÍ LOGIC HẬU THANH TOÁN Ở ĐÂY
+                console.log('>>> invoiceId::', invoiceId);
+                const paymentDetail = await paymentRepository.findOne({
+                    invoiceId: invoiceId,
+                    deletedAt: null,
+                });
+                if (!paymentDetail) {
+                    throw new NotFoundRequestError(
+                        'Not found payment to handle'
+                    );
+                }
+                await this.handlePaymentCallback(
+                    invoiceId,
+                    paymentDetail._id.toString()
+                );
+                return {
+                    isSuccess: true,
+                    invoiceId
+                }
+                // END XỬ LÍ LOGIC HẬU THANH TOÁN
+            } else {
+                throw new ForbiddenRequestError('Thanh toán khỏng thành công');
+            }
+        } catch (error) {
+            return {
+                isSuccess: false,
+                invoiceId
+            }
         }
     };
 

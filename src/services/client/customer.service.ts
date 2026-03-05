@@ -1,8 +1,9 @@
-import { NotFoundRequestError } from "../../errors/apiError/api-error";
+import { BadRequestError, NotFoundRequestError } from "../../errors/apiError/api-error";
 import { CustomerModel } from "../../models/customer/customer.model.mongo";
 import { customerRepository } from "../../repositories/customer/customer.repository";
 import { AuthCustomerContext } from "../../types/context/context";
-import { AddCustomerAddress, AddCustomerPrescription, UpdateCustomerAddress, UpdateCustomerProfileRequest } from "../../types/customer/customer.request";
+import { AddCustomerAddress, AddCustomerPrescription, UpdateCustomerAddress, UpdateCustomerPassword, UpdateCustomerProfileRequest } from "../../types/customer/customer.request";
+import { comparePassword, hashPassword } from "../../utils/bcrypt.util";
 
 class CustomerService {
   updateCustomerProfile = async (customer: AuthCustomerContext, payload: UpdateCustomerProfileRequest) => {
@@ -144,6 +145,24 @@ class CustomerService {
       throw new NotFoundRequestError('Customer not found');
     }
     foundCustomer.parameters = foundCustomer.parameters.filter(prescription => (prescription as any)._id.toString() != prescriptionId);
+    await foundCustomer.save();
+  }
+
+  changePassword = async (customer: AuthCustomerContext, payload: UpdateCustomerPassword) => {
+    const foundCustomer = await CustomerModel.findOne({_id: customer.id});
+    if(!foundCustomer){
+      throw new NotFoundRequestError('Customer not found');
+    }
+    if(!foundCustomer.providers.includes('local')){
+      foundCustomer.providers.push('local');
+    }
+    else {
+      const isPasswordMatch = comparePassword(payload.oldPassword, foundCustomer.hashedPassword);
+      if(!isPasswordMatch){
+        throw new BadRequestError('Old password is incorrect');
+      }
+    }
+    foundCustomer.hashedPassword = hashPassword(payload.newPassword);
     await foundCustomer.save();
   }
 }
