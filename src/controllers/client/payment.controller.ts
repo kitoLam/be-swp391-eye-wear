@@ -23,7 +23,7 @@ class PaymentController {
                 vnp_Params
             );
         res.redirect(
-            `${config.cors.origin[2]}/payment-result?isSuccess=${isSuccess}?invoiceId=${invoiceId}`
+            `${config.cors.origin[2]}/payment-result?isSuccess=${isSuccess}&invoiceId=${invoiceId}`
         );
     };
 
@@ -39,6 +39,27 @@ class PaymentController {
         res.json(
             ApiResponse.success('Tạo cổng thanh toán zalo thành công', { url })
         );
+    };
+    getPayosPaymentUrl = async (req: Request, res: Response) => {
+        const customerId = req.customer!.id;
+        const invoiceId = req.params.invoiceId as string;
+        const paymentId = req.params.paymentId as string;
+        const url = await paymentClientService.getPayosUrl(
+            customerId,
+            invoiceId,
+            paymentId
+        );
+        res.json(
+            ApiResponse.success('Tạo cổng thanh toán payos thành công', { url })
+        );
+    };
+
+    handlePayOsResultCallback = async (req: Request, res: Response) => {
+        const payload = req.body.data as any;
+        const [_notUseVar, paymentId] = payload.description.split(" ");
+        console.log(">>> paymentId::", paymentId);
+        await paymentClientService.handlePayosResultCallback(paymentId);
+        res.json(ApiResponse.success('Thanh toán payos thanh cong', null));
     };
 
     handleZalopayResultCallback = async (req: Request, res: Response) => {
