@@ -34,6 +34,13 @@ class PaymentController {
       });
       res.json(ApiResponse.success('Thanh toán zalo thanh cong', result));
     }
+
+    getPaymentDetail = async (req: Request, res: Response) => {
+      const customerId = req.customer!.id;
+      const paymentId = req.params.paymentId as string;
+      const payment = await paymentClientService.getPaymentDetail(customerId, paymentId);
+      res.json(ApiResponse.success('Lấy thông tin thanh toán thành công', payment));
+    }
 }
 
 export default new PaymentController();

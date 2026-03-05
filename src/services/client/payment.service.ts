@@ -420,41 +420,32 @@ class PaymentClientService {
     //     return result;
     // };
 
-    // /**
-    //  * Get payment detail
-    //  */
-    // getPaymentDetail = async (customerId: string, paymentId: string) => {
-    //     const payment = await paymentRepository.findById(paymentId);
+    /**
+     * Get payment detail
+     */
+    getPaymentDetail = async (customerId: string, paymentId: string) => {
+        const payment = await paymentRepository.findOne({
+            _id: paymentId,
+            deletedAt: null,
+        });
 
-    //     if (!payment) {
-    //         throw new NotFoundRequestError('Payment not found');
-    //     }
+        if (!payment) {
+            throw new NotFoundRequestError('Payment not found');
+        }
 
-    //     // Verify ownership
-    //     if (payment.owner_id !== customerId) {
-    //         throw new NotFoundRequestError('Payment not found');
-    //     }
+        // // Verify ownership through invoice
+        // const invoice = await invoiceRepository.findOne({
+        //     _id: payment.invoiceId,
+        //     // owner: customerId,
+        //     deletedAt: null,
+        // });
 
-    //     return payment;
-    // };
+        // if (!invoice) {
+        //     throw new NotFoundRequestError('Payment not found');
+        // }
 
-    // /**
-    //  * Mark payment as paid (for admin or payment gateway callback)
-    //  */
-    // markAsPaid = async (paymentId: string) => {
-    //     const payment = await paymentRepository.findById(paymentId);
-
-    //     if (!payment) {
-    //         throw new NotFoundRequestError('Payment not found');
-    //     }
-
-    //     // Update payment status
-    //     const updated = await paymentRepository.update(paymentId, {
-    //         status: 'PAID',
-    //     } as any);
-
-    //     return updated;
-    // };
+        return payment;
+    };
 }
 
 export default new PaymentClientService();
