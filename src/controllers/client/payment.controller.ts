@@ -55,10 +55,10 @@ class PaymentController {
     };
 
     handlePayOsResultCallback = async (req: Request, res: Response) => {
-        const payload = req.body.data as any;
-        const [_notUseVar, paymentId] = payload.description.split(" ");
-        console.log(">>> paymentId::", paymentId);
-        await paymentClientService.handlePayosResultCallback(paymentId);
+        // const payload = req.body.data as any;
+        // const [_notUseVar, paymentId] = payload.description.split(" ");
+        // console.log(">>> paymentId::", paymentId);
+        // await paymentClientService.handlePayosResultCallback(paymentId);
         res.json(ApiResponse.success('Thanh toán payos thanh cong', null));
     };
 
