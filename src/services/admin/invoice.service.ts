@@ -288,11 +288,13 @@ class InvoiceService {
         adminContext: AuthAdminContext
     ) => {
         const foundInvoice = await invoiceRepository.findById(invoiceId);
-        if(!foundInvoice){
+        if (!foundInvoice) {
             throw new NotFoundRequestError('Invoice not found');
         }
-        if(foundInvoice.status !== InvoiceStatus.APPROVED){
-            throw new ConflictRequestError('Invoice need to be approved before onboard');
+        if (foundInvoice.status !== InvoiceStatus.APPROVED) {
+            throw new ConflictRequestError(
+                'Invoice need to be approved before onboard'
+            );
         }
         await orderRepository.updateByFilter(
             {
@@ -322,8 +324,10 @@ class InvoiceService {
         if (!invoiceDetail) {
             throw new NotFoundRequestError('Invoice not found');
         }
-        if(invoiceDetail.status !== InvoiceStatus.ONBOARD){
-            throw new ConflictRequestError('Invoice need to be onboarding before being complete');
+        if (invoiceDetail.status !== InvoiceStatus.ONBOARD) {
+            throw new ConflictRequestError(
+                'Invoice need to be onboarding before being complete'
+            );
         }
         // Enforce all orders must be completed
         const totalAllOrders = await orderRepository.count({

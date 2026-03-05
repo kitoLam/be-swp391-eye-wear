@@ -526,7 +526,9 @@ class InvoiceClientService {
                 }
 
                 // Save invoice-products mapping to Redis
-                const invoiceProductsKey = `${redisPrefix.invoiceProducts}:${newInvoice._id.toString()}`;
+                const invoiceProductsKey = `${
+                    redisPrefix.invoiceProducts
+                }:${newInvoice._id.toString()}`;
                 await redisService.setDataWithExpiredTime(
                     invoiceProductsKey,
                     invoiceProducts,

@@ -10,8 +10,7 @@ import {
 import { PreOrderImportStatus } from '../../config/enums/pre-order-import.enum';
 import { orderRepository } from '../../repositories/order/order.repository';
 import { OrderStatus, OrderType } from '../../config/enums/order.enum';
-import { OrderModel } from '../../models/order/order.model.mongo';
-import { ProductModel } from '../../models/product/product.model.mongo';
+import { ProductVariantMode } from '../../config/enums/product.enum';
 
 class ImportProductService {
     async importProduct(
@@ -21,8 +20,9 @@ class ImportProductService {
         const { sku, quantity, preOrderImportId } = payload;
         if (preOrderImportId) {
             // 1. Verify pre-order-import exists
-            const preOrderImport =
-                await preOrderImportRepository.findById(preOrderImportId);
+            const preOrderImport = await preOrderImportRepository.findById(
+                preOrderImportId
+            );
 
             if (!preOrderImport) {
                 throw new NotFoundRequestError(
@@ -67,7 +67,11 @@ class ImportProductService {
             await productRepository.updateByFilter(
                 { 'variants.sku': sku },
                 {
-                    $inc: { 'variants.$.stock': (preOrderImport.targetQuantity - preOrderImport.preOrderedQuantity) },
+                    $inc: {
+                        'variants.$.stock':
+                            preOrderImport.targetQuantity -
+                            preOrderImport.preOrderedQuantity,
+                    },
                     $set: { 'variants.$.updatedAt': new Date() },
                 }
             );
@@ -76,35 +80,32 @@ class ImportProductService {
             await preOrderImportRepository.update(preOrderImportId, {
                 status: PreOrderImportStatus.DONE,
             });
-            // 8. Với mỗi order là pre-order với sku này sẽ chuyển status của nó từ WAITING_STOCK -> ASSIGNED
-            await ProductModel.findOneAndUpdate(
-                { "variants.sku": sku }, // Tìm Product có chứa variant mang SKU này
-                { 
-                    $set: { "variants.$[v].mode": "AVAILABLE" } // "v" là biến đại diện cho phần tử thỏa mãn arrayFilters
-                },
-                { 
-                    arrayFilters: [{ "v.sku": sku }], // Chỉ lọc những variant có SKU khớp để update
-                    new: true // Trả về dữ liệu sau khi đã update thành công
+            // 8. Chuyển mode của variant theo SKU sang AVAILABLE
+            await productRepository.updateByFilter(
+                { 'variants.sku': sku },
+                {
+                    $set: {
+                        'variants.$.mode': ProductVariantMode.AVAILABLE,
+                        'variants.$.updatedAt': new Date(),
+                    },
                 }
             );
-            await OrderModel.updateMany(
+
+            // 9. Chuyển các pre-order WAITING_STOCK có chứa SKU này sang ASSIGNED
+            await orderRepository.updateMany(
                 {
                     type: { $in: [OrderType.PRE_ORDER] },
-                    "products.product.sku": sku
+                    status: OrderStatus.WAITING_STOCK,
+                    $or: [
+                        { 'products.product.sku': sku },
+                        { 'products.lens.sku': sku },
+                    ],
                 },
                 {
-                    // Cập nhật giá trị bên trong mảng
-                    $set: {
-                        "status": OrderStatus.ASSIGNED
-                    } 
-                },
-                {
-                    // Bộ lọc để tìm đúng phần tử trong mảng products của từng Order
-                    arrayFilters: [{ "elem.product.sku": sku }]
+                    status: OrderStatus.ASSIGNED,
                 }
             );
-        }
-        else {
+        } else {
             const product = await productRepository.findOne({
                 'variants.sku': sku,
             });

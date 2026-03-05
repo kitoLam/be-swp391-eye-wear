@@ -11,9 +11,18 @@ import { adminAccountRepository } from '../../repositories/admin-account/admin-a
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import { orderRepository } from '../../repositories/order/order.repository';
 import { AuthAdminContext } from '../../types/context/context';
-import { OrderCountTotalQuery, OrderListAdminQuery, OrderStatsQuery } from '../../types/order/order.query';
-import { ApproveOrderDTO, AssignOrderDTO } from '../../types/order/order.request';
+import {
+    OrderCountTotalQuery,
+    OrderListAdminQuery,
+    OrderStatsQuery,
+} from '../../types/order/order.query';
+import {
+    ApproveOrderDTO,
+    AssignOrderDTO,
+} from '../../types/order/order.request';
 import { IOrderDocument } from '../../models/order/order.model.mongo';
+import { productRepository } from '../../repositories/product/product.repository';
+import { ProductVariantMode } from '../../config/enums/product.enum';
 
 class OrderService {
     /**
@@ -34,16 +43,20 @@ class OrderService {
             throw new NotFoundRequestError('Order not found');
         }
         const foundInvoice = await invoiceRepository.findOne({
-            _id: foundOrder.invoiceId
+            _id: foundOrder.invoiceId,
         });
-        if(!foundInvoice){
+        if (!foundInvoice) {
             throw new NotFoundRequestError('Invoice of order not found');
         }
-        if(foundInvoice.status != InvoiceStatus.ONBOARD){
-            throw new ConflictRequestError('Invoice of order need to be onboard before assigning order to staff');
+        if (foundInvoice.status != InvoiceStatus.ONBOARD) {
+            throw new ConflictRequestError(
+                'Invoice of order need to be onboard before assigning order to staff'
+            );
         }
-        if(foundOrder.status != OrderStatus.WAITING_ASSIGN){
-            throw new ConflictRequestError('Only waiting assigned order can move to this step');
+        if (foundOrder.status != OrderStatus.WAITING_ASSIGN) {
+            throw new ConflictRequestError(
+                'Only waiting assigned order can move to this step'
+            );
         }
         if (foundOrder.assignedStaff) {
             throw new ConflictRequestError('Order already assigned');
@@ -62,7 +75,9 @@ class OrderService {
         await orderRepository.update(orderId, {
             assignedStaff: payload.assignedStaff,
             assignerStaff: adminContext.id,
-            status: foundOrder.type.includes(OrderType.PRE_ORDER) ? OrderStatus.WAITING_STOCK : OrderStatus.ASSIGNED,
+            status: foundOrder.type.includes(OrderType.PRE_ORDER)
+                ? OrderStatus.WAITING_STOCK
+                : OrderStatus.ASSIGNED,
             assignedAt: new Date(),
         });
     };
@@ -89,8 +104,10 @@ class OrderService {
                 'This order can not be manufactured'
             );
         }
-        if(foundOrder.status != OrderStatus.ASSIGNED){
-            throw new ConflictRequestError('Only assigned order can move to this step');
+        if (foundOrder.status != OrderStatus.ASSIGNED) {
+            throw new ConflictRequestError(
+                'Only assigned order can move to this step'
+            );
         }
         // chỉ cho staff đc phân chỉnh sửa
         if (foundOrder.assignedStaff !== adminContext.id) {
@@ -118,10 +135,20 @@ class OrderService {
         if (!foundOrder) {
             throw new NotFoundRequestError('Order not found');
         }
-        if(foundOrder.type.includes(OrderType.MANUFACTURING) && foundOrder.status != OrderStatus.MAKING){
-            throw new ConflictRequestError('Manufacturing order need to be making before packaging');
-        } else if(!foundOrder.type.includes(OrderType.MANUFACTURING) && foundOrder.status != OrderStatus.ASSIGNED){
-            throw new ConflictRequestError('Only assigned order can move to this step');
+        if (
+            foundOrder.type.includes(OrderType.MANUFACTURING) &&
+            foundOrder.status != OrderStatus.MAKING
+        ) {
+            throw new ConflictRequestError(
+                'Manufacturing order need to be making before packaging'
+            );
+        } else if (
+            !foundOrder.type.includes(OrderType.MANUFACTURING) &&
+            foundOrder.status != OrderStatus.ASSIGNED
+        ) {
+            throw new ConflictRequestError(
+                'Only assigned order can move to this step'
+            );
         }
 
         // chỉ cho staff đc phân chỉnh sửa
@@ -150,8 +177,10 @@ class OrderService {
         if (!foundOrder) {
             throw new NotFoundRequestError('Order not found');
         }
-        if(foundOrder.status != OrderStatus.PACKAGING){
-            throw new ConflictRequestError('Order needs to be packaged to be able can move to this step');
+        if (foundOrder.status != OrderStatus.PACKAGING) {
+            throw new ConflictRequestError(
+                'Order needs to be packaged to be able can move to this step'
+            );
         }
         // chỉ cho staff đc phân chỉnh sửa
         if (foundOrder.assignedStaff !== adminContext.id) {
@@ -180,34 +209,40 @@ class OrderService {
      * @param staffId - ID của staff (lấy từ JWT token)
      * @returns Danh sách order được giao cho staff này
      */
-    getOrdersList = async (adminContext: AuthAdminContext, query: OrderListAdminQuery) => {
-        const {id: staffId, role} = adminContext;
-        const filter : FilterQuery<IOrderDocument> = {};
-        if(query.orderCode){
+    getOrdersList = async (
+        adminContext: AuthAdminContext,
+        query: OrderListAdminQuery
+    ) => {
+        const { id: staffId, role } = adminContext;
+        const filter: FilterQuery<IOrderDocument> = {};
+        if (query.orderCode) {
             filter.orderCode = new RegExp(query.orderCode, 'gi');
         }
-        if(query.status){
+        if (query.status) {
             filter.status = query.status;
         }
-        if(query.type){
+        if (query.type) {
             filter.type = {
-                $in: [`${query.type}`]
-            }
+                $in: [`${query.type}`],
+            };
         }
-        if(role == RoleType.OPERATION_STAFF){
+        if (role == RoleType.OPERATION_STAFF) {
             filter.assignedStaff = staffId;
         }
-        const orders = await orderRepository.find({
-            ...filter,
-            deletedAt: null,
-        }, {
-            limit: query.limit,
-            page: query.page
-        });
+        const orders = await orderRepository.find(
+            {
+                ...filter,
+                deletedAt: null,
+            },
+            {
+                limit: query.limit,
+                page: query.page,
+            }
+        );
 
         return orders;
     };
-    
+
     /**
      * Lấy chi tiết đơn hàng theo id
      * @param id - ID của đơn hàng
@@ -222,7 +257,7 @@ class OrderService {
             throw new NotFoundRequestError('Order not found');
         }
         return order;
-    }
+    };
 
     /**
      * Lấy thống kê đơn hàng của staff
@@ -237,82 +272,171 @@ class OrderService {
      */
     getOrderSummary = async (query: OrderStatsQuery) => {
         const foundStaff = await adminAccountRepository.findOne({
-            _id: query.staffId
+            _id: query.staffId,
         });
-        if(!foundStaff){
+        if (!foundStaff) {
             throw new NotFoundRequestError('Staff not found');
         }
-        const totalASSIGNED = await orderRepository.count({ deletedAt: null, status: OrderStatus.ASSIGNED, assignedStaff: query.staffId });
-        const totalMAKING = await orderRepository.count({ deletedAt: null, status: OrderStatus.MAKING, assignedStaff: query.staffId });
-        const totalPACKAGING = await orderRepository.count({ deletedAt: null, status: OrderStatus.PACKAGING, assignedStaff: query.staffId });
-        const totalWaitingPreOrder = 0 //await orderRepository.count({ deletedAt: null, status: OrderStatus.PACKAGING, assignedStaff: query.staffId });
+        const totalASSIGNED = await orderRepository.count({
+            deletedAt: null,
+            status: OrderStatus.ASSIGNED,
+            assignedStaff: query.staffId,
+        });
+        const totalMAKING = await orderRepository.count({
+            deletedAt: null,
+            status: OrderStatus.MAKING,
+            assignedStaff: query.staffId,
+        });
+        const totalPACKAGING = await orderRepository.count({
+            deletedAt: null,
+            status: OrderStatus.PACKAGING,
+            assignedStaff: query.staffId,
+        });
+        const totalWaitingPreOrder = 0; //await orderRepository.count({ deletedAt: null, status: OrderStatus.PACKAGING, assignedStaff: query.staffId });
 
         return {
             totalAssigned: totalASSIGNED,
             totalMaking: totalMAKING,
             totalPackaging: totalPACKAGING,
-            totalWaitingPreOrder: totalWaitingPreOrder
-        }
-    }
+            totalWaitingPreOrder: totalWaitingPreOrder,
+        };
+    };
 
     getOrderPendingBreakdown = async (query: OrderStatsQuery) => {
         const foundStaff = await adminAccountRepository.findOne({
-            _id: query.staffId
+            _id: query.staffId,
         });
-        if(!foundStaff){
+        if (!foundStaff) {
             throw new NotFoundRequestError('Staff not found');
         }
-        const totalInProcessingOrders = await orderRepository.count({ deletedAt: null, $or: [{ status: OrderStatus.ASSIGNED }, { status: OrderStatus.MAKING }, { status: OrderStatus.PACKAGING }], assignedStaff: query.staffId });
-        const totalASSIGNED = await orderRepository.count({ deletedAt: null, status: OrderStatus.ASSIGNED, assignedStaff: query.staffId });
-        const totalMAKING = await orderRepository.count({ deletedAt: null, status: OrderStatus.MAKING, assignedStaff: query.staffId });
-        const totalPACKAGING = await orderRepository.count({ deletedAt: null, status: OrderStatus.PACKAGING, assignedStaff: query.staffId });
-        const totalWaitingPreOrder = 0 //await orderRepository.count({ deletedAt: null, status: OrderStatus.PACKAGING, assignedStaff: query.staffId });
+        const totalInProcessingOrders = await orderRepository.count({
+            deletedAt: null,
+            $or: [
+                { status: OrderStatus.ASSIGNED },
+                { status: OrderStatus.MAKING },
+                { status: OrderStatus.PACKAGING },
+            ],
+            assignedStaff: query.staffId,
+        });
+        const totalASSIGNED = await orderRepository.count({
+            deletedAt: null,
+            status: OrderStatus.ASSIGNED,
+            assignedStaff: query.staffId,
+        });
+        const totalMAKING = await orderRepository.count({
+            deletedAt: null,
+            status: OrderStatus.MAKING,
+            assignedStaff: query.staffId,
+        });
+        const totalPACKAGING = await orderRepository.count({
+            deletedAt: null,
+            status: OrderStatus.PACKAGING,
+            assignedStaff: query.staffId,
+        });
+        const totalWaitingPreOrder = 0; //await orderRepository.count({ deletedAt: null, status: OrderStatus.PACKAGING, assignedStaff: query.staffId });
 
         return {
             total: totalInProcessingOrders,
             assigned: {
                 total: totalASSIGNED,
-                percentage: Math.round((totalASSIGNED / totalInProcessingOrders) * 100)
+                percentage: Math.round(
+                    (totalASSIGNED / totalInProcessingOrders) * 100
+                ),
             },
             making: {
                 total: totalMAKING,
-                percentage: Math.round((totalMAKING / totalInProcessingOrders) * 100)
+                percentage: Math.round(
+                    (totalMAKING / totalInProcessingOrders) * 100
+                ),
             },
             packaging: {
                 total: totalPACKAGING,
-                percentage: Math.round((totalPACKAGING / totalInProcessingOrders) * 100)
+                percentage: Math.round(
+                    (totalPACKAGING / totalInProcessingOrders) * 100
+                ),
             },
             waitingPreOrder: {
                 total: totalWaitingPreOrder,
-                percentage: Math.round((totalWaitingPreOrder / totalInProcessingOrders) * 100)
-            }
-        }
-    }
+                percentage: Math.round(
+                    (totalWaitingPreOrder / totalInProcessingOrders) * 100
+                ),
+            },
+        };
+    };
 
-    approveOrder = async (adminContext: AuthAdminContext, orderId: string, payload: ApproveOrderDTO) => {
+    approveOrder = async (
+        adminContext: AuthAdminContext,
+        orderId: string,
+        payload: ApproveOrderDTO
+    ) => {
         const foundOrder = await orderRepository.findOne({
-            _id: orderId
+            _id: orderId,
         });
-        if(!foundOrder){
+        if (!foundOrder) {
             throw new NotFoundRequestError('Order not found');
         }
 
-        if(foundOrder.status !== OrderStatus.PENDING){
+        if (foundOrder.status !== OrderStatus.PENDING) {
             throw new ConflictRequestError('Only approve order is pending!');
         }
         // update prescription detail
-        if(foundOrder.products[0] && foundOrder.products[0].lens){
+        if (foundOrder.products[0] && foundOrder.products[0].lens) {
             foundOrder.products[0].lens.parameters = payload.parameters;
         }
         // update verified staff
         foundOrder.verifiedBy = adminContext.id;
-        foundOrder.verifiedAt = new Date(),
-        // update order status 
-        foundOrder.status = OrderStatus.APPROVED;
+        (foundOrder.verifiedAt = new Date()),
+            // update order status
+            (foundOrder.status = OrderStatus.APPROVED);
         foundOrder.staffNote = payload.note ?? '';
         await foundOrder.save();
         return foundOrder;
-    }
+    };
+
+    updateWaitingStockOrderToAssigned = async (orderId: string) => {
+        const foundOrder = await orderRepository.findOne({
+            _id: orderId,
+        });
+        if (!foundOrder) {
+            throw new NotFoundRequestError('Order not found');
+        }
+
+        if (foundOrder.status !== OrderStatus.WAITING_STOCK) {
+            throw new ConflictRequestError(
+                'Only WAITING_STOCK orders can be updated to ASSIGNED'
+            );
+        }
+
+        const skus = new Set<string>();
+        for (const item of foundOrder.products) {
+            if (item.product?.sku) skus.add(item.product.sku);
+            if (item.lens?.sku) skus.add(item.lens.sku);
+        }
+
+        if (!skus.size) {
+            throw new ConflictRequestError('Order has no SKU to validate');
+        }
+
+        for (const sku of skus) {
+            const product = await productRepository.findOne({
+                'variants.sku': sku,
+            });
+            if (!product) {
+                throw new NotFoundRequestError(
+                    `Product variant with SKU ${sku} not found`
+                );
+            }
+
+            const variant = product.variants.find(v => v.sku === sku);
+            if (!variant || variant.mode !== ProductVariantMode.AVAILABLE) {
+                throw new ConflictRequestError(`SKU ${sku} is not AVAILABLE`);
+            }
+        }
+
+        await orderRepository.update(orderId, {
+            status: OrderStatus.ASSIGNED,
+        });
+    };
 
     countTotalOrders = async (query: OrderCountTotalQuery) => {
         const filter: FilterQuery<IOrderDocument> = {};
@@ -323,10 +447,10 @@ class OrderService {
         if (query.status) {
             filter.status = query.status;
         }
-        if(query.invoiceId){
-            filter.invoiceId = query.invoiceId
+        if (query.invoiceId) {
+            filter.invoiceId = query.invoiceId;
         }
         return await orderRepository.count(filter);
-    }
+    };
 }
 export default new OrderService();
