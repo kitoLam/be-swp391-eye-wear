@@ -24,7 +24,84 @@ import { Variant } from '../../types/product/variant/variant';
 import { preOrderImportRepository } from '../../repositories/pre-order-import/pre-order-import.repository';
 import { compareDate } from '../../utils/date.util';
 import { PreOrderImportStatus } from '../../config/enums/pre-order-import.enum';
-import { embeddingModel, model } from '../../config/google-gemini-ai.config';
+import { embeddingModel } from '../../config/google-gemini-ai.config';
+
+type QueryRewriteResponse = {
+    choices?: Array<{
+        message?: {
+            role?: string;
+            content?: string | Array<{ type?: string; text?: string }>;
+        };
+    }>;
+};
+
+type SuitabilityDecision = {
+    id: string;
+    matchedVariantSku?: string;
+    inStock?: boolean;
+    score?: number;
+    reason?: string;
+};
+
+const QUERY_REWRITE_API_BASE_URL =
+    process.env.AISHOP24H_BASE_URL ?? 'https://aishop24h.com/v1';
+const QUERY_REWRITE_MODEL =
+    process.env.AISHOP24H_MODEL ?? 'google/gemini-2.0-flash-lite';
+const QUERY_REWRITE_API_KEY = process.env.AISHOP24H_API_KEY;
+const QUERY_REWRITE_MAX_RETRIES = 2;
+
+async function callAishopTextCompletion(
+    prompt: string,
+    systemPrompt: string,
+    temperature = 0.2
+): Promise<string> {
+    if (!QUERY_REWRITE_API_KEY) {
+        return '';
+    }
+
+    const response = await fetch(
+        `${QUERY_REWRITE_API_BASE_URL.replace(/\/$/, '')}/chat/completions`,
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${QUERY_REWRITE_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: QUERY_REWRITE_MODEL,
+                temperature,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: prompt },
+                ],
+            }),
+        }
+    );
+
+    if (!response.ok) {
+        return '';
+    }
+
+    const payload = (await response.json()) as QueryRewriteResponse;
+    const assistantChoice = payload.choices?.find(
+        item => item.message?.role === 'assistant'
+    );
+
+    const content =
+        assistantChoice?.message?.content ??
+        payload.choices?.[0]?.message?.content;
+
+    if (typeof content === 'string') {
+        return content.trim();
+    }
+    if (Array.isArray(content)) {
+        return content
+            .map(part => part.text ?? '')
+            .join(' ')
+            .trim();
+    }
+    return '';
+}
 
 class ProductService {
     /**
@@ -307,8 +384,76 @@ class ProductService {
         return values as number[];
     }
 
+    private isQueryRewriteRetryable(error: unknown): boolean {
+        const status = (error as { status?: number })?.status;
+        return status === 429 || status === 502 || status === 503;
+    }
 
-    private async generateQueryFromHistory(messageHistory: any[]): Promise<string> {
+    private async rewriteQueryWithAishop(
+        queryText: string,
+        messageHistory: any[]
+    ): Promise<string> {
+        if (!QUERY_REWRITE_API_KEY) {
+            return queryText;
+        }
+
+        const historyText = messageHistory
+            .map(msg => `${msg.role}: ${msg.content}`)
+            .join('\n');
+
+        const prompt = [
+            'Bạn là hệ thống chuẩn hóa truy vấn tìm kiếm sản phẩm kính mắt.',
+            'Nhiệm vụ: viết lại truy vấn người dùng thành 1 câu ngắn gọn để semantic search hiệu quả hơn.',
+            'Yêu cầu bắt buộc:',
+            '- Không đổi ý định gốc của người dùng.',
+            '- Giữ đầy đủ ràng buộc nếu có: loại sản phẩm (gọng/kính mát/tròng), ngân sách, giới tính, màu, dáng, thương hiệu, nhu cầu chức năng.',
+            '- Nếu người dùng hỏi mơ hồ, làm rõ thành truy vấn mua hàng hợp lý nhưng không bịa thông tin cụ thể.',
+            '- Nếu có yêu cầu về tròng kính thì giữ lại thông tin spec/feature/material (ví dụ chống ánh sáng xanh, đổi màu, polycarbonate...).',
+            '- Trả về duy nhất 1 câu plain text để đem đi embed.',
+            '',
+            `Truy vấn hiện tại: ${queryText}`,
+            'Hội thoại gần nhất:',
+            historyText,
+        ].join('\n');
+
+        let lastError: unknown;
+
+        for (let attempt = 1; attempt <= QUERY_REWRITE_MAX_RETRIES; attempt++) {
+            try {
+                const rewritten = await callAishopTextCompletion(
+                    prompt,
+                    'Bạn tối ưu truy vấn retrieval cho sản phẩm kính mắt.',
+                    0.2
+                );
+
+                if (rewritten) {
+                    return rewritten;
+                }
+
+                throw new Error('Aishop rewrite returned empty content');
+            } catch (error) {
+                lastError = error;
+                if (
+                    !this.isQueryRewriteRetryable(error) ||
+                    attempt === QUERY_REWRITE_MAX_RETRIES
+                ) {
+                    console.warn(
+                        '[WARN] Query rewrite failed. Fallback to original query.'
+                    );
+                    return queryText;
+                }
+            }
+        }
+
+        if (lastError) {
+            console.warn('[WARN] Query rewrite exhausted retries:', lastError);
+        }
+        return queryText;
+    }
+
+    private async generateQueryFromHistory(
+        messageHistory: any[]
+    ): Promise<string> {
         const conversationText = messageHistory
             .map(msg => `${msg.role}: ${msg.content}`)
             .join('\n');
@@ -327,52 +472,220 @@ Please provide a brief summary (1-2 sentences) that captures:
 - Style preference
 - Brand preference
 - Special features
+- Lens feature/material requirements when mentioned
 
 Only include information that was explicitly mentioned or clearly implied. If something wasn't discussed, don't include it.
 
 Summary:`;
 
-        const result = await model.generateContent(prompt);
-        return result.response.text();
+        const rewritten = await callAishopTextCompletion(
+            prompt,
+            'You extract concise shopping requirements for eyewear search.',
+            0.2
+        );
+
+        return rewritten || conversationText.slice(-300);
+    }
+
+    private async rankProductsBySuitabilityWithAI(
+        userQuery: string,
+        products: any[]
+    ): Promise<any[]> {
+        if (!products.length) {
+            return products;
+        }
+
+        const prompt = `Bạn là chuyên gia tư vấn kính mắt. Dựa trên yêu cầu người dùng và dữ liệu JSON sản phẩm, hãy đánh giá mức độ phù hợp của từng sản phẩm.
+
+Yêu cầu người dùng:
+${userQuery}
+
+Danh sách sản phẩm JSON:
+${JSON.stringify(products, null, 2)}
+
+Quy tắc:
+- Chỉ đánh giá dựa trên dữ liệu có trong JSON.
+- Không bịa thêm thông tin.
+- BẮT BUỘC kiểm tra tồn kho theo variant. Nếu variant phù hợp nhất có stock > 0 và mode AVAILABLE thì inStock=true.
+- Nếu không có variant nào phù hợp và còn hàng thì inStock=false.
+- Nếu thiếu dữ liệu để kết luận mạnh, vẫn chấm điểm thận trọng và ghi lý do thiếu dữ liệu.
+- Trả về DUY NHẤT JSON array theo format:
+[
+  {"id":"productId","matchedVariantSku":"SKU nếu có","inStock":true|false,"score":0-100,"reason":"..."}
+]
+- Sắp xếp theo score giảm dần.`;
+
+        try {
+            let text = '';
+
+            if (QUERY_REWRITE_API_KEY) {
+                const response = await fetch(
+                    `${QUERY_REWRITE_API_BASE_URL.replace(
+                        /\/$/,
+                        ''
+                    )}/chat/completions`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${QUERY_REWRITE_API_KEY}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            model: QUERY_REWRITE_MODEL,
+                            temperature: 0.2,
+                            messages: [
+                                {
+                                    role: 'system',
+                                    content:
+                                        'Bạn chấm độ phù hợp sản phẩm và xác nhận tồn kho theo dữ liệu variant.',
+                                },
+                                {
+                                    role: 'user',
+                                    content: prompt,
+                                },
+                            ],
+                        }),
+                    }
+                );
+
+                if (response.ok) {
+                    const payload =
+                        (await response.json()) as QueryRewriteResponse;
+                    const assistantChoice = payload.choices?.find(
+                        item => item.message?.role === 'assistant'
+                    );
+                    const content =
+                        assistantChoice?.message?.content ??
+                        payload.choices?.[0]?.message?.content;
+
+                    if (typeof content === 'string') {
+                        text = content.trim();
+                    } else if (Array.isArray(content)) {
+                        text = content
+                            .map(part => part.text ?? '')
+                            .join(' ')
+                            .trim();
+                    }
+                }
+            }
+
+            if (!text) {
+                return products;
+            }
+
+            const jsonMatch = text.match(/\[[\s\S]*\]/);
+            const parsed = jsonMatch
+                ? (JSON.parse(jsonMatch[0]) as SuitabilityDecision[])
+                : [];
+
+            if (!Array.isArray(parsed) || parsed.length === 0) {
+                return products;
+            }
+
+            const scoreMap = new Map<string, number>();
+            const stockMap = new Map<string, boolean>();
+
+            for (const item of parsed) {
+                if (!item?.id) continue;
+                scoreMap.set(
+                    String(item.id),
+                    Number.isFinite(item.score) ? Number(item.score) : 0
+                );
+                stockMap.set(String(item.id), Boolean(item.inStock));
+            }
+
+            return [...products].sort((a: any, b: any) => {
+                const stockA = stockMap.get(String(a._id)) ? 1 : 0;
+                const stockB = stockMap.get(String(b._id)) ? 1 : 0;
+                if (stockA !== stockB) {
+                    return stockB - stockA;
+                }
+                const scoreA = scoreMap.get(String(a._id)) ?? 0;
+                const scoreB = scoreMap.get(String(b._id)) ?? 0;
+                return scoreB - scoreA;
+            });
+        } catch (error) {
+            console.warn(
+                '[WARN] AI suitability ranking failed, fallback vector order.',
+                error
+            );
+            return products;
+        }
     }
 
     buildQueryForAISuggestion = async (messageHistory?: any[]) => {
         let queryText = '';
 
-        // Generate query from message history
         if (messageHistory && messageHistory.length > 0) {
             queryText = await this.generateQueryFromHistory(messageHistory);
         } else {
             throw new Error('Message history is required for AI suggestions');
         }
 
-        const queryEmbedding = await this.embedQueryText(queryText);
+        const optimizedQueryText = await this.rewriteQueryWithAishop(
+            queryText,
+            messageHistory
+        );
+
+        const queryEmbedding = await this.embedQueryText(optimizedQueryText);
         const candidates = await ProductModel.aggregate([
             {
                 $vectorSearch: {
-                    index: "vector_index_embedding", // Tên index bạn tạo trên Atlas
-                    path: "embedding",    // Trường chứa vector trong DB
+                    index: 'vector_index_embedding',
+                    path: 'embedding',
                     queryVector: queryEmbedding,
-                    numCandidates: 100,    // Số lượng ứng viên để xem xét
-                    limit: 4,              // Lấy ra đúng 4 kết quả tốt nhất
-                }
-            }
+                    numCandidates: 100,
+                    limit: 8,
+                    filter: { deletedAt: null },
+                },
+            },
+            {
+                $project: {
+                    _id: 1,
+                },
+            },
         ]);
 
         let products;
         if (candidates.length > 0) {
-            products = candidates;
+            const ids = candidates.map((item: any) => item._id);
+            const fullProducts = await ProductModel.find({
+                _id: { $in: ids },
+                deletedAt: null,
+            }).lean();
+
+            const productMap = new Map<string, any>(
+                fullProducts.map((item: any) => [String(item._id), item])
+            );
+            const orderedByVector = ids
+                .map((id: any) => productMap.get(String(id)))
+                .filter(Boolean) as any[];
+
+            products = await this.rankProductsBySuitabilityWithAI(
+                optimizedQueryText,
+                orderedByVector
+            );
+
+            products = products.slice(0, 4);
         } else {
-            // Fallback to any products with embeddings if no candidates found
             products = await ProductModel.find({
                 deletedAt: null,
                 embedding: { $exists: true, $ne: null },
-            }).limit(4);
+            })
+                .limit(8)
+                .lean();
+
+            products = await this.rankProductsBySuitabilityWithAI(
+                optimizedQueryText,
+                products
+            );
+
+            products = products.slice(0, 4);
         }
 
         return {
-            paraphrasedIntent: queryText,
-            products: products
+            paraphrasedIntent: optimizedQueryText,
+            products,
         };
     };
 }

@@ -100,15 +100,18 @@ class VoucherClientService {
         }
 
         // 2. Get voucher details from MongoDB
-        const vouchers = await voucherRepository.find({
+        const result = await voucherRepository.find({
             _id: { $in: voucherIds } as any,
             status: 'ACTIVE',
             deletedAt: null,
-        } as any);
+        } as any, {
+            page: 1,
+            limit: voucherIds.length || 100,
+        });
 
         // 3. Filter by validity (date range, usage limit)
         const now = new Date();
-        const availableVouchers = (vouchers as unknown as any[]).filter(
+        const availableVouchers = result.data.filter(
             (voucher: any) =>
                 voucher.startedDate <= now &&
                 voucher.endedDate >= now &&

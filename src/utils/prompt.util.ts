@@ -50,7 +50,17 @@ export function buildAnswerPrompt(paraphrasedIntent: string, products: any[]) {
                     ? `${minPrice} - ${maxPrice}`
                     : 'Chưa có dữ liệu giá';
 
-            return `${index + 1}. ${p.nameBase}\n- Brand: ${p.brand ?? 'no brand'}\n- Type: ${p.type}\n- Spec: ${JSON.stringify(p.spec ?? {})}\n- Giá tham khảo: ${priceRange}\n- Link sản phẩm: https://eyewear-optic.shop/products/${p._id}`;
+            const spec = p.spec ?? {};
+            const faceShapeInfo =
+                spec.faceShape ??
+                spec.faceShapes ??
+                spec.suitableFaceShape ??
+                spec.suitableFaceShapes ??
+                spec.fitFaceShape ??
+                spec.fitFaceShapes ??
+                null;
+
+            return `${index + 1}. ${p.nameBase}\n- Brand: ${p.brand ?? 'no brand'}\n- Type: ${p.type}\n- Product name/slug gốc: ${p.nameBase ?? ''} / ${p.slugBase ?? ''}\n- Spec: ${JSON.stringify(spec)}\n- Face-shape data (nếu có): ${JSON.stringify(faceShapeInfo)}\n- Giá tham khảo: ${priceRange}\n- Link sản phẩm: https://eyewear-optic.shop/products/${p._id}`;
         })
         .join('\n\n');
 
@@ -68,6 +78,9 @@ Rules:
 - Nếu không có sản phẩm phù hợp thì xin lỗi và đề nghị khách nới điều kiện.
 - Mỗi sản phẩm gợi ý cần nêu lý do phù hợp ngắn gọn.
 - Luôn kèm link chi tiết đúng theo dữ liệu đã cho.
+- TUYỆT ĐỐI không tự suy luận quy tắc thẩm mỹ (ví dụ mặt vuông hợp/không hợp dáng nào) nếu dữ liệu Products không nói rõ.
+- Chỉ được kết luận hợp/không hợp khuôn mặt khi trong 'Spec' hoặc 'Face-shape data' có thông tin trực tiếp.
+- Nếu thiếu dữ liệu về khuôn mặt, phải nói rõ: "chưa đủ dữ liệu shape trong sản phẩm để kết luận chính xác" và tư vấn trung lập.
 
 Customer Intent Summary:
 "${paraphrasedIntent}"
