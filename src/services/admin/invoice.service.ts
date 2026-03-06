@@ -264,7 +264,7 @@ class InvoiceService {
             {
                 status: OrderStatus.CANCELED,
                 verifiedBy: adminContext.id,
-                verifiedAt: new Date(),
+                verifiedAt: new Date()
             }
         );
         // Cập nhật trạng thái rejected

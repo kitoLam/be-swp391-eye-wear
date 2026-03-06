@@ -1,1781 +1,1632 @@
 # API Endpoint Documentation
 
-Tài liệu này được tổng hợp **từ source code hiện tại** (routes + controllers + schema validate bằng Zod + service/converter/repository/model).
+Complete API documentation generated from source code (routes + controllers + Zod validation schemas).
 
-## Base URL (mount từ `src/app.ts`)
+## Base URL Structure
 
--   **Admin API**: `/api/${API_VERSION}/admin`
--   **Client API**: `/api/${API_VERSION}/` (**lưu ý**: `systemConstant.prefixPathClient = ""` nên không có `/client`)
--   **Common/Public API**: `/api/${API_VERSION}`
+- **Admin API**: `/api/${API_VERSION}/admin` (default: `/api/v1/admin`)
+- **Client API**: `/api/${API_VERSION}` (default: `/api/v1`)
+- **Common/Public API**: `/api/${API_VERSION}` (default: `/api/v1`)
 
-Mặc định `API_VERSION = v1` (`config.apiVersion`).
+## Response Format
 
-## Response format chung
-
-Theo `src/utils/api-response.ts`:
+All endpoints return responses in the following format (from `src/utils/api-response.ts`):
 
 ```json
 {
-    "success": true,
-    "message": "...",
-    "data": {}
+  "success": true,
+  "message": "Operation successful",
+  "data": {}
+}
+```
+
+Error responses:
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "data": null
 }
 ```
 
 ---
 
-# Admin API
+# ADMIN API
 
-Prefix: `/api/v1/admin`
+Base path: `/api/v1/admin`
 
-## 1) Auth (`/auth`)
+## 1. Admin Authentication (`/auth`)
 
-### 1.1 POST `/auth/login`
-
--   **Auth**: Không
--   **Headers**:
-    -   `x-device-id`: `string | undefined` (được đọc trong controller)
--   **Body** (`src/types/auth/admin/auth.ts`):
-
+### POST `/admin/auth/login`
+- **Auth**: None
+- **Headers**: `x-device-id` (string, optional)
+- **Body**:
 ```json
 {
-    "email": "string (email)",
-    "password": "string (min 8)"
+  "email": "string (email format)",
+  "password": "string (min 8 chars)"
+}
+```
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Login successfully",
+  "data": {
+    "accessToken": "string"
+  }
+}
+```
+- **Side effect**: Sets `refreshToken` httpOnly cookie
+
+### POST `/admin/auth/logout`
+- **Auth**: Required (authenticateMiddleware)
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Logout successfully",
+  "data": null
+}
+```
+- **Side effect**: Clears `refreshToken` cookie
+
+### POST `/admin/auth/refresh-token`
+- **Auth**: Required (verifyRefreshTokenMiddleware)
+- **Headers**: `x-device-id` (string, **required**)
+- **Cookies**: `refreshToken` (string, **required**)
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Get new refresh token successfully",
+  "data": {
+    "accessToken": "string"
+  }
 }
 ```
 
--   **Response** (`src/controllers/admin/auth.controller.ts`):
+### GET `/admin/auth/profile`
+- **Auth**: Required
+- **Response**: Returns current admin profile data
 
+### PATCH `/admin/auth/profile/change-password`
+- **Auth**: Required
+- **Body**:
 ```json
 {
-    "success": true,
-    "message": "<authMessage.success.login>",
-    "data": {
-        "accessToken": "string"
-    }
-}
-```
-
--   **Side effect**: set cookie `refreshToken` (httpOnly)
-
-### 1.2 POST `/auth/logout`
-
--   **Auth**: Có (`authenticateMiddleware`)
--   **Body**: none
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Logout successfully",
-    "data": null
-}
-```
-
--   **Side effect**: clear cookie `refreshToken`
-
-### 1.3 POST `/auth/refresh-token`
-
--   **Auth**: Có (`verifyRefreshTokenMiddleware`)
--   **Headers**:
-    -   `x-device-id`: `string` (**bắt buộc**)
--   **Cookies**:
-    -   `refreshToken`: `string` (**bắt buộc**)
--   **Body**: none
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Get new refresh token successfully",
-    "data": {
-        "accessToken": "string"
-    }
-}
-```
-
----
-
-## 2) Attributes (`/attributes`)
-
-### 2.1 GET `/attributes`
-
--   **Auth**: Có
--   **Query** (`src/types/attribute/attribute.query.ts`):
-
-```json
-{
-    "page": "number (>=1, default 1)",
-    "limit": "number (1..50, default 10)"
-}
-```
-
--   **Response** (`attributeService.getAttributeList`):
-
-```json
-{
-    "success": true,
-    "message": "<attributeMessage.success.list>",
-    "data": {
-        "attributeList": [
-            {
-                "id": "string",
-                "name": "string",
-                "showType": "color|text",
-                "createdAt": "string (formatted)"
-            }
-        ],
-        "pagination": {
-            "page": 1,
-            "limit": 10,
-            "total": 0,
-            "totalPages": 0
-        }
-    }
-}
-```
-
-### 2.2 POST `/attributes`
-
--   **Auth**: Có
--   **Body** (`AttributeCreateSchema`):
-
-```json
-{
-    "name": "string (1..255)",
-    "showType": "color|text"
-}
-```
-
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "<attributeMessage.success.create>",
-    "data": {}
-}
-```
-
-### 2.3 GET `/attributes/:id`
-
--   **Auth**: Có
--   **Params**: `id` (ObjectId)
--   **Response** (`attributeService.getAttributeDetail` -> `toAttributeCreateDTO`):
-
-```json
-{
-    "success": true,
-    "message": "<attributeMessage.success.detail>",
-    "data": {
-        "attribute": {
-            "name": "string",
-            "showType": "color|text"
-        }
-    }
-}
-```
-
-### 2.4 PATCH `/attributes/:id`
-
--   **Auth**: Có
--   **Params**: `id` (ObjectId)
--   **Body** (`AttributeCreateSchema`):
-
-```json
-{
-    "name": "string (1..255)",
-    "showType": "color|text"
-}
-```
-
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "<attributeMessage.success.update>",
-    "data": {}
-}
-```
-
-### 2.5 DELETE `/attributes/:id`
-
--   **Auth**: Có
--   **Params**: `id` (ObjectId)
--   **Body**: (route hiện đang validateBody khi delete bằng `AttributeCreateSchema`)
-
-```json
-{
-    "name": "string (1..255)",
-    "showType": "color|text"
-}
-```
-
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "<attributeMessage.success.update>",
-    "data": {}
+  "oldPassword": "string",
+  "newPassword": "string (min 8 chars)"
 }
 ```
 
 ---
 
-## 3) Categories (`/categories`)
+## 2. Admin Orders (`/orders`)
 
-### 3.1 POST `/categories`
+All routes require authentication.
 
--   **Auth**: Có
--   **Body**: `multipart/form-data` + upload `thumbnail` (field name: `thumbnail`)
--   **Validated Body** (`CreateCategorySchema`):
+### GET `/admin/orders`
+- **Auth**: Required
+- **Query**:
+  - `page`: number (default: 1)
+  - `limit`: number (default: 10)
+  - `status`: string (optional)
+  - `search`: string (optional)
+- **Description**: Get orders list filtered by staffId and current admin
 
+### GET `/admin/orders/total`
+- **Auth**: Required
+- **Query**:
+  - `status`: string (optional)
+  - `startDate`: string (optional)
+  - `endDate`: string (optional)
+- **Description**: Count total orders with filters
+
+### GET `/admin/orders/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Get detailed order information
+
+### PATCH `/admin/orders/:id/status/assign`
+- **Auth**: Required (MANAGER role only)
+- **Params**: `id` (ObjectId)
+- **Body**:
 ```json
 {
-    "name": "string",
-    "parentId": "string(ObjectId) | null",
-    "thumbnail": "string(url) | '' (optional)"
+  "staffId": "string (ObjectId)"
 }
 ```
+- **Description**: Assign order to a staff member
 
--   **Response**:
-
+### PATCH `/admin/orders/:id/status/approve`
+- **Auth**: Required (SALE role)
+- **Params**: `id` (ObjectId)
+- **Body**:
 ```json
 {
-    "success": true,
-    "message": "Create category successfully",
-    "data": {}
+  "notes": "string (optional)"
 }
 ```
+- **Description**: Approve order after review
 
-### 3.2 PATCH `/categories/:id`
+### PATCH `/admin/orders/:id/status/making`
+- **Auth**: Required (OPERATION_STAFF only)
+- **Params**: `id` (ObjectId)
+- **Description**: Update order status to "making"
 
--   **Auth**: Có
--   **Params**: `id` (ObjectId)
--   **Body**: `multipart/form-data` + upload `thumbnail`
--   **Validated Body** (`UpdateCategorySchema`):
+### PATCH `/admin/orders/:id/status/packaging`
+- **Auth**: Required (OPERATION_STAFF only)
+- **Params**: `id` (ObjectId)
+- **Description**: Update order status to "packaging"
 
-```json
-{
-    "name": "string",
-    "parentId": "string(ObjectId) | null",
-    "thumbnail": "string(url) | '' (optional)"
-}
-```
+### PATCH `/admin/orders/:id/status/complete`
+- **Auth**: Required (OPERATION_STAFF only)
+- **Params**: `id` (ObjectId)
+- **Description**: Mark order as completed
 
--   **Response**:
+### GET `/admin/orders/stats/summary`
+- **Auth**: Required
+- **Query**:
+  - `startDate`: string (ISO date)
+  - `endDate`: string (ISO date)
+- **Description**: Get order statistics summary
 
-```json
-{
-    "success": true,
-    "message": "Update category successfully",
-    "data": {}
-}
-```
-
-### 3.3 DELETE `/categories/:id`
-
--   **Auth**: Có
--   **Params**: `id` (ObjectId)
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Delete category successfully",
-    "data": {}
-}
-```
+### GET `/admin/orders/stats/pending-breakdown`
+- **Auth**: Required
+- **Query**: Same as summary
+- **Description**: Get breakdown of pending orders by status
 
 ---
 
-## 4) Customers (`/customers`)
+## 3. Admin Invoices (`/invoices`)
 
-### 4.1 GET `/customers`
+### GET `/admin/invoices`
+- **Auth**: Required
+- **Query**:
+  - `page`: number
+  - `limit`: number
+  - `status`: string (optional)
+  - `search`: string (optional)
+- **Description**: Get invoices list
 
--   **Auth**: Có
--   **Query**:
-    -   `page?: number` (default 1)
-    -   `limit?: number` (default 10)
-    -   `search?: string` (default "")
--   **Response** (`admin/customer.service.ts`):
+### GET `/admin/invoices/handle-delivery`
+- **Auth**: Required
+- **Query**: Same as above
+- **Description**: Get invoices assigned to current delivery staff
 
+### GET `/admin/invoices/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Get invoice details
+
+### GET `/admin/invoices/manager`
+- **Auth**: Required (MANAGER only)
+- **Query**: Pagination and filters
+- **Description**: Manager view of all invoices
+
+### PATCH `/admin/invoices/:id/status/delivered`
+- **Auth**: None (public endpoint for delivery confirmation)
+- **Params**: `id` (ObjectId)
+- **Description**: Mark invoice as delivered
+
+### PATCH `/admin/invoices/:id/status/delivering`
+- **Auth**: None (public endpoint)
+- **Params**: `id` (ObjectId)
+- **Description**: Mark invoice as in delivery
+
+### PATCH `/admin/invoices/:id/status/approve`
+- **Auth**: Required (SALE_STAFF only)
+- **Params**: `id` (ObjectId)
+- **Description**: Approve invoice for processing
+
+### PATCH `/admin/invoices/:id/status/reject`
+- **Auth**: Required (SALE_STAFF only)
+- **Params**: `id` (ObjectId)
+- **Body**:
 ```json
 {
-    "success": true,
-    "message": "Get customer list successfully",
-    "data": {
-        "items": [
-            {
-                "_id": "string",
-                "name": "string",
-                "email": "string",
-                "phone": "string",
-                "gender": "F|M|N",
-                "address": [
-                    {
-                        "street": "string",
-                        "ward": "string",
-                        "city": "string"
-                    }
-                ],
-                "hobbies": ["string"],
-                "isVerified": true,
-                "linkedAccounts": [
-                    {
-                        "provider": "string",
-                        "sub": "string",
-                        "email_verified": true,
-                        "given_name": "string",
-                        "family_name": "string",
-                        "picture": "string",
-                        "locale": "string",
-                        "linkedAt": "string"
-                    }
-                ],
-                "deletedAt": null,
-                "deletedBy": "string|null",
-                "createdAt": "string",
-                "updatedAt": "string"
-            }
-        ],
-        "total": 0,
-        "page": 1,
-        "limit": 10,
-        "pages": 0
-    }
+  "reason": "string"
 }
 ```
+- **Description**: Reject invoice with reason
 
-### 4.2 GET `/customers/:id`
-
--   **Auth**: Có
--   **Params**: `id: string`
--   **Response**:
-
+### PATCH `/admin/invoices/:id/assign/handle-delivery`
+- **Auth**: Required (MANAGER only)
+- **Params**: `id` (ObjectId)
+- **Body**:
 ```json
 {
-    "success": true,
-    "message": "Get customer detail successfully",
-    "data": {
-        "_id": "string",
+  "deliveryStaffId": "string (ObjectId)"
+}
+```
+- **Description**: Assign invoice to delivery staff
+
+### PATCH `/admin/invoices/:id/status/onboard`
+- **Auth**: Required (MANAGER only)
+- **Params**: `id` (ObjectId)
+- **Description**: Mark invoice as onboard for delivery
+
+### PATCH `/admin/invoices/:id/status/complete`
+- **Auth**: Required (MANAGER only)
+- **Params**: `id` (ObjectId)
+- **Description**: Complete invoice
+
+### PATCH `/admin/invoices/:id/status/ready-to-ship`
+- **Auth**: Required (OPERATION_STAFF only)
+- **Params**: `id` (ObjectId)
+- **Description**: Mark invoice as ready to ship
+
+---
+
+## 4. Admin Products (`/products`)
+
+### GET `/admin/products`
+- **Auth**: None
+- **Query**:
+  - `page`: number
+  - `limit`: number
+  - `search`: string (optional)
+  - `category`: string (optional)
+  - `status`: string (optional)
+  - `minPrice`: number (optional)
+  - `maxPrice`: number (optional)
+- **Description**: Get products list with filters
+
+### GET `/admin/products/search/name-slug`
+- **Auth**: None
+- **Query**: `q` (search term)
+- **Description**: Search products by name or slug
+
+### GET `/admin/products/search/sku/:sku`
+- **Auth**: None
+- **Params**: `sku` (string)
+- **Description**: Find product by SKU
+
+### GET `/admin/products/statistics`
+- **Auth**: None
+- **Description**: Get product statistics (total, by category, by status)
+
+### GET `/admin/products/:id`
+- **Auth**: None
+- **Params**: `id` (ObjectId)
+- **Description**: Get product details
+
+### POST `/admin/products`
+- **Auth**: Required (MANAGER only)
+- **Body**:
+```json
+{
+  "name": "string",
+  "description": "string",
+  "categoryId": "string (ObjectId)",
+  "basePrice": "number",
+  "images": ["string (URLs)"],
+  "variants": [
+    {
+      "sku": "string",
+      "attributes": {},
+      "price": "number",
+      "stock": "number"
+    }
+  ]
+}
+```
+- **Description**: Create generic product
+
+### POST `/admin/products/available`
+- **Auth**: Required (MANAGER only)
+- **Body**: Similar to above
+- **Description**: Create product with available stock
+
+### POST `/admin/products/pre-order`
+- **Auth**: Required (MANAGER only)
+- **Body**: Similar to above with pre-order specific fields
+- **Description**: Create pre-order product
+
+### PATCH `/admin/products/:id`
+- **Auth**: Required (MANAGER only)
+- **Params**: `id` (ObjectId)
+- **Body**: Partial product update
+- **Description**: Update product
+
+### DELETE `/admin/products/:id`
+- **Auth**: Required (MANAGER only)
+- **Params**: `id` (ObjectId)
+- **Description**: Delete product
+
+---
+
+## 5. Admin Categories (`/categories`)
+
+All routes require authentication.
+
+### GET `/admin/categories`
+- **Auth**: Required
+- **Query**:
+  - `page`: number
+  - `limit`: number
+  - `search`: string (optional)
+- **Description**: Get categories list
+
+### GET `/admin/categories/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Get category details
+
+### POST `/admin/categories`
+- **Auth**: Required (MANAGER only)
+- **Body**:
+```json
+{
+  "name": "string",
+  "parentId": "string (ObjectId, optional)",
+  "thumbnail": "string (URL, optional)"
+}
+```
+- **Description**: Create category
+
+### PATCH `/admin/categories/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Body**: Partial category update
+- **Description**: Update category
+
+### DELETE `/admin/categories/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Delete category
+
+---
+
+## 6. Admin Attributes (`/attributes`)
+
+All routes require authentication.
+
+### GET `/admin/attributes`
+- **Auth**: Required
+- **Query**:
+  - `page`: number
+  - `limit`: number
+  - `type`: string (optional, e.g., "color", "size")
+- **Description**: Get attributes list
+
+### POST `/admin/attributes`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "name": "string",
+  "type": "string",
+  "values": ["string"]
+}
+```
+- **Description**: Create attribute
+
+### GET `/admin/attributes/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Get attribute details
+
+### PATCH `/admin/attributes/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Body**: Partial attribute update
+- **Description**: Update attribute
+
+### DELETE `/admin/attributes/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Delete attribute
+
+---
+
+## 7. Admin Customers (`/customers`)
+
+All routes require authentication.
+
+### GET `/admin/customers`
+- **Auth**: Required
+- **Query**:
+  - `page`: number
+  - `limit`: number
+  - `search`: string (optional)
+- **Description**: Get customers list
+
+### GET `/admin/customers/list-by-spending`
+- **Auth**: Required
+- **Query**:
+  - `minSpending`: number (optional)
+  - `maxSpending`: number (optional)
+  - `page`: number
+  - `limit`: number
+- **Description**: Get customers filtered by total spending
+
+### GET `/admin/customers/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Get customer details
+
+### POST `/admin/customers`
+- **Auth**: Required (SYSTEM_ADMIN only)
+- **Body**:
+```json
+{
+  "email": "string",
+  "fullName": "string",
+  "phone": "string",
+  "password": "string"
+}
+```
+- **Description**: Create customer account
+
+### PATCH `/admin/customers/:id`
+- **Auth**: Required (SYSTEM_ADMIN only)
+- **Params**: `id` (ObjectId)
+- **Body**: Partial customer update
+- **Description**: Update customer
+
+### DELETE `/admin/customers/:id`
+- **Auth**: Required (SYSTEM_ADMIN only)
+- **Params**: `id` (ObjectId)
+- **Description**: Delete customer
+
+---
+
+## 8. Admin Vouchers (`/vouchers`)
+
+All routes require authentication.
+
+### GET `/admin/vouchers`
+- **Auth**: Required
+- **Description**: Get all vouchers
+
+### GET `/admin/vouchers/statistics`
+- **Auth**: Required
+- **Description**: Get voucher usage statistics
+
+### GET `/admin/vouchers/:id`
+- **Auth**: Required
+- **Params**: `id` (string)
+- **Description**: Get voucher details
+
+### POST `/admin/vouchers`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "code": "string (unique)",
+  "type": "percentage | fixed",
+  "value": "number",
+  "minOrderValue": "number (optional)",
+  "maxDiscount": "number (optional)",
+  "startDate": "string (ISO date)",
+  "endDate": "string (ISO date)",
+  "usageLimit": "number (optional)",
+  "isPublic": "boolean"
+}
+```
+- **Description**: Create voucher
+
+### PATCH `/admin/vouchers/:id`
+- **Auth**: Required
+- **Params**: `id` (string)
+- **Body**: Partial voucher update
+- **Description**: Update voucher
+
+### DELETE `/admin/vouchers/:id`
+- **Auth**: Required
+- **Params**: `id` (string)
+- **Description**: Delete voucher
+
+### POST `/admin/vouchers/:id/grant`
+- **Auth**: Required
+- **Params**: `id` (string)
+- **Body**:
+```json
+{
+  "userIds": ["string (ObjectId)"]
+}
+```
+- **Description**: Grant voucher to specific users
+
+### POST `/admin/vouchers/:id/revoke`
+- **Auth**: Required
+- **Params**: `id` (string)
+- **Body**:
+```json
+{
+  "userIds": ["string (ObjectId)"]
+}
+```
+- **Description**: Revoke voucher from users
+
+### GET `/admin/vouchers/:id/users`
+- **Auth**: Required
+- **Params**: `id` (string)
+- **Description**: Get list of users who have this voucher
+
+### GET `/admin/vouchers/users/:userId/vouchers`
+- **Auth**: Required
+- **Params**: `userId` (string)
+- **Description**: Get all vouchers for a specific user
+
+---
+
+## 9. Admin Staff Management (`/staff`)
+
+All routes require authentication.
+
+### GET `/admin/staff/admins`
+- **Auth**: Required (MANAGER or SYSTEM_ADMIN)
+- **Query**:
+  - `page`: number
+  - `limit`: number
+  - `role`: string (optional)
+- **Description**: Get admin staff list
+
+### POST `/admin/staff`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "email": "string",
+  "fullName": "string",
+  "role": "SALE_STAFF | OPERATION_STAFF | DELIVERY_STAFF | MANAGER",
+  "password": "string"
+}
+```
+- **Description**: Create staff account
+
+---
+
+## 10. Admin Accounts (`/admin-accounts`)
+
+All routes require authentication.
+
+### GET `/admin/admin-accounts`
+- **Auth**: Required
+- **Query**: Pagination + filters
+- **Description**: Get admin accounts list
+
+### GET `/admin/admin-accounts/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Get admin account details
+
+### POST `/admin/admin-accounts`
+- **Auth**: Required (SYSTEM_ADMIN only)
+- **Body**: Admin account creation schema
+- **Description**: Create admin account
+
+### PATCH `/admin/admin-accounts/:id`
+- **Auth**: Required (SYSTEM_ADMIN only)
+- **Params**: `id` (ObjectId)
+- **Body**: Partial admin account update
+- **Description**: Update admin account
+
+### DELETE `/admin/admin-accounts/:id`
+- **Auth**: Required (SYSTEM_ADMIN only)
+- **Params**: `id` (ObjectId)
+- **Description**: Delete admin account
+
+---
+
+## 11. Admin Return Tickets (`/return-tickets`)
+
+All routes require authentication.
+
+### GET `/admin/return-tickets`
+- **Auth**: Required
+- **Query**: Pagination + status filter
+- **Description**: Get all return tickets
+
+### GET `/admin/return-tickets/my-history`
+- **Auth**: Required
+- **Query**: Pagination
+- **Description**: Get return tickets handled by current staff
+
+### GET `/admin/return-tickets/returned-orders`
+- **Auth**: Required
+- **Query**: Pagination
+- **Description**: Get orders that have been returned
+
+### PATCH `/admin/return-tickets/:id/staff-verify`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Staff verification of return ticket
+
+### PATCH `/admin/return-tickets/:id/status/approved`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Approve return request
+
+### PATCH `/admin/return-tickets/:id/status/rejected`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Reject return request
+
+### PATCH `/admin/return-tickets/:id/status/in-progress`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Mark return as in progress
+
+### PATCH `/admin/return-tickets/:id/status/cancel`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Cancel return ticket
+
+### PATCH `/admin/return-tickets/:id/status/delivering`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Mark return as being delivered back
+
+### PATCH `/admin/return-tickets/:id/status/returned`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Mark return as completed
+
+---
+
+## 12. Admin Report Tickets (`/report-tickets`)
+
+All routes require authentication.
+
+### POST `/admin/report-tickets`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "title": "string",
+  "description": "string",
+  "category": "string",
+  "priority": "low | medium | high"
+}
+```
+- **Description**: Create internal report ticket
+
+### GET `/admin/report-tickets`
+- **Auth**: Required
+- **Query**: Pagination + filters
+- **Description**: Get all report tickets
+
+### GET `/admin/report-tickets/my-history`
+- **Auth**: Required
+- **Query**: Pagination
+- **Description**: Get report tickets created by current staff
+
+### GET `/admin/report-tickets/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Get report ticket details
+
+### PATCH `/admin/report-tickets/:id/status/resolve`
+- **Auth**: Required (SYSTEM_ADMIN only)
+- **Params**: `id` (ObjectId)
+- **Description**: Resolve report ticket
+
+### PATCH `/admin/report-tickets/:id/status/processing`
+- **Auth**: Required (SYSTEM_ADMIN only)
+- **Params**: `id` (ObjectId)
+- **Description**: Mark report ticket as processing
+
+### PATCH `/admin/report-tickets/:id/status/reject`
+- **Auth**: Required (SYSTEM_ADMIN only)
+- **Params**: `id` (ObjectId)
+- **Description**: Reject report ticket
+
+---
+
+## 13. Admin Profile Requests (`/profile-requests`)
+
+All routes require authentication.
+
+### GET `/admin/profile-requests`
+- **Auth**: Required
+- **Query**: Pagination
+- **Description**: Get profile update requests (for managers)
+
+### GET `/admin/profile-requests/:id`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Description**: Get profile request details
+
+### POST `/admin/profile-requests`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "fullName": "string (optional)",
+  "phone": "string (optional)",
+  "avatar": "string (URL, optional)",
+  "reason": "string"
+}
+```
+- **Description**: Submit profile update request (operation/sale staff to manager)
+
+### PATCH `/admin/profile-requests/cancel-request`
+- **Auth**: Required
+- **Description**: Cancel own profile request
+
+### PATCH `/admin/profile-requests/:id/status/approved`
+- **Auth**: Required (MANAGER)
+- **Params**: `id` (ObjectId)
+- **Description**: Approve profile update request
+
+### PATCH `/admin/profile-requests/:id/status/rejected`
+- **Auth**: Required (MANAGER)
+- **Params**: `id` (ObjectId)
+- **Description**: Reject profile update request
+
+---
+
+## 14. Admin Import Products (`/import-products`)
+
+### GET `/admin/import-products`
+- **Auth**: Required (OPERATION_STAFF or MANAGER)
+- **Description**: Get list of product imports
+
+### POST `/admin/import-products`
+- **Auth**: Required (OPERATION_STAFF only)
+- **Body**:
+```json
+{
+  "productId": "string (ObjectId)",
+  "sku": "string",
+  "quantity": "number",
+  "importPrice": "number",
+  "notes": "string (optional)"
+}
+```
+- **Description**: Import product stock
+
+---
+
+## 15. Admin Pre-Order Imports (`/pre-order-imports`)
+
+### POST `/admin/pre-order-imports`
+- **Auth**: Required (MANAGER only)
+- **Body**:
+```json
+{
+  "productId": "string (ObjectId)",
+  "expectedDate": "string (ISO date)",
+  "quantity": "number",
+  "notes": "string (optional)"
+}
+```
+- **Description**: Create pre-order import record
+
+### PATCH `/admin/pre-order-imports/:id/cancel`
+- **Auth**: Required (MANAGER only)
+- **Params**: `id` (string)
+- **Description**: Cancel pre-order import
+
+### GET `/admin/pre-order-imports`
+- **Auth**: Required
+- **Query**: Pagination + filters
+- **Description**: Get pre-order imports list
+
+---
+
+## 16. Admin AI Conversations (`/ai-conversations`)
+
+All routes require authentication.
+
+### GET `/admin/ai-conversations`
+- **Auth**: Required
+- **Query**: Pagination
+- **Description**: Get list of customer AI conversations
+
+### GET `/admin/ai-conversations/:id/messages`
+- **Auth**: Required
+- **Params**: `id` (ObjectId)
+- **Query**: Pagination
+- **Description**: Get messages for a specific AI conversation
+
+---
+
+# CLIENT API
+
+Base path: `/api/v1`
+
+## 1. Client Authentication (`/auth`)
+
+### POST `/auth/register`
+- **Auth**: None
+- **Body**:
+```json
+{
+  "email": "string (email format)",
+  "password": "string (min 8 chars)",
+  "fullName": "string",
+  "phone": "string",
+  "dateOfBirth": "string (ISO date, optional)",
+  "gender": "male | female | other (optional)"
+}
+```
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Register successfully",
+  "data": {
+    "accessToken": "string"
+  }
+}
+```
+- **Side effect**: Sets `refreshToken` httpOnly cookie
+
+### POST `/auth/login`
+- **Auth**: None
+- **Body**:
+```json
+{
+  "email": "string",
+  "password": "string"
+}
+```
+- **Response**: Same as register
+
+### POST `/auth/logout`
+- **Auth**: Required (authenticateMiddlewareClient)
+- **Description**: Logout customer
+
+### POST `/auth/refresh-token`
+- **Auth**: Required (verifyRefreshTokenMiddlewareClient)
+- **Headers**: `x-device-id` (string, required)
+- **Cookies**: `refreshToken` (string, required)
+- **Description**: Refresh access token
+
+### POST `/auth/request-reset-password`
+- **Auth**: None
+- **Body**:
+```json
+{
+  "email": "string"
+}
+```
+- **Description**: Request password reset (sends OTP to email)
+
+### POST `/auth/request-reset-password/verify-otp`
+- **Auth**: None
+- **Body**:
+```json
+{
+  "email": "string",
+  "otp": "string (6 digits)"
+}
+```
+- **Response**: Returns reset password token
+
+### POST `/auth/reset-password`
+- **Auth**: Required (verifyResetPasswordTokenMiddleware)
+- **Body**:
+```json
+{
+  "newPassword": "string (min 8 chars)"
+}
+```
+- **Description**: Reset password with token from OTP verification
+
+### GET `/auth/google`
+- **Auth**: None
+- **Query**: `state` (optional, for redirect after login)
+- **Description**: Initiate Google OAuth login flow
+
+### GET `/auth/google/callback`
+- **Auth**: None (handled by Passport)
+- **Description**: Google OAuth callback endpoint
+
+### POST `/auth/request-merge-account`
+- **Auth**: None
+- **Body**:
+```json
+{
+  "email": "string",
+  "password": "string"
+}
+```
+- **Description**: Request to merge Google account with existing email/password account
+
+### POST `/auth/request-merge-account/verify-otp`
+- **Auth**: None
+- **Body**:
+```json
+{
+  "email": "string",
+  "otp": "string"
+}
+```
+- **Description**: Verify OTP to complete account merge
+
+---
+
+## 2. Client Shopping Cart (`/cart`)
+
+All routes require authentication (authenticateMiddlewareClient).
+
+### GET `/cart`
+- **Auth**: Required
+- **Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "productId": "string",
         "name": "string",
-        "email": "string",
-        "phone": "string",
-        "gender": "F|M|N",
-        "address": [{ "street": "string", "ward": "string", "city": "string" }],
-        "hobbies": ["string"],
-        "isVerified": true,
-        "linkedAccounts": [
-            {
-                "provider": "string",
-                "sub": "string",
-                "email_verified": true,
-                "given_name": "string",
-                "family_name": "string",
-                "picture": "string",
-                "locale": "string",
-                "linkedAt": "string"
-            }
-        ],
-        "deletedAt": null,
-        "deletedBy": "string|null",
-        "createdAt": "string",
-        "updatedAt": "string"
-    }
-}
-```
-
----
-
-## 5) Invoices (`/invoices`)
-
-### 5.1 GET `/invoices`
-
--   **Auth**: Có
--   **Query** (`InvoiceListQuerySchema`): `page/limit/search/status` (xem `src/types/invoice/invoice.query.ts`)
--   **Response** (controller có map format):
-
-```json
-{
-    "success": true,
-    "message": "Get invoice list success",
-    "data": {
-        "pagination": {
-            "page": 1,
-            "limit": 10,
-            "total": 0,
-            "totalPages": 0
-        },
-        "invoiceList": [
-            {
-                "id": "string",
-                "invoiceCode": "string",
-                "fullName": "string",
-                "phone": "string",
-                "finalPrice": "string (formatNumberToVND)",
-                "status": "string",
-                "createdAt": "string (formatDateToString)",
-                "address": "string (street, ward, city)"
-            }
-        ]
-    }
-}
-```
-
-### 5.2) PATCH `/invoices/:id/status/approve`
-
-Approve invoice
-
-### Params
-
-| Field | Type     | Required |
-| ----- | -------- | -------- |
-| id    | ObjectId | ✅        |
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "Approve invoice success",
-  "data": null
-}
-```
-
----
-
-### 5.3) PATCH `/invoices/:id/status/reject`
-
-Reject invoice
-
-### Params
-
-| Field | Type     | Required |
-| ----- | -------- | -------- |
-| id    | ObjectId | ✅        |
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "Reject invoice success",
-  "data": null
-}
-```
-
----
-
-### 5.4) PATCH `/invoices/:id/status/onboard`
-
-Manager onboard invoice (chuyển invoice sang trạng thái xử lý nội bộ)
-
-### Auth
-
-* Required (Admin - MANAGER)
-
-### Params
-
-| Field | Type     | Required |
-| ----- | -------- | -------- |
-| id    | ObjectId | ✅        |
-
-### Business Rules
-
-* Invoice phải ở trạng thái hợp lệ theo flow (sau approve)
-* Chỉ role **MANAGER** được phép thực hiện
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "Onboard invoice success",
-  "data": null
-{
-  "success": true,
-  "message": "Reject invoice success",
-  "data": null
-}
-```
-
-
-## 6) Orders (`/orders`)
-
-### 6.1 GET `/orders`
-
--   **Auth**: Có
--   **Query**:
-    -   `staffId: string` (**bắt buộc**)
--   **Important**: `orderRepository.find(...)` trả về **PaginatedResult** `{data,total,page,limit,totalPages}` (theo `BaseRepository`).
-    -   Hiện controller đang trả `orders` = toàn bộ object paginated, không chỉ array.
--   **Response thực tế** (theo code hiện tại):
-
-```json
-{
-    "success": true,
-    "message": "Lấy danh sách order thành công!",
-    "data": {
-        "orders": {
-            "data": [
-                {
-                    "_id": "string",
-                    "type": ["NORMAL", "MANUFACTURING"],
-                    "status": "PENDING|...",
-                    "products": [
-                        {
-                            "product": {
-                                "product_id": "string",
-                                "sku": "string",
-                                "pricePerUnit": 0
-                            },
-                            "quantity": 1,
-                            "lens": {
-                                "lens_id": "string",
-                                "sku": "string",
-                                "parameters": {
-                                    "left": { "SPH": 0, "CYL": 0, "AXIS": 0 },
-                                    "right": { "SPH": 0, "CYL": 0, "AXIS": 0 },
-                                    "PD": 0
-                                },
-                                "pricePerUnit": 0
-                            }
-                        }
-                    ],
-                    "assigneeId": "string|null",
-                    "staffId": "string|null",
-                    "assignStaff": "string|null",
-                    "assignedAt": "string|null",
-                    "startedAt": "string|null",
-                    "completedAt": "string|null",
-                    "assignmentStatus": "PENDING|ASSIGNED|...",
-                    "price": 0,
-                    "createdAt": "string",
-                    "updatedAt": "string",
-                    "deletedAt": null
-                }
-            ],
-            "total": 0,
-            "page": 1,
-            "limit": 10,
-            "totalPages": 0
-        }
-    }
-}
-```
-### 6.2) PATCH `/orders/:id/status/assign`
-
-Manager assign order cho operation staff
-
-### Auth
-
-* Required (Admin - MANAGER)
-
-### Params
-
-| Field | Type     | Required |
-| ----- | -------- | -------- |
-| id    | ObjectId | ✅        |
-
-### Body
-
-```json
-{
-  "assignedStaff": "string(ObjectId)"
-}
-```
-
-### Business Rules
-
-* Order chưa được assign
-* assignedStaff phải có role `OPERATION_STAFF`
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "Assign successfully",
-  "data": null
-}
-```
-
----
-
-### 6.3) PATCH `/orders/:id/status/making`
-
-Operation staff bắt đầu gia công order
-
-### Conditions
-
-* Order type phải chứa `MANUFACTURING`
-* Order được assign cho staff hiện tại
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "Tag Making successfully",
-  "data": null
-}
-```
-
----
-
-### 6.4) PATCH `/orders/:id/status/packaging`
-
-Operation staff đóng gói order
-
-### Conditions
-
-* Order được assign cho staff hiện tại
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "Tag Packaging successfully",
-  "data": null
-}
-```
-
----
-
-### 6.5) PATCH `/orders/:id/status/complete`
-
-Hoàn thành order
-
-### Side Effect
-
-* Nếu **tất cả order trong invoice đều COMPLETED** → invoice sẽ được set `COMPLETED`
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "Tag complete successfully",
-  "data": null
-}
-```
-
----
-
-## 7) Products (`/products`)
-
-### 7.1 GET `/products/search/name-slug`
-
--   **Auth**: Không
--   **Query**:
-    -   `search?: string`
-    -   `page?: number` (default 1)
-    -   `limit?: number` (default 10)
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "<ProductMessage.success.search>",
-    "data": {
-        "productList": [
-            {
-                "id": "string",
-                "nameBase": "string",
-                "slugBase": "string",
-                "skuBase": "string",
-                "type": "frame|lens|sunglass",
-                "brand": "string|null",
-                "categories": ["string"],
-                "defaultVariantPrice": 0,
-                "defaultVariantFinalPrice": 0,
-                "defaultVariantImage": "string|undefined",
-                "totalVariants": 0,
-                "createdAt": "string (formatted)"
-            }
-        ],
-        "pagination": { "page": 1, "limit": 10, "total": 0, "totalPages": 0 }
-    }
-}
-```
-
-### 7.2 GET `/products/search/sku/:sku`
-
--   **Auth**: Không
--   **Params**: `sku: string`
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "<ProductMessage.success.search>",
-    "data": {
-        "product": {
-            "nameBase": "string",
-            "slugBase": "string",
-            "skuBase": "string",
-            "brand": "string|null",
-            "categories": ["string"],
-            "type": "frame|sunglass|lens",
-            "spec": { "...": "FrameSpecSchema | LenSpecSchema" },
-            "variants": [
-                {
-                    "sku": "string",
-                    "name": "string",
-                    "slug": "string",
-                    "options": [
-                        {
-                            "attributeId": "string",
-                            "attributeName": "string",
-                            "label": "string",
-                            "showType": "string",
-                            "value": "string"
-                        }
-                    ],
-                    "price": 0,
-                    "finalPrice": 0,
-                    "stock": 0,
-                    "imgs": ["string"],
-                    "isDefault": true
-                }
-            ]
-        }
-    }
-}
-```
-
-### 7.3 GET `/products/statistics`
-
--   **Auth**: Không
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "<ProductMessage.success.getList>",
-    "data": {
-        "statistics": {
-            "total": 0,
-            "byType": [{ "type": "string", "count": 0 }],
-            "byBrand": [{ "brand": "string", "count": 0 }]
-        }
-    }
-}
-```
-
-### 7.4 POST `/products`
-
--   **Auth**: Có
--   **Body**: `ProductCreateDTO` (`src/types/product/product/product.dto.ts`)
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "<ProductMessage.success.create>",
-    "data": {}
-}
-```
-
-### 7.5 GET `/products`
-
--   **Auth**: Không
--   **Query** (`ProductListQuerySchema`)
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "<ProductMessage.success.getList>",
-    "data": {
-        "productList": [
-            {
-                "id": "string",
-                "nameBase": "string",
-                "slugBase": "string",
-                "skuBase": "string",
-                "type": "frame|lens|sunglass",
-                "brand": "string|null",
-                "categories": ["string"],
-                "defaultVariantPrice": 0,
-                "defaultVariantFinalPrice": 0,
-                "defaultVariantImage": "string|undefined",
-                "totalVariants": 0,
-                "createdAt": "string (formatted)"
-            }
-        ],
-        "pagination": { "page": 1, "limit": 10, "total": 0, "totalPages": 0 }
-    }
-}
-```
-
-### 7.6 GET `/products/:id`
-
--   **Auth**: Không
--   **Params**: `id` (ObjectId)
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "<ProductMessage.success.getDetail>",
-    "data": {
-        "product": {
-            "nameBase": "string",
-            "slugBase": "string",
-            "skuBase": "string",
-            "brand": "string|null",
-            "categories": ["string"],
-            "type": "frame|sunglass|lens",
-            "spec": { "...": "FrameSpecSchema | LenSpecSchema" },
-            "variants": [
-                {
-                    "sku": "string",
-                    "name": "string",
-                    "slug": "string",
-                    "options": [
-                        {
-                            "attributeId": "string",
-                            "attributeName": "string",
-                            "label": "string",
-                            "showType": "string",
-                            "value": "string"
-                        }
-                    ],
-                    "price": 0,
-                    "finalPrice": 0,
-                    "stock": 0,
-                    "imgs": ["string"],
-                    "isDefault": true
-                }
-            ]
-        }
-    }
-}
-```
-
-### 7.7 PATCH `/products/:id`
-
--   **Auth**: Có
--   **Params**: `id` (ObjectId)
--   **Body**: `ProductUpdateDTO`
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "<ProductMessage.success.update>",
-    "data": {}
-}
-```
-
-### 7.8 DELETE `/products/:id`
-
--   **Auth**: Có
--   **Params**: `id` (ObjectId)
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "<ProductMessage.success.delete>",
-    "data": {}
-}
-```
-
----
-
-## 8) Vouchers (`/vouchers`)
-
-### 8.1 POST `/vouchers`
-
--   **Auth**: Có
--   **Body** (`CreateVoucherSchema`)
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Tạo voucher thành công!",
-    "data": {
-        "voucher": {
-            "_id": "string",
-            "name": "string",
-            "description": "string",
-            "code": "string",
-            "typeDiscount": "FIXED|PERCENTAGE",
-            "value": 0,
-            "usageLimit": 0,
-            "usageCount": 0,
-            "startedDate": "string",
-            "endedDate": "string",
-            "minOrderValue": 0,
-            "maxDiscountValue": 0,
-            "applyScope": "ALL|SPECIFIC",
-            "status": "DRAFT|ACTIVE|DISABLE",
-            "createdAt": "string",
-            "updatedAt": "string",
-            "deletedAt": null
-        }
-    }
-}
-```
-
-### 8.2 GET `/vouchers`
-
--   **Auth**: Có
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Lấy danh sách voucher thành công!",
-    "data": {
-        "items": ["Voucher"],
-        "pagination": { "page": 1, "limit": 10, "total": 0, "totalPages": 0 }
-    }
-}
-```
-
-### 8.3 GET `/vouchers/statistics`
-
--   **Auth**: Có
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Lấy thống kê thành công!",
-    "data": { "...": "stats" }
-}
-```
-
-### 8.4 GET `/vouchers/:id`
-
--   **Auth**: Có
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Lấy chi tiết voucher thành công!",
-    "data": { "voucher": { "...": "Voucher" } }
-}
-```
-
-### 8.5 PATCH `/vouchers/:id`
-
--   **Auth**: Có
--   **Body** (`UpdateVoucherSchema`)
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Cập nhật voucher thành công!",
-    "data": { "voucher": { "...": "Voucher" } }
-}
-```
-
-### 8.6 DELETE `/vouchers/:id`
-
--   **Auth**: Có
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Voucher deleted successfully",
-    "data": {}
-}
-```
-
-### 8.7 POST `/vouchers/:id/grant`
-
--   **Auth**: Có
--   **Body**:
-
-```json
-{
-    "userIds": ["string"]
-}
-```
-
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Đã cấp voucher <voucherCode> cho <grantedCount> users",
-    "data": { "voucherCode": "string", "grantedCount": 0 }
-}
-```
-
-### 8.8 POST `/vouchers/:id/revoke`
-
--   **Auth**: Có
--   **Body**:
-
-```json
-{
-    "userIds": ["string"]
-}
-```
-
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Đã thu hồi voucher <voucherCode> từ <revokedCount> users",
-    "data": { "voucherCode": "string", "revokedCount": 0 }
-}
-```
-
-### 8.9 GET `/vouchers/:id/users`
-
--   **Auth**: Có
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Lấy danh sách users thành công!",
-    "data": {
-        "voucher": { "code": "string", "name": "string" },
-        "users": ["string"]
-    }
-}
-```
-
-### 8.10 GET `/vouchers/users/:userId/vouchers`
-
--   **Auth**: Có
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Lấy danh sách vouchers của user thành công!",
-    "data": { "vouchers": ["Voucher"] }
-}
-```
-
----
-
-# Client API
-
-Prefix: `/api/v1/`
-
-## 1) Auth (`/auth`)
-
-### 1.1 POST `/auth/register`
-
--   **Auth**: Không
--   **Body** (`RegisterCustomerSchema`)
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Register successfully",
-    "data": null
-}
-```
-
-### 1.2 POST `/auth/login`
-
--   **Auth**: Không
--   **Headers**:
-    -   `x-device-id`: `string | undefined`
--   **Body** (`LoginCustomerSchema`)
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Login successfully",
-    "data": { "accessToken": "string" }
-}
-```
-
-### 1.3 POST `/auth/logout`
-
--   **Auth**: Có
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Logout successfully",
-    "data": null
-}
-```
-
-### 1.4 POST `/auth/refresh-token`
-
--   **Auth**: Có
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Get new refresh token successfully",
-    "data": { "accessToken": "string" }
-}
-```
-
-### 1.5 POST `/auth/forgot-password`
-
--   **Body**:
-
-```json
-{
-    "email": "string"
-}
-```
-
-### 1.6 POST `/auth/verify-otp`
-
--   **Body**:
-
-```json
-{
-    "email": "string",
-    "otp": "string"
-}
-```
-
-### 1.7 POST `/auth/reset-password`
-
--   **Body**:
-
-```json
-{
-    "password": "string"
-}
-```
-
----
-
-## 2) Cart (`/cart`)
-
-### 2.1 GET `/cart/`
-
--   **Auth**: Có
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Lấy giỏ hàng thành công!",
-    "data": {
-        "cart": {
-            "_id": "string",
-            "owner": "string",
-            "products": [
-                {
-                    "product": { "product_id": "string", "sku": "string" },
-                    "lens": {
-                        "lens_id": "string",
-                        "sku": "string",
-                        "parameters": {
-                            "left": { "SPH": 0, "CYL": 0, "AXIS": 0 },
-                            "right": { "SPH": 0, "CYL": 0, "AXIS": 0 },
-                            "PD": 0
-                        }
-                    },
-                    "quantity": 1
-                }
-            ],
-            "totalProduct": 0,
-            "createdAt": "string",
-            "updatedAt": "string",
-            "deletedAt": null
-        }
-    }
-}
-```
-
----
-
-## 3) Checkout (`/checkout`)
-
-### 3.1 POST `/checkout/sessions`
-
--   **Auth**: Có
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Tạo checkout session thành công",
-    "data": { "checkoutSessionId": "string" }
-}
-```
-
-### 3.2 GET `/checkout/sessions/:id`
-
--   **Auth**: Có
--   **Response**:
-
-```json
-{
-    "success": true,
-    "message": "Lay danh sach san pham trong checkout session thanh cong",
-    "data": { "products": ["..."] }
-}
-```
-
----
-
-## 4) Customer (`/customer`)
-
-### 4.1 GET `/customer/`
-
--   **Auth**: Có
-
-### 4.2 PATCH `/customer/profile`
-
--   **Auth**: Có
-
----
-
-## 5) Orders (`/orders`)
-
-### 5.1 GET `/orders/:orderId`
-
--   **Auth**: Có
--   **Response**
-Chào bạn! Việc chuyển đổi từ Zod Schema sang TypeScript Interface là một bước rất phổ biến để giúp code tường minh và tối ưu hiệu suất (vì interface không cần tính toán lúc runtime như schema).
-
-Dưới đây là Interface tương ứng cho OrderSchema của bạn:
-
-TypeScript
-import { Types } from 'mongoose';
-
-```ts
-{
-    _id: string;
-    invoiceId: string | Types.ObjectId;
-    orderCode: string;
-    type: OrderType[]; // Giả định OrderType là một enum hoặc union type đã định nghĩa
-    products: IOrderProduct[]; // Giả định OrderProductSchema chuyển thành IOrderProduct
-    status: OrderStatus; // Giả định OrderStatus là một enum hoặc union type
-
-    assignerStaff: string | null;
-    assignedStaff: string | null;
-    assignedAt: Date | null;
-    startedAt: Date | null;
-    completedAt: Date | null;
-
-    price: number;
-
-    createdAt: Date;
-    updatedAt: Date;
-    deletedAt: Date | null;
-}
-```
-
-### 5.2 PATCH `/orders/:orderId`
-
--   **Auth**: Có
--   **Body**
-```json
-{
-    "invoiceId": "69783ba082c907b7851fecf6",
-    "lensParameter": {
-        "left": {
-        "SPH": -2.50,
-        "CYL": -0.75,
-        "AXIS": 180
-        },
-        "right": {
-        "SPH": -3.00,
-        "CYL": -0.50,
-        "AXIS": 175
-        },
-        "PD": 64
-    }
-}
-```
--   **Response**
-```json
-{
-    "success": true,
-    "message": "Update success",
-    "data": null
-}
-```
-
----
-
-## 6) Invoices (`/invoices`)
-
-### 6.1 POST `/invoices/`
-
--   **Auth**: Có
--   **Body**: Có
-```json
-{
-    "products": [
-        {
-            "product": {
-                "product_id": "6965c4bc979f1a2fb5e329ec",
-                "sku": "LENS-024-01"
-            },
-            "quantity": 1
-        }
+        "sku": "string",
+        "price": "number",
+        "quantity": "number",
+        "image": "string",
+        "prescription": {}
+      }
     ],
-    "address": {
-        "street": "Le van viet",
-        "ward": "Phuong Thu Duc",
-        "city": "Thanh pho Ho Chi Minh"
+    "totalItems": "number",
+    "subtotal": "number"
+  }
+}
+```
+
+### POST `/cart/add-product`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "productId": "string (ObjectId)",
+  "sku": "string",
+  "quantity": "number (default: 1)",
+  "prescription": {
+    "leftEye": {
+      "sphere": "number",
+      "cylinder": "number",
+      "axis": "number"
     },
-    "fullName": "Minh Lâm",
-    "phone": "0812345678",
-    "voucher": [],
-    "paymentMethod": "COD",
-    "note": "Giao ngoài giờ hành chánh dùm"
+    "rightEye": {
+      "sphere": "number",
+      "cylinder": "number",
+      "axis": "number"
+    },
+    "pd": "number (pupillary distance)"
+  }
 }
 ```
--   **Response**:
-```json
-{
-    "success": true,
-    "message": "Tạo hóa đơn thành công!",
-    "data": {
-        "invoice": {
-            "invoiceCode": "HD_8628731769758761060",
-            "owner": "697b12821628f3af05995358",
-            "totalPrice": 267,
-            "voucher": [],
-            "address": {
-                "street": "Le van viet",
-                "ward": "Phuong Thu Duc",
-                "city": "Thanh pho Ho Chi Minh"
-            },
-            "status": "DEPOSITED",
-            "fullName": "Minh Lâm",
-            "phone": "0812345678",
-            "totalDiscount": 0,
-            "staffVerified": null,
-            "managerOnboard": null,
-            "note": "Giao ngoài giờ hành chánh dùm",
-            "deletedAt": null,
-            "_id": "697c6029c91b4e7cd04688f6",
-            "createdAt": "2026-01-30T07:39:21.070Z",
-            "updatedAt": "2026-01-30T07:39:21.070Z",
-            "__v": 0
-        },
-        "payment": {
-            "ownerId": "697b12821628f3af05995358",
-            "invoiceId": "697c6029c91b4e7cd04688f6",
-            "paymentMethod": "COD",
-            "status": "UNPAID",
-            "note": "",
-            "price": 267,
-            "deletedAt": null,
-            "_id": "697c6029c91b4e7cd04688fb",
-            "createdAt": "2026-01-30T07:39:21.120Z",
-            "updatedAt": "2026-01-30T07:39:21.120Z",
-            "__v": 0
-        }
-    }
-}
-```
-### 6.2 GET `/invoices/`
 
--   **Auth**: Có
--   **Response**:
+### PATCH `/cart/update-quantity`
+- **Auth**: Required
+- **Body**:
 ```json
 {
-    "success": true,
-    "message": "Lấy danh sách hóa đơn thành công!",
-    "data": {
-        "data": [
-            {
-                "address": {
-                    "street": "Le van viet",
-                    "ward": "Phuong Thu Duc",
-                    "city": "Thanh pho Ho Chi Minh"
-                },
-                "_id": "697c6029c91b4e7cd04688f6",
-                "invoiceCode": "HD_8628731769758761060",
-                "owner": "697b12821628f3af05995358",
-                "totalPrice": 267,
-                "voucher": [],
-                "status": "DEPOSITED",
-                "fullName": "Minh Lâm",
-                "phone": "0812345678",
-                "totalDiscount": 0,
-                "staffVerified": null,
-                "managerOnboard": null,
-                "note": "Giao ngoài giờ hành chánh dùm",
-                "deletedAt": null,
-                "createdAt": "2026-01-30T07:39:21.070Z",
-                "updatedAt": "2026-01-30T07:39:21.070Z",
-                "__v": 0
-            },
-            {
-                "address": {
-                    "street": "Le van viet",
-                    "ward": "Phuong Thu Duc",
-                    "city": "Thanh pho Ho Chi Minh"
-                },
-                "_id": "697c33f4b355f094556170f5",
-                "invoiceCode": "HD_7537241769747444612",
-                "owner": "697b12821628f3af05995358",
-                "totalPrice": 60000,
-                "voucher": [],
-                "status": "REJECTED",
-                "fullName": "Minh Lâm",
-                "phone": "0812345678",
-                "totalDiscount": 0,
-                "staffVerified": "69785b78cb02b6ef2f922573",
-                "managerOnboard": null,
-                "note": "Giao ngoài giờ hành chánh dùm",
-                "deletedAt": null,
-                "createdAt": "2026-01-30T04:30:44.619Z",
-                "updatedAt": "2026-01-30T04:31:29.004Z",
-                "__v": 0
-            },
-            {
-                "address": {
-                    "street": "Le van viet",
-                    "ward": "Phuong Thu Duc",
-                    "city": "Thanh pho Ho Chi Minh"
-                },
-                "_id": "697c2fa8c2401405c3a8bc21",
-                "invoiceCode": "HD_1398091769746344268",
-                "owner": "697b12821628f3af05995358",
-                "totalPrice": 60000,
-                "voucher": [],
-                "status": "COMPLETED",
-                "fullName": "Minh Lâm",
-                "phone": "0812345678",
-                "totalDiscount": 0,
-                "staffVerified": "69673933660b94516a038b6c",
-                "managerOnboard": "69673933660b94516a038b6c",
-                "note": "Giao ngoài giờ hành chánh dùm",
-                "deletedAt": null,
-                "createdAt": "2026-01-30T04:12:24.274Z",
-                "updatedAt": "2026-01-30T04:28:55.287Z",
-                "__v": 0
-            }
-        ],
-        "total": 3,
-        "page": 1,
-        "limit": 10,
-        "totalPages": 1
-    }
+  "productId": "string",
+  "sku": "string",
+  "quantity": "number"
 }
 ```
-### 6.3 GET `/invoices/:invoiceId`
 
--   **Auth**: Có
--   **Response**:
+### PATCH `/cart/update-prescription`
+- **Auth**: Required
+- **Body**:
 ```json
 {
-    "success": true,
-    "message": "Lấy chi tiết hóa đơn thành công!",
-    "data": {
-        "invoice": {
-            "address": {
-                "street": "Le van viet",
-                "ward": "Phuong Thu Duc",
-                "city": "Thanh pho Ho Chi Minh"
-            },
-            "_id": "697c6029c91b4e7cd04688f6",
-            "invoiceCode": "HD_8628731769758761060",
-            "owner": "697b12821628f3af05995358",
-            "totalPrice": 267,
-            "voucher": [],
-            "status": "DEPOSITED",
-            "fullName": "Minh Lâm",
-            "phone": "0812345678",
-            "totalDiscount": 0,
-            "staffVerified": null,
-            "managerOnboard": null,
-            "note": "Giao ngoài giờ hành chánh dùm",
-            "deletedAt": null,
-            "createdAt": "2026-01-30T07:39:21.070Z",
-            "updatedAt": "2026-01-30T07:39:21.070Z",
-            "__v": 0
-        },
-        "orderList": [
-            {
-                "_id": "697c6029c91b4e7cd04688f8",
-                "orderCode": "OD_7349041769758761090",
-                "invoiceId": "697c6029c91b4e7cd04688f6",
-                "type": [
-                    "NORMAL"
-                ],
-                "status": "PENDING",
-                "products": [
-                    {
-                        "product": {
-                            "product_id": "6965c4bc979f1a2fb5e329ec",
-                            "sku": "LENS-024-01",
-                            "pricePerUnit": 267
-                        },
-                        "quantity": 1,
-                        "_id": "697c6029c91b4e7cd04688f9"
-                    }
-                ],
-                "assignerStaff": null,
-                "assignedStaff": null,
-                "assignedAt": null,
-                "startedAt": null,
-                "completedAt": null,
-                "price": 267,
-                "deletedAt": null,
-                "__v": 0,
-                "createdAt": "2026-01-30T07:39:21.095Z",
-                "updatedAt": "2026-01-30T07:39:21.095Z"
-            }
-        ]
-    }
+  "productId": "string",
+  "sku": "string",
+  "prescription": {}
 }
 ```
-### 6.4 PATCH `/invoices/:id`
 
--   **Auth**: Có
--   **Body**:
+### DELETE `/cart/remove-product`
+- **Auth**: Required
+- **Body**:
 ```json
 {
-  "address": {
-    "street": "456 Le Loi",
-    "ward": "Ben Thanh",
-    "city": "Ho Chi Minh City"
+  "productId": "string",
+  "sku": "string"
+}
+```
+
+### DELETE `/cart/clear`
+- **Auth**: Required
+- **Description**: Clear entire cart
+
+---
+
+## 3. Client Checkout (`/checkout`)
+
+All routes require authentication.
+
+### POST `/checkout/sessions`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "items": [
+    {
+      "productId": "string",
+      "sku": "string",
+      "quantity": "number",
+      "prescription": {}
+    }
+  ]
+}
+```
+- **Response**: Returns checkout session ID
+
+### GET `/checkout/sessions/:id`
+- **Auth**: Required
+- **Params**: `id` (session ID)
+- **Description**: Get products in checkout session
+
+---
+
+## 4. Client Orders (`/orders`)
+
+All routes require authentication.
+
+### GET `/orders/:orderId`
+- **Auth**: Required
+- **Params**: `orderId` (string)
+- **Description**: Get order details
+
+### PATCH `/orders/:orderId`
+- **Auth**: Required
+- **Params**: `orderId` (string)
+- **Body**:
+```json
+{
+  "items": [
+    {
+      "orderProductId": "string",
+      "prescription": {}
+    }
+  ]
+}
+```
+- **Description**: Update prescription for order items (before processing)
+
+---
+
+## 5. Client Invoices (`/invoices`)
+
+All routes require authentication.
+
+### POST `/invoices`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "orderId": "string (ObjectId)",
+  "shippingAddress": {
+    "fullName": "string",
+    "phone": "string",
+    "address": "string",
+    "ward": "string",
+    "district": "string",
+    "province": "string"
   },
-  "fullName": "Tran Thi B",
-  "phone": "0912345678",
-  "note": "Giao hàng buổi sáng"
+  "paymentMethod": "cod | vnpay | zalopay | payos",
+  "voucherCode": "string (optional)",
+  "notes": "string (optional)"
 }
 ```
--   **Response**:
--   **Response**
-```json
-{
-    "success": true,
-    "message": "Update success",
-    "data": null
-}
-```
-### 6.5 PATCH `/invoices/:id/cancel`
+- **Response**: Returns invoice ID and payment URL (if online payment)
 
--   **Auth**: Có
--   **Response**
+### GET `/invoices`
+- **Auth**: Required
+- **Description**: Get customer's invoices list
+
+### GET `/invoices/:invoiceId`
+- **Auth**: Required
+- **Params**: `invoiceId` (string)
+- **Description**: Get invoice details
+
+### PATCH `/invoices/:id`
+- **Auth**: Required
+- **Params**: `id` (string)
+- **Body**:
 ```json
 {
-    "success": true,
-    "message": "Cancel success",
-    "data": null
+  "shippingAddress": {},
+  "notes": "string"
 }
 ```
+- **Description**: Update invoice (before processing)
+
+### PATCH `/invoices/:id/cancel`
+- **Auth**: Required
+- **Params**: `id` (string)
+- **Description**: Cancel invoice (if not yet processed)
+
 ---
 
-## 7) Payments (`/payments`)
+## 6. Client Payments (`/payments`)
 
-### 7.1 GET `/payments/zalopay/url/:invoiceId/:paymentId`
+### GET `/payments/vnpay/result-callback`
+- **Auth**: None (VNPay callback)
+- **Query**: VNPay payment result parameters
+- **Description**: Handle VNPay payment result
 
--   **Auth**: Có
--   **Response**:
+### POST `/payments/zalopay/result-callback`
+- **Auth**: None (ZaloPay callback)
+- **Body**: ZaloPay callback data
+- **Description**: Handle ZaloPay payment result
+
+### POST `/payments/payos/result-callback`
+- **Auth**: None (PayOS callback)
+- **Body**: PayOS callback data
+- **Description**: Handle PayOS payment result
+
+### GET `/payments/vnpay/url/:invoiceId/:paymentId`
+- **Auth**: Required
+- **Params**: `invoiceId`, `paymentId`
+- **Description**: Get VNPay payment URL
+
+### GET `/payments/zalopay/url/:invoiceId/:paymentId`
+- **Auth**: Required
+- **Params**: `invoiceId`, `paymentId`
+- **Description**: Get ZaloPay payment URL
+
+### GET `/payments/payos/url/:invoiceId/:paymentId`
+- **Auth**: Required
+- **Params**: `invoiceId`, `paymentId`
+- **Description**: Get PayOS payment URL
+
+### GET `/payments/:paymentId`
+- **Auth**: Required
+- **Params**: `paymentId` (string)
+- **Description**: Get payment status
+
+---
+
+## 7. Client Profile (`/customer`)
+
+All routes require authentication.
+
+### GET `/customer`
+- **Auth**: Required
+- **Description**: Get customer profile
+
+### PATCH `/customer/profile`
+- **Auth**: Required
+- **Body**:
 ```json
 {
-    "success": true,
-    "message": "Cancel success",
-    "data": {
-        "url": "string"
+  "fullName": "string (optional)",
+  "phone": "string (optional)",
+  "dateOfBirth": "string (ISO date, optional)",
+  "gender": "male | female | other (optional)",
+  "avatar": "string (URL, optional)"
+}
+```
+
+### PATCH `/customer/profile/password`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "oldPassword": "string",
+  "newPassword": "string (min 8 chars)"
+}
+```
+
+### POST `/customer/profile/address`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "fullName": "string",
+  "phone": "string",
+  "address": "string",
+  "ward": "string",
+  "district": "string",
+  "province": "string",
+  "isDefault": "boolean (optional)"
+}
+```
+
+### GET `/customer/profile/address`
+- **Auth**: Required
+- **Description**: Get all customer addresses
+
+### GET `/customer/profile/address/default`
+- **Auth**: Required
+- **Description**: Get default address
+
+### PATCH `/customer/profile/address/:id`
+- **Auth**: Required
+- **Params**: `id` (string)
+- **Body**: Partial address update
+
+### PATCH `/customer/profile/address/change-default/:id`
+- **Auth**: Required
+- **Params**: `id` (string)
+- **Description**: Set address as default
+
+### DELETE `/customer/profile/address/:id`
+- **Auth**: Required
+- **Params**: `id` (string)
+
+### POST `/customer/profile/prescription`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "name": "string (optional, e.g., 'Daily use')",
+  "leftEye": {
+    "sphere": "number",
+    "cylinder": "number",
+    "axis": "number"
+  },
+  "rightEye": {
+    "sphere": "number",
+    "cylinder": "number",
+    "axis": "number"
+  },
+  "pd": "number",
+  "isDefault": "boolean (optional)"
+}
+```
+
+### GET `/customer/profile/prescription`
+- **Auth**: Required
+- **Description**: Get all customer prescriptions
+
+### GET `/customer/profile/prescription/default`
+- **Auth**: Required
+- **Description**: Get default prescription
+
+### PATCH `/customer/profile/prescription/:id`
+- **Auth**: Required
+- **Params**: `id` (string)
+- **Body**: Partial prescription update
+
+### PATCH `/customer/profile/prescription/change-default/:id`
+- **Auth**: Required
+- **Params**: `id` (string)
+
+### DELETE `/customer/profile/prescription/:id`
+- **Auth**: Required
+- **Params**: `id` (string)
+
+---
+
+## 8. Client Wishlist (`/wishlist`)
+
+All routes require authentication.
+
+### GET `/wishlist`
+- **Auth**: Required
+- **Response**: List of wishlist products
+
+### POST `/wishlist/products/:productId`
+- **Auth**: Required
+- **Params**: `productId` (ObjectId)
+- **Description**: Add product to wishlist
+
+### DELETE `/wishlist/products/:productId`
+- **Auth**: Required
+- **Params**: `productId` (ObjectId)
+- **Description**: Remove product from wishlist
+
+### DELETE `/wishlist/products`
+- **Auth**: Required
+- **Description**: Clear entire wishlist
+
+---
+
+## 9. Client Vouchers (`/vouchers`)
+
+### GET `/vouchers/available`
+- **Auth**: None
+- **Description**: Get publicly available vouchers
+
+### GET `/vouchers/my-vouchers`
+- **Auth**: Required
+- **Description**: Get customer's vouchers
+
+### GET `/vouchers/client/:clientId`
+- **Auth**: Required
+- **Params**: `clientId` (string)
+- **Description**: Get vouchers for specific client
+
+### POST `/vouchers/validate`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "code": "string",
+  "orderAmount": "number"
+}
+```
+- **Description**: Validate voucher for order
+
+### POST `/vouchers/assign`
+- **Auth**: Required
+- **Description**: Assign voucher to current client
+
+### POST `/vouchers/claim-voucher`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "code": "string"
+}
+```
+- **Description**: Claim public voucher
+
+---
+
+## 10. Client Return Tickets (`/return-tickets`)
+
+All routes require authentication.
+
+### POST `/return-tickets`
+- **Auth**: Required
+- **Body**:
+```json
+{
+  "orderId": "string (ObjectId)",
+  "invoiceId": "string (ObjectId)",
+  "reason": "string",
+  "description": "string",
+  "items": [
+    {
+      "orderProductId": "string",
+      "quantity": "number",
+      "reason": "string"
     }
+  ],
+  "images": ["string (URLs)"]
 }
 ```
----
 
-## 8) Vouchers (`/vouchers`)
-
-### 8.1 GET `/vouchers/available`
-
--   **Auth**: Không
-
-### 8.2 GET `/vouchers/my-vouchers`
-
--   **Auth**: Có
-
-### 8.3 POST `/vouchers/validate`
-
--   **Auth**: Có
-
-### 8.4 POST `/vouchers/assign`
-
--   **Auth**: Có
+### GET `/return-tickets`
+- **Auth**: Required
+- **Query**: Pagination
+- **Description**: Get customer's return tickets
 
 ---
 
-# Common/Public API
+## 11. Client AI Conversation (`/ai-conversation`)
 
-Prefix: `/api/v1`
+All routes require authentication.
 
-## 1) Products (`/products`)
+### GET `/ai-conversation`
+- **Auth**: Required
+- **Description**: Get customer's AI conversation history
 
-### 1.1 GET `/products/`
-
--   **Auth**: Không
--   **Response**:
+### POST `/ai-conversation/chat`
+- **Auth**: Required
+- **Body**:
 ```json
 {
-    "success": true,
-    "message": "Lấy danh sách sản phẩm thành công!",
-    "data": {
-        "productList": [
-            {
-                "id": "6965c4bc979f1a2fb5e329ec",
-                "nameBase": "Kodak Anti-Blue Light + Anti-Scratch Lens 24",
-                "slugBase": "kodak-anti-blue-light--anti-scratch-lens-24",
-                "skuBase": "LENS-024",
-                "type": "lens",
-                "brand": "Kodak",
-                "categories": [
-                    "6965c4bc979f1a2fb5e32807",
-                    "6965c4bc979f1a2fb5e3280a"
-                ],
-                "defaultVariantPrice": 297,
-                "defaultVariantFinalPrice": 267,
-                "defaultVariantImage": "https://picsum.photos/seed/lens24v0a/400/400",
-                "totalVariants": 3,
-                "createdAt": "04:06:20 13/01/2026"
-            }
-        ],
-        "pagination": {
-            "page": 1,
-            "limit": 10,
-            "total": 3,
-            "totalPages": 1
+  "message": "string"
+}
+```
+- **Response**: AI assistant response with product recommendations
+
+---
+
+## 12. Client AI Messages (`/ai-message`)
+
+All routes require authentication.
+
+### GET `/ai-message`
+- **Auth**: Required
+- **Query**:
+  - `conversationId`: string (optional)
+  - `page`: number
+  - `limit`: number
+- **Description**: Get AI message history
+
+---
+
+# COMMON/PUBLIC API
+
+Base path: `/api/v1`
+
+## 1. Common Products (`/products`)
+
+### GET `/products`
+- **Auth**: None
+- **Query**:
+  - `page`: number (default: 1)
+  - `limit`: number (default: 12)
+  - `search`: string (optional)
+  - `category`: string (ObjectId, optional)
+  - `minPrice`: number (optional)
+  - `maxPrice`: number (optional)
+  - `color`: string (optional)
+  - `size`: string (optional)
+  - `brand`: string (optional)
+  - `material`: string (optional)
+  - `shape`: string (optional)
+  - `sort`: "price_asc | price_desc | newest | popular"
+- **Description**: Browse products with filters
+
+### GET `/products/specs`
+- **Auth**: None
+- **Description**: Get all distinct product specifications for filters (colors, sizes, brands, etc.)
+
+### GET `/products/:id`
+- **Auth**: None
+- **Params**: `id` (ObjectId)
+- **Description**: Get product details
+
+### GET `/products/:id/variants/:sku`
+- **Auth**: None
+- **Params**: `id` (ObjectId), `sku` (string)
+- **Description**: Get specific product variant details
+
+---
+
+## 2. Common Categories (`/categories`)
+
+### GET `/categories/tree`
+- **Auth**: None
+- **Response**: Categories in hierarchical tree structure
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "string",
+      "name": "string",
+      "thumbnail": "string",
+      "children": [
+        {
+          "_id": "string",
+          "name": "string",
+          "thumbnail": "string",
+          "children": []
         }
+      ]
     }
+  ]
 }
 ```
-### 1.2 GET `/products/:id`
 
--   **Auth**: Không
--   **Respons**:
+---
+
+## 3. Common Upload (`/upload`)
+
+### POST `/upload/single`
+- **Auth**: None
+- **Body**: `multipart/form-data`
+  - `file`: File (image)
+- **Description**: Upload single file to cloud storage
+- **Response**:
 ```json
 {
-    "success": true,
-    "message": "Láy sản phẩm thành công!",
-    "data": {
-        "product": {
-            "nameBase": "Kodak Anti-Blue Light + Anti-Scratch Lens 24",
-            "slugBase": "kodak-anti-blue-light--anti-scratch-lens-24",
-            "skuBase": "LENS-024",
-            "brand": "Kodak",
-            "categories": [
-                "6965c4bc979f1a2fb5e32807",
-                "6965c4bc979f1a2fb5e3280a"
-            ],
-            "variants": [
-                {
-                    "sku": "LENS-024-01",
-                    "name": "Kodak Anti-Blue Light + Anti-Scratch Lens 24 - 1.74 - Premium",
-                    "slug": "kodak-anti-blue-light--anti-scratch-lens-24-174-premium",
-                    "options": [
-                        {
-                            "attributeId": "69658896e8bf7da827177ac1",
-                            "attributeName": "Thickness",
-                            "label": "1.74",
-                            "showType": "text",
-                            "value": "1.74"
-                        },
-                        {
-                            "attributeId": "69658896e8bf7da827177ac2",
-                            "attributeName": "Coating",
-                            "label": "Premium",
-                            "showType": "text",
-                            "value": "Premium"
-                        }
-                    ],
-                    "price": 297,
-                    "finalPrice": 267,
-                    "stock": 53,
-                    "imgs": [
-                        "https://picsum.photos/seed/lens24v0a/400/400",
-                        "https://picsum.photos/seed/lens24v0b/400/400"
-                    ],
-                    "isDefault": true
-                },
-                {
-                    "sku": "LENS-024-02",
-                    "name": "Kodak Anti-Blue Light + Anti-Scratch Lens 24 - 1.74 - Ultra",
-                    "slug": "kodak-anti-blue-light--anti-scratch-lens-24-174-ultra",
-                    "options": [
-                        {
-                            "attributeId": "69658896e8bf7da827177ac1",
-                            "attributeName": "Thickness",
-                            "label": "1.74",
-                            "showType": "text",
-                            "value": "1.74"
-                        },
-                        {
-                            "attributeId": "69658896e8bf7da827177ac2",
-                            "attributeName": "Coating",
-                            "label": "Ultra",
-                            "showType": "text",
-                            "value": "Ultra"
-                        }
-                    ],
-                    "price": 120,
-                    "finalPrice": 94,
-                    "stock": 67,
-                    "imgs": [
-                        "https://picsum.photos/seed/lens24v1a/400/400",
-                        "https://picsum.photos/seed/lens24v1b/400/400"
-                    ],
-                    "isDefault": false
-                },
-                {
-                    "sku": "LENS-024-03",
-                    "name": "Kodak Anti-Blue Light + Anti-Scratch Lens 24 - 1.61 - Ultra",
-                    "slug": "kodak-anti-blue-light--anti-scratch-lens-24-161-ultra",
-                    "options": [
-                        {
-                            "attributeId": "69658896e8bf7da827177ac1",
-                            "attributeName": "Thickness",
-                            "label": "1.61",
-                            "showType": "text",
-                            "value": "1.61"
-                        },
-                        {
-                            "attributeId": "69658896e8bf7da827177ac2",
-                            "attributeName": "Coating",
-                            "label": "Ultra",
-                            "showType": "text",
-                            "value": "Ultra"
-                        }
-                    ],
-                    "price": 291,
-                    "finalPrice": 291,
-                    "stock": 61,
-                    "imgs": [
-                        "https://picsum.photos/seed/lens24v2a/400/400",
-                        "https://picsum.photos/seed/lens24v2b/400/400"
-                    ],
-                    "isDefault": false
-                }
-            ],
-            "type": "lens",
-            "spec": {
-                "feature": [
-                    "Anti-Blue Light",
-                    "Anti-Scratch"
-                ],
-                "origin": "Japan"
-            }
-        }
-    }
+  "success": true,
+  "data": {
+    "url": "string"
+  }
 }
 ```
+
+### POST `/upload/many`
+- **Auth**: None
+- **Body**: `multipart/form-data`
+  - `files`: File[] (max 50 files)
+- **Description**: Upload multiple files
+- **Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "urls": ["string"]
+  }
+}
+```
+
+---
+
+## 4. Common Shipping (`/ships`)
+
+### GET `/ships/invoice/:invoiceId/ship-code`
+- **Auth**: None
+- **Params**: `invoiceId` (string)
+- **Description**: Get shipping tracking code for invoice
+- **Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "shipCode": "string",
+    "carrier": "string",
+    "status": "string"
+  }
+}
+```
+
+---
+
+# Authentication & Authorization
+
+## Admin Roles
+
+- **SYSTEM_ADMIN**: Full system access
+- **MANAGER**: Manage staff, approve operations, view all data
+- **SALE_STAFF**: Handle orders, customer service, approve invoices
+- **OPERATION_STAFF**: Process orders, manage inventory
+- **DELIVERY_STAFF**: Handle deliveries, update delivery status
+
+## Client Authentication
+
+Clients authenticate using JWT tokens:
+- **Access Token**: Short-lived (7 days), sent in `Authorization: Bearer <token>` header
+- **Refresh Token**: Long-lived (30 days), stored in httpOnly cookie
+
+## Common Headers
+
+All authenticated requests should include:
+```
+Authorization: Bearer <access_token>
+x-device-id: <unique_device_id>
+```
+
+---
+
+# Error Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 | Success |
+| 201 | Created |
+| 400 | Bad Request (validation error) |
+| 401 | Unauthorized (invalid/missing token) |
+| 403 | Forbidden (insufficient permissions) |
+| 404 | Not Found |
+| 409 | Conflict (duplicate resource) |
+| 422 | Unprocessable Entity (business logic error) |
+| 429 | Too Many Requests (rate limit) |
+| 500 | Internal Server Error |
+
+---
+
+# Rate Limiting
+
+Rate limits are applied per IP address:
+- **Public endpoints**: 100 requests per 15 minutes
+- **Authenticated endpoints**: 500 requests per 15 minutes
+- **Admin endpoints**: 1000 requests per 15 minutes
+
+---
+
+# Webhooks
+
+## Payment Gateway Callbacks
+
+The following endpoints are webhooks called by payment gateways:
+- `POST /payments/vnpay/result-callback`
+- `POST /payments/zalopay/result-callback`
+- `POST /payments/payos/result-callback`
+
+These endpoints do not require authentication and should be whitelisted in firewall rules.
+
+---
+
+# WebSocket Events (Socket.IO)
+
+## Connection
+- **URL**: `ws://localhost:5000` (or production URL)
+- **Auth**: Pass JWT token in connection query: `?token=<access_token>`
+
+## Events
+
+### Client → Server
+- `join_order_room`: Join room for order updates
+- `join_invoice_room`: Join room for invoice updates
+
+### Server → Client
+- `order_updated`: Order status changed
+- `invoice_updated`: Invoice status changed
+- `new_message`: New AI conversation message
+
+---
+
+**Last Updated**: Generated from source code on 2026-03-06
+
+**Total Endpoints**: 95+ endpoints across admin, client, and common APIs
