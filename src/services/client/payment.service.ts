@@ -335,8 +335,8 @@ class PaymentClientService {
             amount: 2000,
             description: `${paymentId}`,
             items: [],
-            cancelUrl: `${config.cors.origin[2]}/payment-result?isSuccess=true&invoiceId=${invoiceId}`,
-            returnUrl: `${config.cors.origin[2]}/payment-result?isSuccess=false&invoiceId=${invoiceId}`,
+            cancelUrl: `${config.cors.origin[2]}/payment-result?isSuccess=false&invoiceId=${invoiceId}`,
+            returnUrl: `${config.cors.origin[2]}/payment-result?isSuccess=true&invoiceId=${invoiceId}`,
         }
 
         const paymentUrl = await payOS.paymentRequests.create(orderForPayos);
