@@ -9,7 +9,7 @@ export const UpdateCustomerProfileSchema = z.object({
     hobbies: z.array(z.string()).optional()
 });
 export const UpdateCustomerPasswordSchema = z.object({
-    oldPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    oldPassword: z.string().nonempty({error: "Password is required"}).optional(),
     newPassword: z.string().min(8, 'Password must be at least 8 characters'),
 })
 export const AddCustomerAddressSchema = z.object({

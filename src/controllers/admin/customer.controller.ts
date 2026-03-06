@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import customerService from '../../services/admin/customer.service';
 import { ApiResponse } from '../../utils/api-response';
-import { CustomerListQuery } from '../../types/customer/customer.query';
+import { CustomerListQuery, CustomerBySpendingQuery } from '../../types/customer/customer.query';
 import { CreateCustomer, UpdateCustomer } from '../../types/customer/customer';
 import { formatDateToString } from '../../utils/formatter';
 
@@ -64,6 +64,29 @@ class CustomerController {
         const id = req.params.id as string;
         await customerService.softDelete(id);
         res.json(ApiResponse.success('Delete customer successfully', null));
+    };
+
+    getCustomersBySpending = async (req: Request, res: Response) => {
+        const query = req.validatedQuery as CustomerBySpendingQuery;
+        const result = await customerService.getCustomersBySpending(query);
+
+        const customerListFinal = result.customers.map(item => {
+            return {
+                "id": item._id.toString(),
+                "name": item.name,
+                "email": item.email,
+                "phone": item.phone || null,
+                "gender": item.gender,
+                "totalSpending": item.totalSpending,
+                "totalOrders": item.totalOrders,
+                "createdAt": formatDateToString(item.createdAt),
+            }
+        });
+
+        res.json(ApiResponse.success('Get customers by spending successfully', {
+            customers: customerListFinal,
+            pagination: result.pagination
+        }));
     };
 }
 

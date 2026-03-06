@@ -1,13 +1,15 @@
 import { FilterQuery } from 'mongoose';
 import { customerRepository } from '../../repositories/customer/customer.repository';
 import { ICustomerDocument } from '../../models/customer/customer.model.mongo';
-import { CustomerListQuery } from '../../types/customer/customer.query';
+import { CustomerListQuery, CustomerBySpendingQuery } from '../../types/customer/customer.query';
 import { CreateCustomer, UpdateCustomer } from '../../types/customer/customer';
 import {
     ConflictRequestError,
     NotFoundRequestError,
 } from '../../errors/apiError/api-error';
 import bcrypt from 'bcryptjs';
+import { InvoiceModel } from '../../models/invoice/invoice.model.mongo';
+import { InvoiceStatus } from '../../config/enums/invoice.enum';
 
 class CustomerService {
     async getList(query: CustomerListQuery) {
@@ -116,6 +118,79 @@ class CustomerService {
         return await customerRepository.update(id, {
             deletedAt: new Date(),
         } as any);
+    }
+
+    async getCustomersBySpending(query: CustomerBySpendingQuery) {
+        const { spendingAmount, page } = query;
+        const limit = 10;
+        // Sử dụng aggregation để tính tổng spending từ invoices có status DELIVERED
+        const aggregationResult = await InvoiceModel.aggregate([
+            {
+                $match: {
+                    status: InvoiceStatus.DELIVERED,
+                },
+            },
+            {
+                $group: {
+                    _id: '$owner',
+                    totalSpending: { $sum: '$totalPrice' },
+                    totalOrders: { $count: {} },
+                },
+            },
+            {
+                $match: {
+                    totalSpending: { $gt: spendingAmount },
+                },
+            },
+            {
+                $sort: { totalSpending: -1 },
+            },
+        ]);
+
+        // Lấy danh sách customer IDs
+        const customerIds = aggregationResult.map((item) => item._id);
+
+        // Tạo map  để tí có info khách thì đấp thêm đc 
+        const spendingMap = new Map(
+            aggregationResult.map((item) => [
+                item._id,
+                {
+                    totalSpending: item.totalSpending,
+                    totalOrders: item.totalOrders,
+                },
+            ])
+        );
+
+        // Giả lập pagination
+        const skip = (page - 1) * limit;
+        const paginatedCustomerIds = customerIds.slice(skip, skip + limit);
+
+        const customers = await customerRepository.findAllNoPagination({
+            _id: { $in: paginatedCustomerIds },
+            deletedAt: null,
+        });
+
+        // Map customers với spending data và sort lại theo totalSpending
+        const customersWithSpending = customers
+            .map((customer) => {
+                const spendingData = spendingMap.get(customer._id.toString());
+                return {
+                    ...customer.toObject(),
+                    totalSpending: spendingData?.totalSpending || 0,
+                    totalOrders: spendingData?.totalOrders || 0,
+                };
+            })
+            .sort((a, b) => b.totalSpending - a.totalSpending);
+
+        return {
+            customers: customersWithSpending,
+            pagination: {
+                page,
+                limit,
+                total: customerIds.length,
+                totalPages: Math.ceil(customerIds.length / limit),
+            },
+        };
     }
 }
 
