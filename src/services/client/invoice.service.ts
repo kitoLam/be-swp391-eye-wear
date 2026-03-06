@@ -407,18 +407,25 @@ class InvoiceClientService {
             );
 
             // Create Invoice
+            // Determine invoice status based on payment method and product types
+            let invoiceStatus = InvoiceStatus.PENDING;
+            if (payload.paymentMethod == PaymentMethodType.COD) {
+                // If COD and no manufacturing products, set to APPROVED
+                // Manufacturing products need deposit, so they should be DEPOSITED
+                if (manufacturingProducts.length == 0) {
+                    invoiceStatus = InvoiceStatus.APPROVED;
+                } else {
+                    invoiceStatus = InvoiceStatus.DEPOSITED;
+                }
+            }
+
             const invoiceData = {
                 owner: customerId,
                 totalPrice: totalPrice + feeShip,
                 totalDiscount,
                 voucher: voucherId ? [voucherId] : [],
                 address: payload.address,
-                status:
-                    payload.paymentMethod == PaymentMethodType.COD
-                        ? manufacturingProducts.length == 0
-                            ? InvoiceStatus.APPROVED
-                            : InvoiceStatus.DEPOSITED
-                        : InvoiceStatus.PENDING,
+                status: invoiceStatus,
                 fullName: payload.fullName,
                 phone: payload.phone,
                 invoiceCode: generateInvoiceCode(),
