@@ -4,6 +4,7 @@ import {
     NotFoundRequestError,
 } from '../../errors/apiError/api-error';
 import moment from 'moment';
+import { OrderStatus, OrderType } from '../../config/enums/order.enum';
 import { orderRepository } from '../../repositories/order/order.repository';
 import * as objectUtil from '../../utils/object.util';
 import { constants, createHmac } from 'node:crypto';
@@ -135,9 +136,26 @@ class PaymentClientService {
                 { status: PaymentStatus.PAID }
             );
             // Cập nhật invoice status
+            let hasPreOrder = false;
+            let hasManufacturing = false;
+
+            for (const order of orderList) {
+                if (order.type.includes(OrderType.PRE_ORDER)) {
+                    hasPreOrder = true;
+                }
+                if (order.type.includes(OrderType.MANUFACTURING)) {
+                    hasManufacturing = true;
+                }
+            }
+
+            const targetStatus =
+                hasPreOrder && !hasManufacturing
+                    ? InvoiceStatus.APPROVED
+                    : InvoiceStatus.DEPOSITED;
+
             await invoiceRepository.updateByFilter(
                 { _id: invoiceId },
-                { status: InvoiceStatus.DEPOSITED }
+                { status: targetStatus }
             );
         }
     };
@@ -241,8 +259,8 @@ class PaymentClientService {
                 );
                 return {
                     isSuccess: true,
-                    invoiceId
-                }
+                    invoiceId,
+                };
                 // END XỬ LÍ LOGIC HẬU THANH TOÁN
             } else {
                 throw new ForbiddenRequestError('Thanh toán khỏng thành công');
@@ -250,8 +268,8 @@ class PaymentClientService {
         } catch (error) {
             return {
                 isSuccess: false,
-                invoiceId
-            }
+                invoiceId,
+            };
         }
     };
 
@@ -337,27 +355,27 @@ class PaymentClientService {
             items: [],
             cancelUrl: `${config.cors.origin[2]}/payment-result?isSuccess=false&invoiceId=${invoiceId}`,
             returnUrl: `${config.cors.origin[2]}/payment-result?isSuccess=true&invoiceId=${invoiceId}`,
-        }
+        };
 
         const paymentUrl = await payOS.paymentRequests.create(orderForPayos);
         return paymentUrl.checkoutUrl;
-    }
+    };
     handlePayosResultCallback = async (paymentId: string) => {
         const foundPayment = await paymentRepository.findOne({
             _id: paymentId,
             deletedAt: null,
         });
-        if(!foundPayment){
+        if (!foundPayment) {
             throw new NotFoundRequestError('Thanh toán khỏng thông tin');
         } else {
             await this.handlePaymentCallback(
                 foundPayment.invoiceId,
                 foundPayment._id.toString()
             );
-            console.log(">>>paymentId payos::", foundPayment._id.toString());
-            console.log(">>>invoiceId payos::", foundPayment.invoiceId);
+            console.log('>>>paymentId payos::', foundPayment._id.toString());
+            console.log('>>>invoiceId payos::', foundPayment.invoiceId);
         }
-    }
+    };
     handleZalopayResultCallback = async (zaloPayload: {
         reqMac: string;
         dataStr: string;

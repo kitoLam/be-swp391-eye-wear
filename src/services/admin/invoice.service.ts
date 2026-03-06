@@ -487,6 +487,21 @@ class InvoiceService {
             );
         }
 
+        // check all orders are completed
+        const countAllOrders = await orderRepository.count({
+            invoiceId: foundInvoice._id,
+        });
+        const countCompletedOrders = await orderRepository.count({
+            invoiceId: foundInvoice._id,
+            status: OrderStatus.COMPLETED,
+        });
+
+        if (countAllOrders !== countCompletedOrders) {
+            throw new ConflictRequestError(
+                'Cannot assign invoice because not all orders are completed'
+            );
+        }
+
         // check if invoice already assigned to a staff
         if (foundInvoice.staffHandleDelivery) {
             throw new ConflictRequestError(
