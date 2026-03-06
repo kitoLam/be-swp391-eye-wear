@@ -7,3 +7,9 @@ export const CustomerListQuerySchema = BaseQuerySchema.extend({
 });
 
 export type CustomerListQuery = z.infer<typeof CustomerListQuerySchema>;
+
+export const CustomerBySpendingQuerySchema = BaseQuerySchema.extend({
+    spendingAmount: z.string().regex(/^\d+$/, 'spendingAmount must be a positive number').or(z.number().int()).transform(Number),
+});
+
+export type CustomerBySpendingQuery = z.infer<typeof CustomerBySpendingQuerySchema>;

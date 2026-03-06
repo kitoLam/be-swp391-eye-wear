@@ -13,7 +13,7 @@ import {
     CreateCustomerSchema,
     UpdateCustomerSchema,
 } from '../../types/customer/customer';
-import { CustomerListQuerySchema } from '../../types/customer/customer.query';
+import { CustomerListQuerySchema, CustomerBySpendingQuerySchema } from '../../types/customer/customer.query';
 
 const router = Router();
 
@@ -23,6 +23,12 @@ router.get(
     '/',
     validateQuery(CustomerListQuerySchema),
     customerController.getList
+);
+
+router.get(
+    '/list-by-spending',
+    validateQuery(CustomerBySpendingQuerySchema),
+    customerController.getCustomersBySpending
 );
 
 router.get(

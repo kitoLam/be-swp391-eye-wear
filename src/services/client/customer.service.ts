@@ -153,10 +153,15 @@ class CustomerService {
     if(!foundCustomer){
       throw new NotFoundRequestError('Customer not found');
     }
+
+
     if(!foundCustomer.providers.includes('local')){
       foundCustomer.providers.push('local');
     }
     else {
+      if(!payload.oldPassword){
+        throw new BadRequestError('Old password is required to double check for manual account!');
+      }
       const isPasswordMatch = comparePassword(payload.oldPassword, foundCustomer.hashedPassword);
       if(!isPasswordMatch){
         throw new BadRequestError('Old password is incorrect');
