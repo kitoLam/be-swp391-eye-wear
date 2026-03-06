@@ -487,6 +487,26 @@ class InvoiceService {
             );
         }
 
+        // check if invoice already assigned to a staff
+        if (foundInvoice.staffHandleDelivery) {
+            throw new ConflictRequestError(
+                'Invoice has already been assigned to a delivery staff'
+            );
+        }
+        // Enforce all orders must be completed
+        const totalAllOrders = await orderRepository.count({
+            invoiceId: foundInvoice._id,
+        });
+        const totalCompletedOrders = await orderRepository.count({
+            invoiceId: foundInvoice._id,
+            status: OrderStatus.COMPLETED,
+        });
+
+        if (totalAllOrders !== totalCompletedOrders) {
+            throw new ConflictRequestError(
+                'Cannot complete invoice because not all orders are completed'
+            );
+        }
         // check admin onboard is the same with cur admin
         if (foundInvoice.managerOnboard != adminContext.id) {
             throw new ConflictRequestError('Only manager onboard can assign');
