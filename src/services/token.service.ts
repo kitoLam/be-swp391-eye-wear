@@ -1,11 +1,12 @@
 import { redisPrefix } from '../config/constants/redis.constant';
+import { RoleType } from '../config/enums/admin-account';
 import { config } from '../config/env.config';
 import * as jwtUtil from '../utils/jwt.util';
 import redisService from './redis.service';
 class TokenService {
     getNewAccessToken = (
         userId: string,
-        role?: 'SALE_STAFF' | 'OPERATION_STAFF' | 'MANAGER' | 'SYSTEM_ADMIN'
+        role?: RoleType
     ) => {
         // generate accessToken from jwtUtil
         const accessToken = jwtUtil.generateAccessToken(userId, role);
@@ -13,7 +14,7 @@ class TokenService {
     };
     getNewResetPasswordToken = (
         userId: string,
-        role?: 'SALE_STAFF' | 'OPERATION_STAFF' | 'MANAGER' | 'SYSTEM_ADMIN'
+        role?: RoleType
     ) => {
         // generate token from jwtUtil
         const token = jwtUtil.generateResetPasswordToken(userId, role);
@@ -22,11 +23,7 @@ class TokenService {
     getNewRefreshToken = async (
         payload: {
             userId: string;
-            role?:
-                | 'SALE_STAFF'
-                | 'OPERATION_STAFF'
-                | 'MANAGER'
-                | 'SYSTEM_ADMIN';
+            role?: RoleType,
         },
         deviceId: string,
         side: 'admin' | 'client'

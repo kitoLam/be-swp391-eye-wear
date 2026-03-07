@@ -1,0 +1,23 @@
+export const emittedEvent = {
+  RECEIVE_MESSAGE: "RECEIVE_MESSAGE",
+  UPDATE_CHAT_LIST: "UPDATE_CHAT_LIST",
+  READ_BY_SHOP: "READ_BY_SHOP",
+  READ_BY_CUSTOMER: "READ_BY_CUSTOMER",
+  CUSTOMER_ONLINE: "CUSTOMER_ONLINE", // only cust gửi
+  notification: {
+    RECEIVE_INVOICE_CREATE: "RECEIVE_INVOICE_CREATE",
+    RECEIVE_ASSIGN_ORDER: "RECEIVE_ASSIGN_ORDER",
+    RECEIVE_ASSIGN_INVOICE: "RECEIVE_ASSIGN_INVOICE"
+  },
+};
+export const listenedEvent = {
+  SEND_MESSAGE: "SEND_MESSAGE",
+  TYPING: "TYPING", 
+  JOIN_ROOM: "JOIN_ROOM", // only nhận nếu là staff gửi
+  LEAVE_ROOM: "LEAVE_ROOM", // only nhận nếu staff gửi
+  notification: {
+    INVOICE_CREATE: "INVOICE_CREATE", // khi customer tạo invoice -> 
+    ASSIGN_ORDER: "ASSIGN_ORDER",
+    ASSIGN_INVOICE: "ASSIGN_INVOICE"
+  }
+}

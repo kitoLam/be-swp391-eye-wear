@@ -1,0 +1,5 @@
+export enum NotificationType {
+  INVOICE_CREATE = "INVOICE_CREATE",
+  ASSIGN_ORDER = "ASSIGN_ORDER",
+  ASSIGN_INVOICE = "ASSIGN_INVOICE"
+}
