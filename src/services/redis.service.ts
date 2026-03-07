@@ -34,5 +34,17 @@ class RedisService {
     async deleteDataByKey(key: string): Promise<void> {
         await redisClient.client.del(key);
     }
+
+    async incrKeyBy(key: string, qty: number): Promise<number> {
+        return redisClient.client.incrBy(key, qty);
+    }
+
+    async descKeyBy(key: string, qty: number): Promise<number> {
+        return redisClient.client.decrBy(key, qty);
+    }
+
+    async setExpire(key: string, ttl: number): Promise<void> {
+        await redisClient.client.expire(key, ttl);
+    }
 }
 export default new RedisService();

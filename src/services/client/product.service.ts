@@ -613,6 +613,56 @@ Quy tắc:
         }
     }
 
+    /**
+     * Get the stock of a variant directly from MongoDB
+     * @param productId - The product ID
+     * @param sku - The variant SKU
+     * @returns The stock quantity from the database
+     * @throws {NotFoundRequestError} - if product or variant not found
+     * @throws {BadRequestError} - if pre-order product has invalid configuration
+     */
+    getVariantStock = async (
+        productId: string,
+        sku: string
+    ): Promise<number> => {
+        // Find the product with the specified variant
+        const product = await productRepository.findOne({
+            _id: productId,
+            'variants.sku': sku,
+        });
+
+        if (!product) {
+            throw new NotFoundRequestError('Product not found');
+        }
+
+        // Find the specific variant
+        const variant = product.variants.find(v => v.sku === sku);
+        if (!variant) {
+            throw new NotFoundRequestError('Variant not found');
+        }
+
+        if (variant.mode === ProductVariantMode.PRE_ORDER) {
+            // For pre-order products, get stock from pre-order-import table
+            const preOrderImport = await preOrderImportRepository.findOne({
+                sku: variant.sku,
+                status: PreOrderImportStatus.PENDING,
+            });
+
+            if (!preOrderImport) {
+                return 0;
+            }
+
+            // Return available quantity from pre-order import
+            return (
+                preOrderImport.targetQuantity -
+                preOrderImport.preOrderedQuantity
+            );
+        } else {
+            // For regular products, return stock from variant
+            return variant.stock;
+        }
+    };
+
     buildQueryForAISuggestion = async (messageHistory?: any[]) => {
         let queryText = '';
 
