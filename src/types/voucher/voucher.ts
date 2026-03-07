@@ -102,29 +102,50 @@ export const CreateVoucherSchema = z
     );
 
 // Update Voucher Schema
-export const UpdateVoucherSchema = z.object({
-    name: z.string().min(1, 'Voucher name is required').optional(),
-    description: z.string().min(1, 'Description is required').optional(),
-    typeDiscount: z.nativeEnum(VoucherType).optional(),
-    value: z.number().min(0, 'Value must be non-negative').optional(),
-    usageLimit: z
-        .number()
-        .int()
-        .min(1, 'Usage limit must be at least 1')
-        .optional(),
-    startedDate: z.date().optional(),
-    endedDate: z.date().optional(),
-    minOrderValue: z
-        .number()
-        .min(0, 'Minimum order value must be non-negative')
-        .optional(),
-    maxDiscountValue: z
-        .number()
-        .min(0, 'Maximum discount value must be non-negative')
-        .optional(),
-    applyScope: z.nativeEnum(VoucherApplyScope).optional(),
-    status: z.nativeEnum(VoucherStatus).optional(),
-});
+export const UpdateVoucherSchema = z
+    .object({
+        name: z.string().min(1, 'Voucher name is required').optional(),
+        description: z.string().min(1, 'Description is required').optional(),
+        typeDiscount: z.nativeEnum(VoucherType).optional(),
+        value: z.number().min(0, 'Value must be non-negative').optional(),
+        usageLimit: z
+            .number()
+            .int()
+            .min(1, 'Usage limit must be at least 1')
+            .optional(),
+        startedDate: z.coerce.date(),
+        endedDate: z.coerce.date(),
+        minOrderValue: z
+            .number()
+            .min(0, 'Minimum order value must be non-negative')
+            .optional(),
+        maxDiscountValue: z
+            .number()
+            .min(0, 'Maximum discount value must be non-negative')
+            .optional(),
+        applyScope: z.nativeEnum(VoucherApplyScope).optional(),
+        status: z.nativeEnum(VoucherStatus).optional(),
+    })
+    .refine(
+        data => {
+            if (data.typeDiscount === VoucherType.PERCENTAGE) {
+                return data.value && data.value <= 100;
+            }
+            return true;
+        },
+        {
+            message: 'Percentage discount value must not exceed 100',
+            path: ['value'],
+        }
+    ).refine(
+        data => {
+            return data.endedDate > data.startedDate;
+        },
+        {
+            message: 'End date must be after start date',
+            path: ['endedDate'],
+        }
+    );
 
 export type Voucher = z.infer<typeof VoucherSchema>;
 export type CreateVoucher = z.infer<typeof CreateVoucherSchema>;
