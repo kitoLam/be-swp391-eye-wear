@@ -21,6 +21,7 @@ import { adminAccountRepository } from '../../repositories/admin-account/admin-a
 import { RoleType } from '../../config/enums/admin-account';
 import { ProductVariantMode } from '../../config/enums/product.enum';
 import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
+import { notificationHandler } from '../../socket/handlers/notification.handler';
 
 class InvoiceService {
     /**
@@ -546,6 +547,9 @@ class InvoiceService {
             staffHandleDelivery: payload.assignedStaff,
             assignStaffHandleDeliveryAt: new Date(),
         });
+        await notificationHandler.onAssignInvoice({
+            invoiceId: foundInvoice._id.toString()
+        })
         return updatedInvoice;
     };
 

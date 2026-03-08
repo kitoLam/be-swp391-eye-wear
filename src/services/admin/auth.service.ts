@@ -61,7 +61,7 @@ class AuthService {
      */
     verifyUserByAccessToken = async (
         token: string
-    ): Promise<{ userId: string, role: string }> => {
+    ): Promise<{ userId: string, role: RoleType }> => {
         // check in blacklist
         if (await tokenService.isInBlackList(token)) {
             throw new UnauthorizedRequestError(
