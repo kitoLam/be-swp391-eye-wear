@@ -41,10 +41,13 @@ const schema = new Schema<INotification>(
         },
         createdAt: Date,
         metadata: {
-            type: {
-                orderId: String,
-                invoiceId: String,
-            },
+            type: new Schema(
+                {
+                    orderId: String,
+                    invoiceId: String,
+                },
+                { _id: false }
+            ),
             default: null,
         },
     },

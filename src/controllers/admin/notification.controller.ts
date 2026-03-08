@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import notificationService from '../../services/admin/notification.service';
 import { ApiResponse } from '../../utils/api-response';
 import { NotificationListQuery } from '../../types/notification/notification.query';
-import { MarkNotificationAsRead } from '../../types/notification/notification';
+import { ObjectIdDTO } from '../../types/common/objectId';
 
 class NotificationController {
     getNotifications = async (req: Request, res: Response) => {
@@ -18,9 +18,9 @@ class NotificationController {
 
     markAsRead = async (req: Request, res: Response) => {
         const staffId = req.adminAccount!.id;
-        const { notificationId } = req.validatedBody as MarkNotificationAsRead;
+        const {id} = req.params as ObjectIdDTO;
 
-        await notificationService.markAsRead(staffId, notificationId);
+        await notificationService.markAsRead(staffId, id);
 
         res.json(
             ApiResponse.success('Notification marked as read', null)

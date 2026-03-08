@@ -41,7 +41,7 @@ class NotificationHandler extends BaseSocketHandler {
             role: RoleType.SALE_STAFF,
         });
         const newNotification = new NotificationModel({
-            title: `New Created Order`,
+            title: `New Order Is Created`,
             type: NotificationType.INVOICE_CREATE,
             message: `${foundInvoice.fullName} has create an invoice ${foundInvoice.invoiceCode}, click to see more detail`,
             allowedStaffs: allSaleAdmin.map(item => `${item._id}`),
@@ -68,8 +68,8 @@ class NotificationHandler extends BaseSocketHandler {
         });
         if (!foundOrder) return;
         const newNotification = new NotificationModel({
-            title: `New Order Assigned`,
-            type: NotificationType.INVOICE_CREATE,
+            title: `New Order Is Assigned`,
+            type: NotificationType.ASSIGN_ORDER,
             message: `You has been assigned to order ${foundOrder.orderCode}, click to see more detail`,
             allowedStaffs: [foundOrder.assignedStaff],
             metadata: {
@@ -91,8 +91,8 @@ class NotificationHandler extends BaseSocketHandler {
         });
         if (!foundInvoice) return;
         const newNotification = new NotificationModel({
-            title: `New Delivery Invoice Assigned`,
-            type: NotificationType.INVOICE_CREATE,
+            title: `New Delivery Invoice Is Assigned`,
+            type: NotificationType.ASSIGN_INVOICE,
             message: `You has been assigned to invoice ${foundInvoice.invoiceCode} to handle delivery, click to see more detail`,
             allowedStaffs: [foundInvoice.staffHandleDelivery],
             metadata: {

@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware';
-import { validateQuery, validateBody } from '../../middlewares/share/validator.middleware';
+import { validateQuery, validateBody, validateParams } from '../../middlewares/share/validator.middleware';
 import { NotificationListQuerySchema } from '../../types/notification/notification.query';
 import { MarkNotificationAsReadSchema } from '../../types/notification/notification';
 import notificationController from '../../controllers/admin/notification.controller';
+import { ObjectIdSchema } from '../../types/common/objectId';
 
 const router = Router();
 
@@ -21,8 +22,8 @@ router.get(
 );
 
 router.patch(
-    '/mark-as-read',
-    validateBody(MarkNotificationAsReadSchema),
+    '/:id/mark-as-read',
+    validateParams(ObjectIdSchema),
     notificationController.markAsRead
 );
 
