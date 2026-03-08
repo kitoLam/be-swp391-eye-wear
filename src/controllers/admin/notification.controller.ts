@@ -6,7 +6,7 @@ import { MarkNotificationAsRead } from '../../types/notification/notification';
 
 class NotificationController {
     getNotifications = async (req: Request, res: Response) => {
-        const staffId = req.admin?._id;
+        const staffId = req.adminAccount!.id;
         const query = req.validatedQuery as NotificationListQuery;
 
         const result = await notificationService.getNotifications(staffId, query);
@@ -17,7 +17,7 @@ class NotificationController {
     };
 
     markAsRead = async (req: Request, res: Response) => {
-        const staffId = req.admin?._id;
+        const staffId = req.adminAccount!.id;
         const { notificationId } = req.validatedBody as MarkNotificationAsRead;
 
         await notificationService.markAsRead(staffId, notificationId);
@@ -28,7 +28,7 @@ class NotificationController {
     };
 
     countUnread = async (req: Request, res: Response) => {
-        const staffId = req.admin?._id;
+        const staffId = req.adminAccount!.id;
 
         const result = await notificationService.countUnread(staffId);
 
