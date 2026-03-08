@@ -23,6 +23,7 @@ import {
 import { IOrderDocument } from '../../models/order/order.model.mongo';
 import { productRepository } from '../../repositories/product/product.repository';
 import { ProductVariantMode } from '../../config/enums/product.enum';
+import { notificationHandler } from '../../socket/handlers/notification.handler';
 
 class OrderService {
     /**
@@ -80,6 +81,9 @@ class OrderService {
                 : OrderStatus.ASSIGNED,
             assignedAt: new Date(),
         });
+        await notificationHandler.onAssignOrder({
+            orderId: foundOrder._id.toString()
+        })
     };
     /**
      * Hàm xử lí logic tiến hành gia công cho order

@@ -15,6 +15,7 @@ import reportTicketRouter from './report-ticket.route';
 import returnTicketRouter from './return-ticket.route';
 import adminAccountRouter from './admin-account.route';
 import aiConversationRouter from './ai-conversation.route';
+import notificationRouter from './notification.route';
 const router = Router();
 
 router.use('/auth', authRouter);
@@ -33,4 +34,5 @@ router.use('/report-tickets', reportTicketRouter);
 router.use('/return-tickets', returnTicketRouter);
 router.use('/admin-accounts', adminAccountRouter);
 router.use('/ai-conversations', aiConversationRouter);
+router.use('/notifications', notificationRouter);
 export default router;

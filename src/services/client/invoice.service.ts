@@ -38,6 +38,7 @@ import {
     VoucherApplyScope,
     VoucherClaimStatus,
 } from '../../config/enums/voucher.enum';
+import { notificationHandler } from '../../socket/handlers/notification.handler';
 
 interface InvoiceProduct {
     productId: string;
@@ -593,6 +594,10 @@ class InvoiceClientService {
                     );
                 }
             }
+            // add notification
+            await notificationHandler.onInvoiceCreate({
+                invoiceId: newInvoice._id.toString()
+            })
             return {
                 invoice: newInvoice,
                 payment: newPayment,

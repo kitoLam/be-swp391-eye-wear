@@ -11,7 +11,7 @@ export const authSocketMiddleware = async (socket: Socket<DefaultEventsMap, Defa
         const token = authSocket.token;
         const userType = authSocket.userType;
         if (!token) throw new UnauthorizedSocketError('INVALID_TOKEN');
-        if (userType == 'CUSTOMER' && userType != 'STAFF') {
+        if (userType !== 'CUSTOMER' && userType != 'STAFF') {
             throw new UnauthorizedSocketError('INVALID_USER_TYPE');
         }
         const jwtPayload =
