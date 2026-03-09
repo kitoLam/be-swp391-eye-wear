@@ -25,5 +25,10 @@ router.get(
     returnTicketController.getClientReturnTicketList
 );
 
+router.patch(
+    '/:id/status/cancel',
+    validateParams(ObjectIdSchema),
+    returnTicketController.cancelReturnTicket
+);
 export default router;
 

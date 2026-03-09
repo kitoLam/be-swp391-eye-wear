@@ -61,11 +61,13 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(session({
-  secret: 'SESSION_SECRET',
-  resave: false,
-  saveUninitialized: true,
-}));
+app.use(
+    session({
+        secret: 'SESSION_SECRET',
+        resave: false,
+        saveUninitialized: true,
+    })
+);
 // Config Gg passport
 app.use(passport.initialize());
 app.use(passport.session());

@@ -21,7 +21,7 @@ router.get(
 
 // [GET] staff get list return by staffId (from token)
 router.get(
-    '/my-history',
+    '/my-ticket',
     validateQuery(ReturnTicketListQuerySchema),
     returnTicketController.getReturnTicketsByStaff
 );
@@ -55,11 +55,7 @@ router.patch(
     validateParams(ObjectIdSchema),
     returnTicketController.processReturnTicket
 );
-router.patch(
-    '/:id/status/cancel',
-    validateParams(ObjectIdSchema),
-    returnTicketController.cancelReturnTicket
-);
+
 router.patch(
     '/:id/status/delivering',
     validateParams(ObjectIdSchema),

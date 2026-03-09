@@ -67,7 +67,7 @@ class ReturnTicketController {
     getReturnTicketsByStaff = async (req: Request, res: Response) => {
         const query = req.validatedQuery as ReturnTicketListQuery;
         query.staffVerify = req.adminAccount!.id;
-        const result = await returnTicketService.getReturnTicketList(query);
+        const result = await returnTicketService.getReturnTicketList(query, undefined, req.adminAccount);
         res.json(
             ApiResponse.success('Get return tickets by staff successfully', {
                 pagination: result.pagination,
@@ -142,8 +142,7 @@ class ReturnTicketController {
         const id = req.params.id as string;
         const updatedTicket = await returnTicketService.updateStatus(
             id,
-            ReturnTicketStatus.CANCEL,
-            req.adminAccount!
+            ReturnTicketStatus.CANCEL
         );
         res.json(
             ApiResponse.success(
