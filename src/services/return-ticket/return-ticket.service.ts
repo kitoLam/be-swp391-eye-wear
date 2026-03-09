@@ -14,7 +14,9 @@ import {
 import returnTicketRepository from '../../repositories/return-ticket/return-ticket.repository';
 import { orderRepository } from '../../repositories/order/order.repository';
 import {
+    BadRequestError,
     ConflictRequestError,
+    ForbiddenRequestError,
     NotFoundRequestError,
 } from '../../errors/apiError/api-error';
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
@@ -67,7 +69,9 @@ class ReturnTicketService {
 
         const existingTicket = await ReturnTicketModel.findOne({
             orderId: requestBody.orderId,
-            deletedAt: null,
+            status: {
+                $nin: [ReturnTicketStatus.CANCEL, ReturnTicketStatus.REJECTED],
+            },
         });
         if (existingTicket) {
             throw new ConflictRequestError(
@@ -172,16 +176,55 @@ class ReturnTicketService {
     updateStatus = async (
         id: string,
         status: ReturnTicketStatus,
-        adminContext: AuthAdminContext
+        adminContext?: AuthAdminContext
     ) => {
         const returnTicket = await ReturnTicketModel.findById(id);
         if (!returnTicket)
             throw new NotFoundRequestError('Return ticket not found');
 
+        // validate same staff
+        if(status != ReturnTicketStatus.CANCEL){
+            if(returnTicket.staffVerify != adminContext!.id){
+                throw new ForbiddenRequestError('This ticket is currently verified by another staff');
+            }
+        }
+        // Validate status transition
+        this.validateStatusTransition(returnTicket.status, status);
+
         returnTicket.status = status;
-        returnTicket.staffVerify = adminContext.id;
 
         return await returnTicket.save();
+    };
+
+    /**
+     * Validate status transition based on workflow:
+     * PENDING -> APPROVED/CANCEL/REJECTED -> IN_PROGRESS -> DELIVERING -> RETURNED
+     */
+    private validateStatusTransition = (
+        currentStatus: ReturnTicketStatus,
+        newStatus: ReturnTicketStatus
+    ) => {
+        const validTransitions: Record<ReturnTicketStatus, ReturnTicketStatus[]> = {
+            [ReturnTicketStatus.PENDING]: [
+                ReturnTicketStatus.APPROVED,
+                ReturnTicketStatus.CANCEL,
+                ReturnTicketStatus.REJECTED,
+            ],
+            [ReturnTicketStatus.APPROVED]: [ReturnTicketStatus.IN_PROGRESS],
+            [ReturnTicketStatus.IN_PROGRESS]: [ReturnTicketStatus.DELIVERING],
+            [ReturnTicketStatus.DELIVERING]: [ReturnTicketStatus.RETURNED],
+            [ReturnTicketStatus.CANCEL]: [],
+            [ReturnTicketStatus.REJECTED]: [],
+            [ReturnTicketStatus.RETURNED]: [],
+        };
+
+        const allowedStatuses = validTransitions[currentStatus] || [];
+
+        if (!allowedStatuses.includes(newStatus)) {
+            throw new ConflictRequestError(
+                `Cannot update status from ${currentStatus} to ${newStatus}. Allowed transitions: ${allowedStatuses.join(', ') || 'None (final status)'}`
+            );
+        }
     };
 
     /**
@@ -191,7 +234,8 @@ class ReturnTicketService {
         const returnTicket = await ReturnTicketModel.findById(id);
         if (!returnTicket)
             throw new NotFoundRequestError('Return ticket not found');
-
+        if(returnTicket.staffVerify)
+            throw new BadRequestError('Return ticket already verified');
         returnTicket.staffVerify = adminContext.id;
         return await returnTicket.save();
     };

@@ -55,11 +55,7 @@ router.patch(
     validateParams(ObjectIdSchema),
     returnTicketController.processReturnTicket
 );
-router.patch(
-    '/:id/status/cancel',
-    validateParams(ObjectIdSchema),
-    returnTicketController.cancelReturnTicket
-);
+
 router.patch(
     '/:id/status/delivering',
     validateParams(ObjectIdSchema),
