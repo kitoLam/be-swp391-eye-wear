@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
 import { ApiResponse } from '../../utils/api-response';
 import invoiceService from '../../services/admin/invoice.service';
-import { InvoiceListQuery } from '../../types/invoice/invoice.query';
+import {
+    InvoiceListQuery,
+    InvoiceRevenueQuery,
+} from '../../types/invoice/invoice.query';
 import { formatDateToString, formatNumberToVND } from '../../utils/formatter';
 import { InvoiceAssignHandleDeliveryRequest, RejectInvoiceRequest } from '../../types/invoice/invoice.request';
 
@@ -186,6 +189,16 @@ class InvoiceController {
         const invoiceId = req.params.id as string;
         const data = await invoiceService.getInvoiceDetail(invoiceId);
         res.json(ApiResponse.success('Get invoice detail success', data));
+    };
+
+    getRevenueByPeriod = async (req: Request, res: Response) => {
+        const query = req.validatedQuery as InvoiceRevenueQuery;
+        const data = await invoiceService.getRevenueByPeriod(query);
+        res.json(ApiResponse.success('Get invoice revenue by period success', {
+            timezone: 'Asia/Ho_Chi_Minh',
+            ...query,
+            rows: data,
+        }));
     };
 }
 export default new InvoiceController();

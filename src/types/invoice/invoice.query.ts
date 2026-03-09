@@ -1,6 +1,13 @@
 import z from 'zod';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 
+export enum InvoiceRevenuePeriod {
+    YEAR = 'year',
+    MONTH = 'month',
+    WEEK = 'week',
+    DAY = 'day',
+}
+
 export const InvoiceListQuerySchema = z.object({
     page: z.coerce.number().min(1).catch(1),
     limit: z.coerce.number().min(1).max(1000).catch(10),
@@ -35,4 +42,24 @@ export const InvoiceListQuerySchema = z.object({
         .catch(undefined),
     search: z.string().optional().catch(undefined),
 });
+export const InvoiceRevenueQuerySchema = z
+    .object({
+        period: z.nativeEnum(InvoiceRevenuePeriod).catch(
+            InvoiceRevenuePeriod.DAY
+        ),
+        fromDate: z.string().datetime().optional().catch(undefined),
+        toDate: z.string().datetime().optional().catch(undefined),
+    })
+    .refine(
+        data =>
+            !data.fromDate ||
+            !data.toDate ||
+            new Date(data.fromDate) <= new Date(data.toDate),
+        {
+            message: 'fromDate must be less than or equal to toDate',
+            path: ['fromDate'],
+        }
+    );
+
 export type InvoiceListQuery = z.infer<typeof InvoiceListQuerySchema>;
+export type InvoiceRevenueQuery = z.infer<typeof InvoiceRevenueQuerySchema>;

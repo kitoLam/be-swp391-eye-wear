@@ -1,6 +1,9 @@
 import { FilterQuery } from 'mongoose';
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
-import { InvoiceListQuery } from '../../types/invoice/invoice.query';
+import {
+    InvoiceListQuery,
+    InvoiceRevenueQuery,
+} from '../../types/invoice/invoice.query';
 import { IInvoiceDocument } from '../../models/invoice/invoice.model.mongo';
 import { AuthAdminContext } from '../../types/context/context';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
@@ -555,6 +558,10 @@ class InvoiceService {
             throw new NotFoundRequestError('Invoice not found');
         }
         return invoiceDetail;
+    };
+
+    getRevenueByPeriod = async (query: InvoiceRevenueQuery) => {
+        return await invoiceRepository.getRevenueByPeriod(query);
     };
 }
 
