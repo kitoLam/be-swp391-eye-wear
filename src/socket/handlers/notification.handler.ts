@@ -6,6 +6,7 @@ import {
 import {
     AssignInvoice,
     AssignOrder,
+    CompleteInvoice,
     CreateInvoiceSuccess,
 } from '../schemas/notification.schema';
 import { RoleType } from '../../config/enums/admin-account';
@@ -107,6 +108,33 @@ class NotificationHandler extends BaseSocketHandler {
             .to(`NOTIFICATION:PRIVATE:${foundInvoice.staffHandleDelivery}`)
             .emit(
                 emittedEvent.notification.RECEIVE_ASSIGN_INVOICE,
+                dataResponse
+            );
+    };
+
+    onCompleteInvoice = async (payload: CompleteInvoice) => {
+        const foundInvoice = await invoiceRepository.findOne({
+            _id: payload.invoiceId,
+        });
+        if (!foundInvoice) return;
+        if (!foundInvoice.managerOnboard) return;
+        const newNotification = new NotificationModel({
+            title: `New Invoice Is Completed`,
+            type: NotificationType.COMPLETE_INVOICE,
+            message: `Invoice ${foundInvoice.invoiceCode} has been completed and ready to assign to handle delivery, click to see more detail`,
+            allowedStaffs: [foundInvoice.managerOnboard],
+            metadata: {
+                invoiceId: payload.invoiceId,
+            },
+        });
+        await newNotification.save();
+        const dataResponse = {
+            newNotification: newNotification,
+        };
+        MySocketServer.getIO()
+            .to(`NOTIFICATION:PRIVATE:${foundInvoice.managerOnboard}`)
+            .emit(
+                emittedEvent.notification.RECEIVE_COMPLETE_INVOICE,
                 dataResponse
             );
     };

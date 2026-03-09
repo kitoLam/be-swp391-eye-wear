@@ -205,6 +205,9 @@ class OrderService {
             await invoiceRepository.update(foundOrder.invoiceId, {
                 status: InvoiceStatus.COMPLETED,
             });
+            await notificationHandler.onCompleteInvoice({
+                invoiceId: foundOrder._id.toString()
+            });
         }
     };
 
