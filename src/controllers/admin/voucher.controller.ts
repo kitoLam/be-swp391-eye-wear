@@ -25,12 +25,13 @@ class VoucherAdminController {
         const limit = parseInt(req.query.limit as string) || 10;
         const status = req.query.status as VoucherStatus;
         const applyScope = req.query.applyScope as VoucherApplyScope;
-
+        const code = req.query.code as string;
         const result = await voucherAdminService.getVouchers(
             page,
             limit,
             status,
-            applyScope
+            applyScope,
+            code
         );
         res.json(
             ApiResponse.success('Lấy danh sách voucher thành công!', result)

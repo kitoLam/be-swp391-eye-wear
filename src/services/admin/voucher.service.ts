@@ -96,7 +96,8 @@ class VoucherAdminService {
         page: number = 1,
         limit: number = 10,
         status?: VoucherStatus,
-        applyScope?: VoucherApplyScope
+        applyScope?: VoucherApplyScope,
+        code?: string,
     ) => {
         const filter: any = {
             deletedAt: null,
@@ -109,7 +110,9 @@ class VoucherAdminService {
         if (applyScope) {
             filter.applyScope = applyScope;
         }
-
+        if(code){
+            filter.code = new RegExp(code, 'i');
+        }
         const skip = (page - 1) * limit;
         const items = await voucherRepository.find(filter, {
             limit,
