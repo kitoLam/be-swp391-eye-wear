@@ -23,12 +23,12 @@ const app: Application = express();
 app.set('trust proxy', 1);
 // Tạo HTTP server từ Express app (cần cho Socket.IO)
 const httpServer = createServer(app);
-export const io = new Server(httpServer, {
-    cors: {
-        origin: config.cors.origin, // Cho phép frontend kết nối
-        credentials: true, // Cho phép gửi cookies
-    },
-});
+// export const io = new Server(httpServer, {
+//     cors: {
+//         origin: config.cors.origin, // Cho phép frontend kết nối
+//         credentials: true, // Cho phép gửi cookies
+//     },
+// });
 /**
  * 1. HELMET - Bảo mật HTTP headers
  * - Bảo vệ app khỏi các lỗ hổng web phổ biến

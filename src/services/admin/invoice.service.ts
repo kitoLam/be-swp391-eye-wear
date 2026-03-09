@@ -1,6 +1,9 @@
 import { FilterQuery } from 'mongoose';
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
-import { InvoiceListQuery } from '../../types/invoice/invoice.query';
+import {
+    InvoiceListQuery,
+    InvoiceRevenueQuery,
+} from '../../types/invoice/invoice.query';
 import { IInvoiceDocument } from '../../models/invoice/invoice.model.mongo';
 import { AuthAdminContext } from '../../types/context/context';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
@@ -21,6 +24,7 @@ import { adminAccountRepository } from '../../repositories/admin-account/admin-a
 import { RoleType } from '../../config/enums/admin-account';
 import { ProductVariantMode } from '../../config/enums/product.enum';
 import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
+import { notificationHandler } from '../../socket/handlers/notification.handler';
 
 class InvoiceService {
     /**
@@ -264,7 +268,7 @@ class InvoiceService {
             {
                 status: OrderStatus.CANCELED,
                 verifiedBy: adminContext.id,
-                verifiedAt: new Date(),
+                verifiedAt: new Date()
             }
         );
         // Cập nhật trạng thái rejected
@@ -546,6 +550,9 @@ class InvoiceService {
             staffHandleDelivery: payload.assignedStaff,
             assignStaffHandleDeliveryAt: new Date(),
         });
+        await notificationHandler.onAssignInvoice({
+            invoiceId: foundInvoice._id.toString()
+        })
         return updatedInvoice;
     };
 
@@ -555,6 +562,10 @@ class InvoiceService {
             throw new NotFoundRequestError('Invoice not found');
         }
         return invoiceDetail;
+    };
+
+    getRevenueByPeriod = async (query: InvoiceRevenueQuery) => {
+        return await invoiceRepository.getRevenueByPeriod(query);
     };
 }
 

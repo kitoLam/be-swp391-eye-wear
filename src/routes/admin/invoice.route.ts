@@ -4,7 +4,10 @@ import {
     validateParams,
     validateQuery,
 } from '../../middlewares/share/validator.middleware';
-import { InvoiceListQuerySchema } from '../../types/invoice/invoice.query';
+import {
+    InvoiceListQuerySchema,
+    InvoiceRevenueQuerySchema,
+} from '../../types/invoice/invoice.query';
 import invoiceController from '../../controllers/admin/invoice.controller';
 import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware';
 import { ObjectIdSchema } from '../../types/common/objectId';
@@ -42,6 +45,12 @@ router.get(
 );
 
 router.get(
+    '/stats/revenue',
+    validateQuery(InvoiceRevenueQuerySchema),
+    invoiceController.getRevenueByPeriod
+);
+
+router.get(
     '/:id',
     validateParams(ObjectIdSchema),
     invoiceController.getInvoiceDetail
@@ -73,7 +82,7 @@ router.patch(
 // =============== MANAGER ROLE =============
 router.patch(
     '/:id/assign/handle-delivery',
-    requireAdminRoles([RoleType.MANAGER]), 
+    requireAdminRoles([RoleType.MANAGER]),
     validateParams(ObjectIdSchema),
     validateBody(InvoiceAssignHandleDeliverySchema),
     invoiceController.assignInvoiceToHandleDelivery

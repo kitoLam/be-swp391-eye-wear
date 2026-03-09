@@ -37,9 +37,10 @@ const returnTicketSchema = new Schema<IReturnTicketDocument>(
             required: false,
             default: null,
         },
-        skus: {
-            type: [String],
-            default: [],
+        quantity: {
+            type: Number,
+            required: true,
+            min: 1,
         },
         money: {
             type: Number,

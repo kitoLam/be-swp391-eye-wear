@@ -38,6 +38,7 @@ import {
     VoucherApplyScope,
     VoucherClaimStatus,
 } from '../../config/enums/voucher.enum';
+import { notificationHandler } from '../../socket/handlers/notification.handler';
 
 interface InvoiceProduct {
     productId: string;
@@ -53,20 +54,26 @@ class InvoiceClientService {
     public acquireProductLock = async (
         key: string,
         qty: number,
+        stockAvailable: number,
         type: 'race' | 'online' = 'race'
     ) => {
         const seconds = type === 'race' ? 10 : 15 * 60;
-        const currentLock = await redisService.getDataByKey<number>(key);
+        // Lệnh này trả về giá trị SAU KHI TĂNG (ví dụ: đang 0 tăng lên 1 thì trả về 1)
+        const currentLockCount = await redisService.incrKeyBy(key, qty);
 
-        if (currentLock !== null) {
-            await redisService.setDataWithExpiredTime(
-                key,
-                currentLock + qty,
-                seconds
-            );
-        } else {
-            await redisService.setDataWithExpiredTime(key, qty, seconds);
+        // KIỂM TRA NGAY TẠI ĐÂY:
+        // Nếu giá trị sau khi tăng vượt quá tồn kho thực tế (DB + cache online)
+        if (currentLockCount > stockAvailable) {
+            // Trả lại chỗ ngay lập tức để không làm hỏng số liệu lock
+            await redisService.incrKeyBy(key, -qty);
+            
+            // Ném lỗi ngay lập tức - User này sẽ nhận lỗi 400 và dừng lại
+            throw new BadRequestError('Sản phẩm đã hết hàng!');
         }
+
+        // Nếu chạy xuống đến đây nghĩa là User đã "giữ chỗ" thành công
+        // Chỉ có người có currentLockCount hợp lệ mới đi tiếp được
+        await redisService.setExpire(key, seconds);
     };
 
     /**
@@ -89,12 +96,13 @@ class InvoiceClientService {
                 if (remaining <= 0) {
                     await redisService.deleteDataByKey(lock.key);
                 } else {
-                    await redisService.setDataWithExpiredTime(
+                    await redisService.descKeyBy(
                         lock.key,
-                        remaining,
-                        seconds
+                        lock.qty
                     );
+                    await redisService.setExpire(lock.key, seconds);
                 }
+                
             }
         }
     };
@@ -294,10 +302,13 @@ class InvoiceClientService {
                     ensureProductResult.product.productVariant;
                 // === Check stock ===
                 const keyRace = `${redisPrefix.productLockRace}:${item.product.product_id}:${item.product.sku}`;
+                const keyOnline = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
                 // === End check stock ===
-
+                const realProductVariantStock = await productService.getVariantStock(item.product.product_id, item.product.sku);
+                const realProductVariantStockOnline = await redisService.getDataByKey<number>(keyOnline) || 0;
+                const currentProductVariantStock = realProductVariantStock - realProductVariantStockOnline;
                 // ==== Acquire race lock ====
-                await this.acquireProductLock(keyRace, item.quantity, 'race');
+                await this.acquireProductLock(keyRace, item.quantity, currentProductVariantStock, 'race');
                 acquiredLocks.push({ key: keyRace, qty: item.quantity });
                 // ==== End acquire race lock ====
                 // If COD, decrease stock immediately
@@ -329,11 +340,16 @@ class InvoiceClientService {
                     const lensVariant = ensureProductResult.lens!.lensVariant;
                     // Check stock
                     const keyRace = `${redisPrefix.productLockRace}:${item.lens.lens_id}:${item.lens.sku}`;
-
+                    const keyOnline = `${redisPrefix.productLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
+                    // === End check stock ===
+                    const realLensVariantStock = await productService.getVariantStock(item.lens.lens_id, item.lens.sku);
+                    const realLensVariantStockOnline = await redisService.getDataByKey<number>(keyOnline) || 0;
+                    const currentLensVariantStock = realLensVariantStock - realLensVariantStockOnline;
                     // Acquire race lock
                     await this.acquireProductLock(
                         keyRace,
                         item.quantity,
+                        currentLensVariantStock,
                         'race'
                     );
                     acquiredLocks.push({ key: keyRace, qty: item.quantity });
@@ -529,7 +545,8 @@ class InvoiceClientService {
                 // Acquire online locks
                 for (const product of invoiceProducts) {
                     const key = `${redisPrefix.productLockOnline}:${product.productId}:${product.sku}`;
-                    await this.acquireProductLock(key, product.qty, 'online');
+                    await redisService.incrKeyBy(key, product.qty);
+                    await redisService.setExpire(key, 15 * 60);
                 }
 
                 // Save invoice-products mapping to Redis
@@ -577,6 +594,10 @@ class InvoiceClientService {
                     );
                 }
             }
+            // add notification
+            await notificationHandler.onInvoiceCreate({
+                invoiceId: newInvoice._id.toString()
+            })
             return {
                 invoice: newInvoice,
                 payment: newPayment,

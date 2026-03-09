@@ -29,8 +29,9 @@ export const OrderSchema = z.object({
     createdAt: z.date(),
     updatedAt: z.date(),
     deletedAt: z.date().nullable(),
-    
+
     staffNote: z.string().nullable(),
+    // rejectedNote: z.string().nullable(),
 });
 
 // Type exports

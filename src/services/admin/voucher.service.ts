@@ -11,6 +11,7 @@ import {
     BadRequestError,
 } from '../../errors/apiError/api-error';
 import moment from 'moment';
+import { addVoucherToTimeoutQueue, removeVoucherJobFromQueue } from '../../queues/voucher.queue';
 
 class VoucherAdminService {
     /**
@@ -18,11 +19,20 @@ class VoucherAdminService {
      */
     createVoucher = async (payload: CreateVoucher) => {
         try {
-            if(moment(payload.startedDate).isBefore(moment(new Date()).startOf('date').toDate())) {
-                throw new BadRequestError('Started date must be after today');   
+            if (
+                moment(
+                    moment(payload.startedDate).endOf('date').toDate()
+                ).isBefore(moment(new Date()).startOf('date').toDate())
+            ) {
+                throw new BadRequestError(
+                    'Started date must be equal or after today'
+                );
             }
-            if(!moment(moment(payload.startedDate).startOf('date').toDate()).isAfter(moment(new Date()).endOf('date').toDate())) {
-                throw new BadRequestError('Started date must be after today');   
+            const isDuplicateCode = await voucherRepository.findOne({
+                code: payload.code,
+            });
+            if (isDuplicateCode) {
+                throw new BadRequestError('Voucher can not be duplicated');
             }
             // 1. Create in MongoDB
             const voucher = await voucherRepository.create(payload as any);
@@ -35,7 +45,6 @@ class VoucherAdminService {
                     created_at: new Date(),
                 },
             ]);
-
             if (error) {
                 // Delete from MongoDB if Supabase creation failed
                 await voucherRepository.delete(voucher._id.toString());
@@ -43,6 +52,12 @@ class VoucherAdminService {
                     'Failed to create voucher in Supabase: ' + error.message
                 );
             }
+            await addVoucherToTimeoutQueue(
+                {
+                    voucherId: voucher._id.toString(),
+                },
+                payload.startedDate
+            );
 
             return voucher;
         } catch (error: any) {
@@ -113,6 +128,34 @@ class VoucherAdminService {
 
         if (!voucher) {
             throw new NotFoundRequestError('Voucher not found');
+        }
+        
+        if (payload.startedDate) {
+            const currentDate = moment().startOf('date');
+            const existingStartDate = moment(voucher.startedDate).startOf('date');
+            const existingEndDate = moment(voucher.endedDate).endOf('date');
+
+            const isCurrentDateInRange = currentDate.isBetween(
+                existingStartDate,
+                existingEndDate,
+                null,
+                '[]'
+            );
+
+            if (isCurrentDateInRange) {
+                throw new BadRequestError(
+                    'Cannot update startedDate while voucher is currently within the voucher period'
+                );
+            }
+            await removeVoucherJobFromQueue({
+                voucherId: voucherId,
+            });
+            await addVoucherToTimeoutQueue(
+                {
+                    voucherId: voucherId,
+                },
+                payload.startedDate
+            )
         }
 
         const updated = await voucherRepository.update(voucherId, payload);

@@ -1,5 +1,6 @@
 import { paymentRepository } from '../../repositories/payment/payment.repository';
 import {
+    ConflictRequestError,
     ForbiddenRequestError,
     NotFoundRequestError,
 } from '../../errors/apiError/api-error';
@@ -22,7 +23,7 @@ import invoiceService from './invoice.service';
 import { removeJobFromQueue } from '../../queues/invoice.queue';
 import { ProductVariantMode } from '../../config/enums/product.enum';
 import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
-import { payOS } from '../../config/payos.config';
+import { isPayOSConfigured, payOS } from '../../config/payos.config';
 import { config } from '../../config/env.config';
 class PaymentClientService {
     handlePaymentCallback = async (invoiceId: string, paymentId: string) => {
@@ -356,6 +357,12 @@ class PaymentClientService {
             cancelUrl: `${config.cors.origin[2]}/payment-result?isSuccess=false&invoiceId=${invoiceId}`,
             returnUrl: `${config.cors.origin[2]}/payment-result?isSuccess=true&invoiceId=${invoiceId}`,
         };
+
+        if (!isPayOSConfigured || !payOS) {
+            throw new ConflictRequestError(
+                'PayOS is not configured. Please set PAYOS_CLIENT_ID (or PAYOS_CLIENT_KEY), PAYOS_API_KEY and PAYOS_CHECKSUM_KEY'
+            );
+        }
 
         const paymentUrl = await payOS.paymentRequests.create(orderForPayos);
         return paymentUrl.checkoutUrl;

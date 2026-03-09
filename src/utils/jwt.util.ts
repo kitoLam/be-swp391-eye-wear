@@ -6,11 +6,12 @@ import {
     RefreshTokenInvalidError,
 } from '../errors/jwt/jwt-error';
 import { JwtPayload } from '../types/jwt/jwt';
+import { RoleType } from '../config/enums/admin-account';
 
 // generated access token
 export const generateAccessToken = (
     userId: string,
-    role?: 'SALE_STAFF' | 'OPERATION_STAFF' | 'MANAGER' | 'SYSTEM_ADMIN'
+    role?: RoleType,
 ): string => {
     const payload: JwtPayload = {
         userId,
@@ -31,7 +32,7 @@ export const generateAccessToken = (
  */
 export const generateRefreshToken = (
     userId: string,
-    role?: 'SALE_STAFF' | 'OPERATION_STAFF' | 'MANAGER' | 'SYSTEM_ADMIN'
+    role?: RoleType,
 ): string => {
     const payload: JwtPayload = {
         userId,
@@ -50,7 +51,7 @@ export const generateRefreshToken = (
  */
 export const generateResetPasswordToken = (
     userId: string,
-    role?: 'SALE_STAFF' | 'OPERATION_STAFF' | 'MANAGER' | 'SYSTEM_ADMIN'
+    role?: RoleType,
 ): string => {
     const payload: JwtPayload = {
         userId,
