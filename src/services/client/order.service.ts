@@ -27,7 +27,15 @@ class OrderClientService {
             invoiceId: invoice._id.toString(),
         });
 
-        return orders;
+        return {
+            orderList: orders.data,
+            pagination: {
+                page: orders.page,
+                limit: orders.limit,
+                total: orders.total,
+                totalPages: orders.totalPages,
+            }
+        };
     };
 
     /**
