@@ -122,13 +122,6 @@ class PaymentClientService {
                         }
                     );
                 }
-                await productRepository.updateByFilter(
-                    {
-                        _id: item.id,
-                        'variants.sku': item.sku,
-                    },
-                    { $inc: { 'variants.$.stock': -item.qty } }
-                );
             }
             await invoiceService.releaseProductLock(itemsUpdateRedis, 'online');
             // cập nhật payment thành PAID

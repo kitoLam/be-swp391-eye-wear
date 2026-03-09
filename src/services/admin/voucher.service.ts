@@ -11,7 +11,10 @@ import {
     BadRequestError,
 } from '../../errors/apiError/api-error';
 import moment from 'moment';
-import { addVoucherToTimeoutQueue, removeVoucherJobFromQueue } from '../../queues/voucher.queue';
+import {
+    addVoucherToTimeoutQueue,
+    removeVoucherJobFromQueue,
+} from '../../queues/voucher.queue';
 
 class VoucherAdminService {
     /**
@@ -41,7 +44,12 @@ class VoucherAdminService {
                 const startDate = moment(payload.startedDate).startOf('date');
                 const endDate = moment(payload.endedDate).endOf('date');
 
-                const isInValidPeriod = now.isBetween(startDate, endDate, null, '[]');
+                const isInValidPeriod = now.isBetween(
+                    startDate,
+                    endDate,
+                    null,
+                    '[]'
+                );
 
                 if (!isInValidPeriod) {
                     throw new BadRequestError(
@@ -149,10 +157,19 @@ class VoucherAdminService {
         // Validate status ACTIVE
         if (payload.status === VoucherStatus.ACTIVE) {
             const now = moment();
-            const startDate = moment(payload.startedDate || voucher.startedDate).startOf('date');
-            const endDate = moment(payload.endedDate || voucher.endedDate).endOf('date');
+            const startDate = moment(
+                payload.startedDate || voucher.startedDate
+            ).startOf('date');
+            const endDate = moment(
+                payload.endedDate || voucher.endedDate
+            ).endOf('date');
 
-            const isInValidPeriod = now.isBetween(startDate, endDate, null, '[]');
+            const isInValidPeriod = now.isBetween(
+                startDate,
+                endDate,
+                null,
+                '[]'
+            );
 
             if (!isInValidPeriod) {
                 throw new BadRequestError(
@@ -163,30 +180,37 @@ class VoucherAdminService {
 
         if (payload.startedDate) {
             const currentDate = moment().startOf('date');
-            const existingStartDate = moment(voucher.startedDate).startOf('date');
-            const existingEndDate = moment(voucher.endedDate).endOf('date');
-
-            const isCurrentDateInRange = currentDate.isBetween(
-                existingStartDate,
-                existingEndDate,
-                null,
-                '[]'
+            const existingStartDate = moment(voucher.startedDate).startOf(
+                'date'
             );
+            const existingEndDate = moment(voucher.endedDate).endOf('date');
+            if (
+                !moment(existingStartDate).isSame(
+                    moment(payload.startedDate).startOf('date').toDate()
+                )
+            ) {
+                const isCurrentDateInRange = currentDate.isBetween(
+                    existingStartDate,
+                    existingEndDate,
+                    null,
+                    '[]'
+                );
 
-            if (isCurrentDateInRange) {
-                throw new BadRequestError(
-                    'Cannot update startedDate while voucher is currently within the voucher period'
+                if (isCurrentDateInRange) {
+                    throw new BadRequestError(
+                        'Cannot update startedDate while voucher is currently within the voucher period'
+                    );
+                }
+                await removeVoucherJobFromQueue({
+                    voucherId: voucherId,
+                });
+                await addVoucherToTimeoutQueue(
+                    {
+                        voucherId: voucherId,
+                    },
+                    payload.startedDate
                 );
             }
-            await removeVoucherJobFromQueue({
-                voucherId: voucherId,
-            });
-            await addVoucherToTimeoutQueue(
-                {
-                    voucherId: voucherId,
-                },
-                payload.startedDate
-            )
         }
 
         const updated = await voucherRepository.update(voucherId, payload);
