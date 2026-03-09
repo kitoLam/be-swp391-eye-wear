@@ -7,12 +7,12 @@ class OrderController {
     getOrderByInvoiceId = async (req: Request, res: Response) => {
         const customerId = req.customer!.id;
         const invoiceId = req.params.invoiceId as string;
-        const order = await orderClientService.getOrderByInvoiceId(
+        const data = await orderClientService.getOrderByInvoiceId(
             customerId,
             invoiceId
         );
         res.json(
-            ApiResponse.success('Lấy đơn hàng theo mã hóa đơn thành công!', { order })
+            ApiResponse.success('Lấy đơn hàng theo mã hóa đơn thành công!', data)
         );
     };
 
