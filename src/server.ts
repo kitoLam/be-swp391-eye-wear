@@ -5,6 +5,7 @@ import { redisClient } from './config/database/redis.config';
 import { checkSupabaseConnection } from './config/supabase.config';
 import './queues/invoice.worker';
 import './queues/mail.worker';
+import './queues/voucher.worker'
 import { MySocketServer } from './socket/index.socket';
 const startServer = async () => {
     try {
