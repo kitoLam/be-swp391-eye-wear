@@ -21,7 +21,7 @@ router.get(
 
 // [GET] staff get list return by staffId (from token)
 router.get(
-    '/my-ticket',
+    '/my-history',
     validateQuery(ReturnTicketListQuerySchema),
     returnTicketController.getReturnTicketsByStaff
 );
