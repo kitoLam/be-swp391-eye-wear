@@ -34,6 +34,22 @@ class VoucherAdminService {
             if (isDuplicateCode) {
                 throw new BadRequestError('Voucher can not be duplicated');
             }
+
+            // Validate status ACTIVE
+            if (payload.status === VoucherStatus.ACTIVE) {
+                const now = moment();
+                const startDate = moment(payload.startedDate).startOf('date');
+                const endDate = moment(payload.endedDate).endOf('date');
+
+                const isInValidPeriod = now.isBetween(startDate, endDate, null, '[]');
+
+                if (!isInValidPeriod) {
+                    throw new BadRequestError(
+                        'Status can only be ACTIVE when current date is between startedDate and endedDate'
+                    );
+                }
+            }
+
             // 1. Create in MongoDB
             const voucher = await voucherRepository.create(payload as any);
 
@@ -129,7 +145,22 @@ class VoucherAdminService {
         if (!voucher) {
             throw new NotFoundRequestError('Voucher not found');
         }
-        
+
+        // Validate status ACTIVE
+        if (payload.status === VoucherStatus.ACTIVE) {
+            const now = moment();
+            const startDate = moment(payload.startedDate || voucher.startedDate).startOf('date');
+            const endDate = moment(payload.endedDate || voucher.endedDate).endOf('date');
+
+            const isInValidPeriod = now.isBetween(startDate, endDate, null, '[]');
+
+            if (!isInValidPeriod) {
+                throw new BadRequestError(
+                    'Status can only be ACTIVE when current date is between startedDate and endedDate'
+                );
+            }
+        }
+
         if (payload.startedDate) {
             const currentDate = moment().startOf('date');
             const existingStartDate = moment(voucher.startedDate).startOf('date');
