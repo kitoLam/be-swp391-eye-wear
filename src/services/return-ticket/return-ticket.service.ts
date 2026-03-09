@@ -69,7 +69,9 @@ class ReturnTicketService {
 
         const existingTicket = await ReturnTicketModel.findOne({
             orderId: requestBody.orderId,
-            deletedAt: null,
+            status: {
+                $nin: [ReturnTicketStatus.CANCEL, ReturnTicketStatus.REJECTED],
+            },
         });
         if (existingTicket) {
             throw new ConflictRequestError(
