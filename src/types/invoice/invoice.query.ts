@@ -49,6 +49,7 @@ export const InvoiceRevenueQuerySchema = z
         ),
         fromDate: z.string().datetime().optional().catch(undefined),
         toDate: z.string().datetime().optional().catch(undefined),
+        userId: z.string().min(1).optional().catch(undefined),
     })
     .refine(
         data =>

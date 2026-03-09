@@ -237,6 +237,10 @@ export class InvoiceRepository extends BaseRepository<IInvoiceDocument> {
             }
         }
 
+        if (params.userId) {
+            match.owner = params.userId;
+        }
+
         const result = await InvoiceModel.aggregate([
             { $match: match },
             {

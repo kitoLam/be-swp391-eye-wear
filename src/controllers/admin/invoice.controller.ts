@@ -195,7 +195,6 @@ class InvoiceController {
         const query = req.validatedQuery as InvoiceRevenueQuery;
         const data = await invoiceService.getRevenueByPeriod(query);
         res.json(ApiResponse.success('Get invoice revenue by period success', {
-            timezone: 'Asia/Ho_Chi_Minh',
             ...query,
             rows: data,
         }));
