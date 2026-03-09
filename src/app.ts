@@ -91,6 +91,6 @@ app.use(
 app.use((req, res) => {
     res.status(404).json({ error: 'Route is not found' });
 });
-// add new cmt
+
 app.use(errorMiddleware);
 export { app, httpServer };

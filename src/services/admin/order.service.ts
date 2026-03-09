@@ -80,6 +80,7 @@ class OrderService {
                 ? OrderStatus.WAITING_STOCK
                 : OrderStatus.ASSIGNED,
             assignedAt: new Date(),
+            startedAt: new Date(),
         });
         await notificationHandler.onAssignOrder({
             orderId: foundOrder._id.toString()
@@ -195,11 +196,11 @@ class OrderService {
         });
         // nếu các order đều Complete => invoice cũng complete
         const countCompletedOrder = await orderRepository.count({
-            invoice: foundOrder.invoiceId,
+            invoiceId: foundOrder.invoiceId,
             status: OrderStatus.COMPLETED,
         });
         const countAllOrder = await orderRepository.count({
-            invoice: foundOrder.invoiceId,
+            invoiceId: foundOrder.invoiceId,
         });
         if (countCompletedOrder === countAllOrder) {
             await invoiceRepository.update(foundOrder.invoiceId, {
@@ -236,15 +237,18 @@ class OrderService {
         if (role == RoleType.OPERATION_STAFF) {
             filter.assignedStaff = staffId;
         }
+        const options = {
+            limit: query.limit,
+            page: query.page,
+            sortBy: query.sortBy,
+            sortValue: query.sortValue
+        }
         const orders = await orderRepository.find(
             {
                 ...filter,
                 deletedAt: null,
             },
-            {
-                limit: query.limit,
-                page: query.page,
-            }
+            options
         );
 
         return orders;
