@@ -7,45 +7,53 @@ export class NotificationRepository extends BaseRepository<INotification> {
         super(NotificationModel);
     }
 
-    async findByStaffId(
+    async findByStaffIdWithLazyLoad(
         staffId: string,
-        filter: FilterQuery<INotification> = {},
         options: {
-            page?: number;
+            lastNotificationAt?: number;
             limit?: number;
-            sortBy?: string;
-            sortOrder?: 'asc' | 'desc';
+            isRead?: 'true' | 'false';
         } = {}
     ) {
         const {
-            page = 1,
+            lastNotificationAt,
             limit = 10,
-            sortBy = 'createdAt',
-            sortOrder = 'desc',
+            isRead,
         } = options;
 
-        const skip = (page - 1) * limit;
-        const sortObj = { [sortBy]: sortOrder };
-
-        const finalFilter = {
-            ...filter,
+        const filter: FilterQuery<INotification> = {
             allowedStaffs: { $in: [staffId] },
-        } as FilterQuery<INotification>;
-
-        const [data, total] = await Promise.all([
-            this.model.find(finalFilter).skip(skip).limit(limit).sort(sortObj),
-            this.model.countDocuments(finalFilter),
-        ]);
-
-        const totalPages = Math.ceil(total / limit);
-
-        return {
-            data,
-            total,
-            page,
-            limit,
-            totalPages,
         };
+
+        // Filter by read status
+        if (isRead === 'true') {
+            filter.readBy = { $in: [staffId] };
+        } else if (isRead === 'false') {
+            filter.readBy = { $nin: [staffId] };
+        }
+
+        // If lastNotificationAt is provided, get notifications older than that timestamp
+        if (lastNotificationAt) {
+            const lastNotification = await this.model.findOne({
+                createdAt: lastNotificationAt,
+            })
+                .select('createdAt')
+                .lean();
+
+            if (lastNotification) {
+                filter.createdAt = {
+                    $lt: lastNotification.createdAt,
+                };
+            }
+        }
+
+        const notifications = await this.model
+            .find(filter)
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .lean();
+
+        return notifications;
     }
 
     async countUnreadByStaffId(staffId: string): Promise<number> {

@@ -16,6 +16,7 @@ import { NotificationType } from '../../config/enums/notification.enum';
 import { AdminAccountModel } from '../../models/admin-account/admin-account.model.mongo';
 import { orderRepository } from '../../repositories/order/order.repository';
 import { MySocketServer } from '../index.socket';
+import { formatNotificationForSocket } from '../../utils/notification.formatter';
 
 class NotificationHandler extends BaseSocketHandler {
     registerHandler = async (socket: Socket) => {
@@ -51,8 +52,14 @@ class NotificationHandler extends BaseSocketHandler {
             },
         });
         await newNotification.save();
+
+        const formattedNotification = formatNotificationForSocket(
+            newNotification,
+            allSaleAdmin.map(item => `${item._id}`)
+        );
+
         const dataResponse = {
-            newNotification: newNotification,
+            newNotification: formattedNotification,
         };
         MySocketServer.getIO()
             .to(`NOTIFICATION:PUBLIC:${RoleType.SALE_STAFF}`)
@@ -78,8 +85,14 @@ class NotificationHandler extends BaseSocketHandler {
             },
         });
         await newNotification.save();
+
+        const formattedNotification = formatNotificationForSocket(
+            newNotification,
+            [foundOrder.assignedStaff as string]
+        );
+
         const dataResponse = {
-            newNotification: newNotification,
+            newNotification: formattedNotification,
         };
         MySocketServer.getIO()
             .to(`NOTIFICATION:PRIVATE:${foundOrder.assignedStaff}`)
@@ -101,8 +114,14 @@ class NotificationHandler extends BaseSocketHandler {
             },
         });
         await newNotification.save();
+
+        const formattedNotification = formatNotificationForSocket(
+            newNotification,
+            [foundInvoice.staffHandleDelivery as string]
+        );
+
         const dataResponse = {
-            newNotification: newNotification,
+            newNotification: formattedNotification,
         };
         MySocketServer.getIO()
             .to(`NOTIFICATION:PRIVATE:${foundInvoice.staffHandleDelivery}`)
@@ -128,8 +147,14 @@ class NotificationHandler extends BaseSocketHandler {
             },
         });
         await newNotification.save();
+
+        const formattedNotification = formatNotificationForSocket(
+            newNotification,
+            [foundInvoice.managerOnboard]
+        );
+
         const dataResponse = {
-            newNotification: newNotification,
+            newNotification: formattedNotification,
         };
         MySocketServer.getIO()
             .to(`NOTIFICATION:PRIVATE:${foundInvoice.managerOnboard}`)

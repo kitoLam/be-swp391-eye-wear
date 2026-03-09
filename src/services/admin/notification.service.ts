@@ -1,47 +1,30 @@
 import { notificationRepository } from '../../repositories/notification/notification.repository';
 import { NotificationListQuery } from '../../types/notification/notification.query';
 import { NotFoundRequestError, BadRequestError } from '../../errors/apiError/api-error';
-import { FilterQuery } from 'mongoose';
-import { INotification } from '../../models/notification/notification.model';
-import { formatDateToString } from '../../utils/formatter';
+import { formatNotification } from '../../utils/notification.formatter';
 
 class NotificationService {
     async getNotifications(staffId: string, query: NotificationListQuery) {
-        const { page, limit, sortBy, sortOrder, isRead } = query;
+        const { limit, isRead, lastNotificationAt } = query;
 
-        const filter: FilterQuery<INotification> = {};
-
-        if (isRead !== undefined) {
-            if (isRead === 'true') {
-                filter.readBy = { $in: [staffId] };
-            } else if (isRead === 'false') {
-                filter.readBy = { $nin: [staffId] };
-            }
-        }
-
-        const result = await notificationRepository.findByStaffId(staffId, filter, {
-            page,
+        const notifications = await notificationRepository.findByStaffIdWithLazyLoad(staffId, {
+            lastNotificationAt,
             limit,
-            sortBy,
-            sortOrder,
+            isRead,
         });
 
-        const notifications = result.data.map((notification) => ({
-            _id: notification._id.toString(),
-            title: notification.title,
-            message: notification.message,
-            type: notification.type,
-            isRead: notification.readBy.includes(staffId),
-            metadata: notification.metadata,
-            createdAt: formatDateToString(notification.createdAt),
-        }));
+        const formattedNotifications = notifications.map((notification) =>
+            formatNotification(notification as any, staffId)
+        );
 
         return {
-            notifications,
-            total: result.total,
-            page: result.page,
-            limit: result.limit,
-            totalPages: result.totalPages,
+            notifications: formattedNotifications,
+            pagination: {
+                hasNext: notifications.length === limit,
+                lastItem: notifications.length > 0
+                    ? notifications[notifications.length - 1].createdAt.getTime()
+                    : null,
+            },
         };
     }
 
