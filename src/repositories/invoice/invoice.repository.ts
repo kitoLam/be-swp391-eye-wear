@@ -6,6 +6,10 @@ import { BaseRepository } from '../base.repository';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 import { DepositedInvoiceResponse } from '../../types/invoice/deposited-invoice.response';
 import { FilterQuery } from 'mongoose';
+import {
+    InvoiceRevenuePeriod,
+    InvoiceRevenueQuery,
+} from '../../types/invoice/invoice.query';
 
 export class InvoiceRepository extends BaseRepository<IInvoiceDocument> {
     constructor() {
@@ -201,6 +205,85 @@ export class InvoiceRepository extends BaseRepository<IInvoiceDocument> {
             data: first?.data ?? [],
             total: first?.total ?? 0,
         };
+    }
+
+    async getRevenueByPeriod(params: InvoiceRevenueQuery): Promise<
+        {
+            period: string;
+            totalRevenue: number;
+            invoiceCount: number;
+        }[]
+    > {
+        const timezone = 'Asia/Ho_Chi_Minh';
+        const dateFormatByPeriod: Record<InvoiceRevenuePeriod, string> = {
+            [InvoiceRevenuePeriod.YEAR]: '%Y',
+            [InvoiceRevenuePeriod.MONTH]: '%Y-%m',
+            [InvoiceRevenuePeriod.WEEK]: '%G-W%V',
+            [InvoiceRevenuePeriod.DAY]: '%Y-%m-%d',
+        };
+
+        const match: FilterQuery<IInvoiceDocument> = {
+            deletedAt: null,
+            status: InvoiceStatus.DELIVERED,
+        };
+
+        if (params.fromDate || params.toDate) {
+            match.createdAt = {} as any;
+            if (params.fromDate) {
+                (match.createdAt as any).$gte = new Date(params.fromDate);
+            }
+            if (params.toDate) {
+                (match.createdAt as any).$lte = new Date(params.toDate);
+            }
+        }
+
+        if (params.userId) {
+            match.owner = params.userId;
+        }
+
+        const result = await InvoiceModel.aggregate([
+            { $match: match },
+            {
+                $project: {
+                    period: {
+                        $dateToString: {
+                            format: dateFormatByPeriod[params.period],
+                            date: '$createdAt',
+                            timezone,
+                        },
+                    },
+                    revenue: {
+                        $max: [
+                            {
+                                $subtract: [
+                                    { $ifNull: ['$totalPrice', 0] },
+                                    { $ifNull: ['$totalDiscount', 0] },
+                                ],
+                            },
+                            0,
+                        ],
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: '$period',
+                    totalRevenue: { $sum: '$revenue' },
+                    invoiceCount: { $sum: 1 },
+                },
+            },
+            { $sort: { _id: 1 } },
+            {
+                $project: {
+                    _id: 0,
+                    period: '$_id',
+                    totalRevenue: 1,
+                    invoiceCount: 1,
+                },
+            },
+        ]);
+
+        return result;
     }
 }
 
