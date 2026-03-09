@@ -10,10 +10,9 @@ const ReturnTicketSchema = z.object({
     description: z.string(),
     media: z.array(z.string()),
     /**
-     * Optional list of SKU(s) in case order NORMAL has multiple products.
-     * Nullable for backward compatibility.
+     * Quantity of products being returned
      */
-    skus: z.array(z.string()).nullable().optional(),
+    quantity: z.number().int().min(1),
     money: z.number(),
     staffVerify: z.string().or(z.instanceof(Types.ObjectId)).nullable(),
     status: z.enum(ReturnTicketStatus),

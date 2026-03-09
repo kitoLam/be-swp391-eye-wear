@@ -75,7 +75,7 @@ class ReturnTicketService {
             );
         }
 
-        // Trả hàng theo toàn bộ order, không hỗ trợ trả SKU lẻ.
+        // Trả hàng theo toàn bộ order với quantity cụ thể.
         // Doanh thu tính theo tiền hàng sau giảm giá, KHÔNG tính phí ship.
         // Phân bổ discount theo tỷ trọng giá order trong tổng tiền hàng của invoice.
         const allOrdersInInvoice = await orderRepository.findAllNoPagination({
@@ -106,7 +106,7 @@ class ReturnTicketService {
             reason: requestBody.reason,
             description: requestBody.description,
             media: requestBody.media,
-            skus: [],
+            quantity: order.products[0].quantity,
             money: Math.round(netOrderAmount),
             status: ReturnTicketStatus.PENDING,
         });

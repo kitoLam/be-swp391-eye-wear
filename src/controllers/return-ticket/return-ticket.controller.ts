@@ -205,7 +205,7 @@ class ReturnTicketController {
             reason: item.reason,
             description: item.description,
             media: item.media,
-            skus: item.skus ?? null,
+            quantity: item.quantity,
             money: item.money,
             staffVerify: item.staffVerify,
             status: item.status,
