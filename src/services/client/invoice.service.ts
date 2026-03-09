@@ -734,13 +734,15 @@ class InvoiceClientService {
         if (!existInvoice) {
             throw new NotFoundRequestError('Invoice not found');
         }
-        // Nếu đơn đã qua bước được staff approve rồi thì không cho hủy nữa
+        // Nếu đơn đã qua bước được manager onboard rồi thì không cho hủy nữa
         if (
             existInvoice.status != InvoiceStatus.PENDING &&
-            existInvoice.status != InvoiceStatus.DEPOSITED
+            existInvoice.status != InvoiceStatus.DEPOSITED &&
+            existInvoice.status != InvoiceStatus.REJECTED && 
+            existInvoice.status != InvoiceStatus.APPROVED
         ) {
             throw new ConflictRequestError(
-                'Invoice has been approved, so you can not cancel it'
+                'Invoice has been onboard, so you can not cancel it anymore'
             );
         }
         // Cập nhật lại stock của từng order trong đơn về lại kho
