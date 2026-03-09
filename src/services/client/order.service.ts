@@ -11,6 +11,26 @@ import { OrderType } from '../../config/enums/order.enum';
 class OrderClientService {
 
     /**
+     * Get order by invoice ID
+     */
+    getOrderByInvoiceId = async (customerId: string, invoiceId: string) => {
+        const invoice = await invoiceRepository.findOne({
+            _id: invoiceId,
+            owner: customerId,
+        });
+
+        if (!invoice) {
+            throw new NotFoundRequestError('Invoice not found');
+        }
+
+        const orders = await orderRepository.find({
+            invoiceId: invoice._id.toString(),
+        });
+
+        return orders;
+    };
+
+    /**
      * Get order detail
      */
     getOrderDetail = async (customerId: string, orderId: string) => {
