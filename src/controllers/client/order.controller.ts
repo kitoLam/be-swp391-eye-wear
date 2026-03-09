@@ -4,6 +4,18 @@ import { ApiResponse } from '../../utils/api-response';
 import { ClientUpdateOrder } from '../../types/order/order.request';
 class OrderController {
 
+    getOrderByInvoiceId = async (req: Request, res: Response) => {
+        const customerId = req.customer!.id;
+        const invoiceId = req.params.invoiceId as string;
+        const order = await orderClientService.getOrderByInvoiceId(
+            customerId,
+            invoiceId
+        );
+        res.json(
+            ApiResponse.success('Lấy đơn hàng theo mã hóa đơn thành công!', { order })
+        );
+    };
+
     getOrderDetail = async (req: Request, res: Response) => {
         const customerId = req.customer!.id;
         const orderId = req.params.orderId as string;
