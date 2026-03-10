@@ -121,7 +121,7 @@ class VoucherAdminService {
         const total = await voucherRepository.count(filter);
 
         return {
-            items,
+            voucherList: items.data,
             pagination: {
                 page,
                 limit,
