@@ -5,7 +5,7 @@ import {
     ProductUpdateDTO,
 } from '../../types/product/product/product.dto';
 import { AuthAdminContext } from '../../types/context/context';
-import { NotFoundRequestError } from '../../errors/apiError/api-error';
+import { NotFoundRequestError, BadRequestError } from '../../errors/apiError/api-error';
 import * as productConverter from '../../converters/admin/product.converter';
 import { ProductListQuery } from '../../types/product/product/product.query';
 import { slugify, generateUniqueSlug } from '../../utils/slug.util';
@@ -14,6 +14,52 @@ import { generateSkuBase, generateVariantSku } from '../../utils/sku.util';
 import { ProductVariantMode } from '../../config/enums/product.enum';
 
 class ProductService {
+    /**
+     * Validate variants options
+     * - Each variant must have at least 1 option
+     * - All variants must have the same set of attributeIds in their options
+     */
+    private validateVariantsOptions = (variants: any[]) => {
+        if (!variants || variants.length === 0) {
+            throw new BadRequestError('Product must have at least one variant');
+        }
+
+        // Get attributeIds set from first variant
+        let referenceAttributeIds: Set<string> | null = null;
+
+        for (const variant of variants) {
+            // Check if variant has options
+            if (!variant.options || variant.options.length === 0) {
+                throw new BadRequestError('Each variant must have at least one option');
+            }
+
+            // Collect attributeIds from current variant's options
+            const currentAttributeIds = new Set<string>();
+            for (const option of variant.options) {
+                if (!option.attributeId) {
+                    throw new BadRequestError('Each option must have an attributeId');
+                }
+                currentAttributeIds.add(option.attributeId.toString());
+            }
+
+            // Set reference for first variant
+            if (referenceAttributeIds === null) {
+                referenceAttributeIds = currentAttributeIds;
+            } else {
+                // Compare current variant's attributeIds with reference
+                if (referenceAttributeIds.size !== currentAttributeIds.size) {
+                    throw new BadRequestError('All variants must have the same set of attributeIds in their options');
+                }
+
+                // Check if all attributeIds match
+                for (const attrId of currentAttributeIds) {
+                    if (!referenceAttributeIds.has(attrId)) {
+                        throw new BadRequestError('All variants must have the same set of attributeIds in their options');
+                    }
+                }
+            }
+        }
+    };
     /**
      * Tạo mới sản phẩm
      * @param payload - form data yêu cầu tạo từ user
@@ -26,6 +72,9 @@ class ProductService {
         context: AuthAdminContext,
         defaultMode?: ProductVariantMode
     ) => {
+        // 0. Validate variants options
+        this.validateVariantsOptions(payload.variants);
+
         // 1. Generate slugBase with UUID
         const baseSlug = slugify(payload.nameBase);
         const uniqueSlug = generateUniqueSlug(baseSlug);
@@ -90,6 +139,11 @@ class ProductService {
             deletedAt: null,
         });
         if (!foundProduct) throw new NotFoundRequestError('Product not found');
+
+        // 0. Validate variants options if provided
+        if (payload.variants) {
+            this.validateVariantsOptions(payload.variants);
+        }
 
         let updateData: any = {
             ...payload,
