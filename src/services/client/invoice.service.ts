@@ -278,6 +278,7 @@ class InvoiceClientService {
             const preOrderProducts: OrderProduct[] = [];
             const preOrderProductModeSkuSet = new Set();
             let totalPrice = 0;
+            let hasManufacturingProduct = false;
 
             for (const item of payload.products) {
                 let itemPrice = 0;
@@ -375,6 +376,7 @@ class InvoiceClientService {
                         preOrderProductModeSkuSet.add(lensVariant.sku);
                     }
                     // Nếu có lens và check đầy đủ hết, push vào loại đơn hàng MANUFACTURING
+                    hasManufacturingProduct = true;
                     manufacturingProducts.push({
                         product: {
                             ...item.product,
@@ -408,6 +410,13 @@ class InvoiceClientService {
                 }
 
                 totalPrice += itemPrice;
+            }
+
+            // Check if there's any manufacturing product and payment method is COD
+            if (hasManufacturingProduct && payload.paymentMethod === PaymentMethodType.COD) {
+                throw new BadRequestError(
+                    'MANUFACTURING products must be paid online, please choose another payment method instead of COD'
+                );
             }
 
             // Apply Voucher
