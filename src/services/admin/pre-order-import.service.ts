@@ -140,6 +140,10 @@ class PreOrderImportService {
             filter.targetDate = { $eq: queryDate };
         }
 
+        if (query.status && query.status.length > 0) {
+            filter.status = { $in: query.status };
+        }
+
         const paginationResult = await preOrderImportRepository.find(filter, {
             page: query.page,
             limit: query.limit,
