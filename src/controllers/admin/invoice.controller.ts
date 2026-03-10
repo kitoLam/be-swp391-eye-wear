@@ -137,6 +137,15 @@ class InvoiceController {
         );
     };
 
+    failDeliveredInvoice = async (req: Request, res: Response) => {
+        // No adminContext needed for this public endpoint
+        const invoiceId = req.params.id as string;
+        await invoiceService.failDeliveredInvoice(invoiceId);
+        res.json(
+            ApiResponse.success('Update invoice to fail delivered success', null)
+        );
+    };
+
     /**
      * Get deposited invoices with order types
      * Endpoint: GET /admin/invoices/deposited

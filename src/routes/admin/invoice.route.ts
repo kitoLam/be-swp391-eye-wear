@@ -26,6 +26,11 @@ router.patch(
     invoiceController.deliveredInvoice
 );
 router.patch(
+    '/:id/status/fail-delivered',
+    validateParams(ObjectIdSchema),
+    invoiceController.failDeliveredInvoice
+);
+router.patch(
     '/:id/status/delivering',
     validateParams(ObjectIdSchema),
     invoiceController.deliveringInvoice
