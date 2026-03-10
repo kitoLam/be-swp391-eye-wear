@@ -10,6 +10,25 @@ import { ReturnTicketListQuerySchema } from '../../types/return-ticket/return-ti
 
 const router = Router();
 
+// ============ Public callback endpoints (NO AUTH) ============
+// These are called by the shipment service
+router.patch(
+    '/:id/status/delivering',
+    validateParams(ObjectIdSchema),
+    returnTicketController.deliveringReturnTicket
+);
+router.patch(
+    '/:id/status/returned',
+    validateParams(ObjectIdSchema),
+    returnTicketController.returnedReturnTicket
+);
+router.patch(
+    '/:id/status/fail-returned',
+    validateParams(ObjectIdSchema),
+    returnTicketController.failReturnedReturnTicket
+);
+
+// ============ Protected endpoints (REQUIRE AUTH) ============
 router.use(authenticateMiddleware);
 
 // [GET] staff get list return order
@@ -39,7 +58,7 @@ router.patch(
     returnTicketController.updateStaffVerify
 );
 
-// [PATCH] status endpoints
+// [PATCH] status endpoints - staff actions
 router.patch(
     '/:id/status/approved',
     validateParams(ObjectIdSchema),
@@ -54,17 +73,6 @@ router.patch(
     '/:id/status/in-progress',
     validateParams(ObjectIdSchema),
     returnTicketController.processReturnTicket
-);
-
-router.patch(
-    '/:id/status/delivering',
-    validateParams(ObjectIdSchema),
-    returnTicketController.deliveringReturnTicket
-);
-router.patch(
-    '/:id/status/returned',
-    validateParams(ObjectIdSchema),
-    returnTicketController.returnedReturnTicket
 );
 
 export default router;

@@ -396,6 +396,9 @@ class InvoiceService {
                 invoiceDetail.address.ward +
                 ', ' +
                 invoiceDetail.address.city,
+            successUrlCallback: `https://eyewear-backend.xyz/admin/invoices/${invoiceId}/status/delivered`,
+            failUrlCallback: `https://eyewear-backend.xyz/admin/invoices/${invoiceId}/status/fail-delivered`,
+            receiveUrlCallback: `https://eyewear-backend.xyz/admin/invoices/${invoiceId}/status/delivering`,
         };
         try {
             const response = await axios.post<{

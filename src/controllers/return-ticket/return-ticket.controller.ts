@@ -125,15 +125,17 @@ class ReturnTicketController {
 
     processReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.updateStatus(
+        const result = await returnTicketService.startReturnShipment(
             id,
-            ReturnTicketStatus.IN_PROGRESS,
             req.adminAccount!
         );
         res.json(
             ApiResponse.success(
-                'Process return ticket successfully',
-                this.mapResponse(updatedTicket)
+                'Process return ticket and create shipment successfully',
+                {
+                    returnTicket: this.mapResponse(result.updatedTicket),
+                    shipmentData: result.shipmentData,
+                }
             )
         );
     };
@@ -152,31 +154,45 @@ class ReturnTicketController {
         );
     };
 
+    /**
+     * Callback from shipment service - NO AUTH REQUIRED
+     * Update status to DELIVERING when shipper picks up the return package
+     */
     deliveringReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.updateStatus(
-            id,
-            ReturnTicketStatus.DELIVERING,
-            req.adminAccount!
-        );
+        await returnTicketService.deliveringReturnTicket(id);
         res.json(
             ApiResponse.success(
-                'Update status to delivering successfully',
+                'Update status to delivering successfully', null
+            )
+        );
+    };
+
+    /**
+     * Callback from shipment service - NO AUTH REQUIRED
+     * Update status to RETURNED when return package is delivered successfully
+     */
+    returnedReturnTicket = async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+        const updatedTicket = await returnTicketService.returnedReturnTicket(id);
+        res.json(
+            ApiResponse.success(
+                'Update status to returned successfully',
                 this.mapResponse(updatedTicket)
             )
         );
     };
 
-    returnedReturnTicket = async (req: Request, res: Response) => {
+    /**
+     * Callback from shipment service - NO AUTH REQUIRED
+     * Update status to FAIL_RETURNED when return package delivery fails
+     */
+    failReturnedReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.updateStatus(
-            id,
-            ReturnTicketStatus.RETURNED,
-            req.adminAccount!
-        );
+        const updatedTicket = await returnTicketService.failReturnedReturnTicket(id);
         res.json(
             ApiResponse.success(
-                'Update status to returned successfully',
+                'Update status to fail returned successfully',
                 this.mapResponse(updatedTicket)
             )
         );

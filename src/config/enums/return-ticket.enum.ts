@@ -6,4 +6,5 @@ export enum ReturnTicketStatus {
     APPROVED = 'APPROVED',
     DELIVERING = 'DELIVERING',
     RETURNED = 'RETURNED',
+    FAIL_RETURNED = 'FAIL_RETURNED',
 }

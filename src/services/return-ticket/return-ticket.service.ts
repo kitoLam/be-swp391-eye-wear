@@ -23,6 +23,8 @@ import { invoiceRepository } from '../../repositories/invoice/invoice.repository
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 import { ReturnTicketStatus } from '../../config/enums/return-ticket.enum';
 import { OrderStatus } from '../../config/enums/order.enum';
+import { config } from '../../config/env.config';
+import axios from 'axios';
 
 class ReturnTicketService {
     /**
@@ -198,7 +200,7 @@ class ReturnTicketService {
 
     /**
      * Validate status transition based on workflow:
-     * PENDING -> APPROVED/CANCEL/REJECTED -> IN_PROGRESS -> DELIVERING -> RETURNED
+     * PENDING -> APPROVED/CANCEL/REJECTED -> IN_PROGRESS -> DELIVERING -> RETURNED/FAIL_RETURNED
      */
     private validateStatusTransition = (
         currentStatus: ReturnTicketStatus,
@@ -212,10 +214,14 @@ class ReturnTicketService {
             ],
             [ReturnTicketStatus.APPROVED]: [ReturnTicketStatus.IN_PROGRESS],
             [ReturnTicketStatus.IN_PROGRESS]: [ReturnTicketStatus.DELIVERING],
-            [ReturnTicketStatus.DELIVERING]: [ReturnTicketStatus.RETURNED],
+            [ReturnTicketStatus.DELIVERING]: [
+                ReturnTicketStatus.RETURNED,
+                ReturnTicketStatus.FAIL_RETURNED,
+            ],
             [ReturnTicketStatus.CANCEL]: [],
             [ReturnTicketStatus.REJECTED]: [],
             [ReturnTicketStatus.RETURNED]: [],
+            [ReturnTicketStatus.FAIL_RETURNED]: [],
         };
 
         const allowedStatuses = validTransitions[currentStatus] || [];
@@ -293,6 +299,163 @@ class ReturnTicketService {
         if (!returnTicket)
             throw new NotFoundRequestError('Return ticket not found');
         return returnTicket;
+    };
+
+    /**
+     * Mark return ticket as IN_PROGRESS and call shipment API
+     * @param id - ID of the return ticket
+     * @param adminContext - Context of the admin user
+     */
+    startReturnShipment = async (
+        id: string,
+        adminContext: AuthAdminContext
+    ) => {
+        const returnTicket = await ReturnTicketModel.findById(id);
+        if (!returnTicket) {
+            throw new NotFoundRequestError('Return ticket not found');
+        }
+
+        // Logic check: Chỉ cho phép từ APPROVED sang IN_PROGRESS
+        if (returnTicket.status !== ReturnTicketStatus.APPROVED) {
+            throw new ConflictRequestError(
+                'Return ticket status must be APPROVED to update to IN_PROGRESS'
+            );
+        }
+
+        // Logic check: userId trong token phải trùng với staffVerify
+        if (returnTicket.staffVerify !== adminContext.id) {
+            throw new ConflictRequestError(
+                'Only the assigned staff can update this return ticket to IN_PROGRESS'
+            );
+        }
+
+        // Lấy thông tin order và invoice để lấy địa chỉ
+        const order = await orderRepository.findOne({
+            _id: returnTicket.orderId,
+        });
+        if (!order) {
+            throw new NotFoundRequestError('Order not found');
+        }
+
+        const invoice = await invoiceRepository.findOne({
+            _id: order.invoiceId,
+        });
+        if (!invoice) {
+            throw new NotFoundRequestError('Invoice not found');
+        }
+
+        // Cập nhật trạng thái IN_PROGRESS
+        returnTicket.status = ReturnTicketStatus.IN_PROGRESS;
+        const updatedTicket = await returnTicket.save();
+
+        // ============ Call api shipment =============
+        const api = config.shipment.createApi;
+        const bodyData = {
+            invoiceId: `${returnTicket._id.toString()}`,
+            shipAddress:
+                invoice.address.street +
+                ', ' +
+                invoice.address.ward +
+                ', ' +
+                invoice.address.city,
+            successUrlCallback: `https://eyewear-backend.xyz/admin/return-tickets/${id}/status/returned`,
+            failUrlCallback: `https://eyewear-backend.xyz/admin/return-tickets/${id}/status/fail-returned`,
+            receiveUrlCallback: `https://eyewear-backend.xyz/admin/return-tickets/${id}/status/delivering`,
+        };
+        try {
+            const response = await axios.post<{
+                data: { shipCode: string; estimatedShipDate: string };
+            }>(api, bodyData);
+            return {
+                updatedTicket,
+                shipmentData: response.data.data,
+            };
+        } catch (error) {
+            throw new Error('Failed to call api shipment');
+        }
+    };
+
+    /**
+     * Mark return ticket as DELIVERING
+     * NO AUTHENTICATION REQUIRED - Public endpoint (callback from shipment)
+     * @param id - ID of the return ticket
+     */
+    deliveringReturnTicket = async (id: string) => {
+        const returnTicket = await ReturnTicketModel.findById(id);
+        if (!returnTicket) {
+            throw new NotFoundRequestError('Return ticket not found');
+        }
+
+        if (
+            returnTicket.status === ReturnTicketStatus.CANCEL ||
+            returnTicket.status === ReturnTicketStatus.REJECTED
+        ) {
+            throw new ConflictRequestError(
+                'Cannot update status of a canceled or rejected return ticket'
+            );
+        }
+
+        returnTicket.status = ReturnTicketStatus.DELIVERING;
+        await returnTicket.save();
+    };
+
+    /**
+     * Mark return ticket as RETURNED
+     * NO AUTHENTICATION REQUIRED - Public endpoint (callback from shipment)
+     * @param id - ID of the return ticket
+     */
+    returnedReturnTicket = async (id: string) => {
+        const returnTicket = await ReturnTicketModel.findById(id);
+        if (!returnTicket) {
+            throw new NotFoundRequestError('Return ticket not found');
+        }
+
+        if (
+            returnTicket.status === ReturnTicketStatus.CANCEL ||
+            returnTicket.status === ReturnTicketStatus.REJECTED
+        ) {
+            throw new ConflictRequestError(
+                'Cannot update status of a canceled or rejected return ticket'
+            );
+        }
+
+        returnTicket.status = ReturnTicketStatus.RETURNED;
+        const updatedTicket = await returnTicket.save();
+
+        return updatedTicket;
+    };
+
+    /**
+     * Mark return ticket as FAIL_RETURNED
+     * NO AUTHENTICATION REQUIRED - Public endpoint (callback from shipment)
+     * @param id - ID of the return ticket
+     */
+    failReturnedReturnTicket = async (id: string) => {
+        const returnTicket = await ReturnTicketModel.findById(id);
+        if (!returnTicket) {
+            throw new NotFoundRequestError('Return ticket not found');
+        }
+
+        if (
+            returnTicket.status === ReturnTicketStatus.CANCEL ||
+            returnTicket.status === ReturnTicketStatus.REJECTED
+        ) {
+            throw new ConflictRequestError(
+                'Cannot update status of a canceled or rejected return ticket'
+            );
+        }
+
+        // Chỉ cho phép chuyển sang FAIL_RETURNED từ trạng thái DELIVERING
+        if (returnTicket.status !== ReturnTicketStatus.DELIVERING) {
+            throw new ConflictRequestError(
+                'Return ticket status must be DELIVERING to update to FAIL_RETURNED'
+            );
+        }
+
+        returnTicket.status = ReturnTicketStatus.FAIL_RETURNED;
+        const updatedTicket = await returnTicket.save();
+
+        return updatedTicket;
     };
 }
 
