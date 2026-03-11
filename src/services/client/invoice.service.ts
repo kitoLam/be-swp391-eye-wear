@@ -446,7 +446,7 @@ class InvoiceClientService {
 
             const invoiceData = {
                 owner: customerId,
-                totalPrice: totalPrice + feeShip,
+                totalPrice: totalPrice,
                 totalDiscount,
                 voucher: voucherId ? [voucherId] : [],
                 address: payload.address,

@@ -358,9 +358,9 @@ class ReturnTicketService {
                 invoice.address.ward +
                 ', ' +
                 invoice.address.city,
-            successUrlCallback: `https://eyewear-backend.xyz/admin/return-tickets/${id}/status/returned`,
-            failUrlCallback: `https://eyewear-backend.xyz/admin/return-tickets/${id}/status/fail-returned`,
-            receiveUrlCallback: `https://eyewear-backend.xyz/admin/return-tickets/${id}/status/delivering`,
+            successUrlCallback: `https://eyewear-backend.xyz/api/v1/admin/return-tickets/${id}/status/returned`,
+            failUrlCallback: `https://eyewear-backend.xyz/api/v1/admin/return-tickets/${id}/status/fail-returned`,
+            receiveUrlCallback: `https://eyewear-backend.xyz/api/v1/admin/return-tickets/${id}/status/delivering`,
         };
         try {
             const response = await axios.post<{
