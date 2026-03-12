@@ -69,6 +69,25 @@ class ReturnTicketService {
             );
         }
 
+        // Kiểm tra deliveredDate phải tồn tại và chỉ cho return trong vòng 3 ngày
+        if (!invoice.deliveredDate) {
+            throw new ConflictRequestError(
+                'Invoice delivered date is not recorded'
+            );
+        }
+
+        const currentDate = new Date();
+        const deliveredDate = new Date(invoice.deliveredDate);
+        const daysDifference = Math.floor(
+            (currentDate.getTime() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        if (daysDifference > 3) {
+            throw new ConflictRequestError(
+                `Return is only allowed within 3 days from delivery. Days since delivery: ${daysDifference}`
+            );
+        }
+
         const existingTicket = await ReturnTicketModel.findOne({
             orderId: requestBody.orderId,
             status: {

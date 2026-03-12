@@ -460,6 +460,7 @@ class InvoiceService {
 
         const updatedInvoice = await invoiceRepository.update(invoiceId, {
             status: InvoiceStatus.DELIVERED,
+            deliveredDate: new Date(),
         });
 
         return updatedInvoice;

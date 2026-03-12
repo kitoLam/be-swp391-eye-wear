@@ -92,6 +92,11 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
             type: Number,
             required: false,
             default: 10000,
+        },
+        deliveredDate: {
+            type: Date,
+            required: false,
+            default: null,
         }
     },
     {
