@@ -21,6 +21,7 @@ import { invoiceRepository } from '../../repositories/invoice/invoice.repository
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 import invoiceService from './invoice.service';
 import { removeJobFromQueue } from '../../queues/invoice.queue';
+import { mailAdminService } from '../admin/mail.service';
 import { ProductVariantMode } from '../../config/enums/product.enum';
 import { PreOrderImportModel } from '../../models/pre-order-import/pre-order-import.model.mongo';
 import { isPayOSConfigured, payOS } from '../../config/payos.config';
@@ -151,6 +152,9 @@ class PaymentClientService {
                 { _id: invoiceId },
                 { status: targetStatus }
             );
+
+            // Send invoice confirmation email after successful online payment
+            await mailAdminService.sendInvoiceConfirmation(invoiceDetail as any);
         }
     };
 
