@@ -417,16 +417,20 @@ class ProductService {
      */
     searchBySku = async (sku: string) => {
         const foundProduct = await productRepository.findOne({
-            skuBase: sku,
+            "variants.sku": sku,
         });
-
+        
         if (!foundProduct) {
             throw new NotFoundRequestError(
                 'Product not found with SKU: ' + sku
             );
         }
-
-        return productConverter.toProductCreateDTO(foundProduct);
+        const variant = foundProduct.variants.find(v => v.sku == sku);
+        return {
+            product: productConverter.toProductCreateDTO(foundProduct),
+            variant
+            
+        }
     };
     getSpecificProductVariant = async (id: string, sku: string) => {
         const product = await productRepository.findOne({

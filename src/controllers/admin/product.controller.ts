@@ -112,11 +112,9 @@ class ProductController {
      */
     searchBySku = async (req: Request, res: Response) => {
         const sku = req.params.sku as string;
-        const product = await productService.searchBySku(sku);
+        const data = await productService.searchBySku(sku);
         res.json(
-            ApiResponse.success(ProductMessage.success.search, {
-                product,
-            })
+            ApiResponse.success(ProductMessage.success.search, data)
         );
     };
 
