@@ -159,6 +159,20 @@ class PreOrderImportService {
             },
         };
     }
+
+    async getPreOrderImportDetail(preOrderImportId: string) {
+        // 1. Find pre-order import by ID
+        const preOrderImport =
+            await preOrderImportRepository.findById(preOrderImportId);
+
+        if (!preOrderImport) {
+            throw new NotFoundRequestError(
+                `Pre-order import with ID: ${preOrderImportId} not found`
+            );
+        }
+
+        return preOrderImport;
+    }
 }
 
 export default new PreOrderImportService();

@@ -70,6 +70,27 @@ class PreOrderImportController {
             next(error);
         }
     };
+
+    getPreOrderImportDetail = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { id } = req.params;
+            const result =
+                await preOrderImportService.getPreOrderImportDetail(id as string);
+
+            res.json(
+                ApiResponse.success(
+                    'Pre-order import detail retrieved successfully',
+                    result
+                )
+            );
+        } catch (error) {
+            next(error);
+        }
+    };
 }
 
 export default new PreOrderImportController();

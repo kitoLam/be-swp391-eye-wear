@@ -54,4 +54,10 @@ router.get(
     preOrderImportController.getPreOrderImports
 );
 
+router.get(
+    '/:id',
+    authenticateMiddleware,
+    preOrderImportController.getPreOrderImportDetail
+);
+
 export default router;
