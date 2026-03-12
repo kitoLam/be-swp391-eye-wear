@@ -22,4 +22,5 @@ export enum VoucherApplyScope {
 export enum VoucherClaimStatus {
     WAITING_CLAIM = 'WAITING_CLAIM',
     CLAIMED = 'CLAIMED',
+    USED = 'USED',
 }

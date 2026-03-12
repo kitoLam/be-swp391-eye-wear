@@ -66,7 +66,7 @@ class InvoiceClientService {
         if (currentLockCount > stockAvailable) {
             // Trả lại chỗ ngay lập tức để không làm hỏng số liệu lock
             await redisService.incrKeyBy(key, -qty);
-            
+
             // Ném lỗi ngay lập tức - User này sẽ nhận lỗi 400 và dừng lại
             throw new BadRequestError('Sản phẩm đã hết hàng!');
         }
@@ -96,13 +96,9 @@ class InvoiceClientService {
                 if (remaining <= 0) {
                     await redisService.deleteDataByKey(lock.key);
                 } else {
-                    await redisService.descKeyBy(
-                        lock.key,
-                        lock.qty
-                    );
+                    await redisService.descKeyBy(lock.key, lock.qty);
                     await redisService.setExpire(lock.key, seconds);
                 }
-                
             }
         }
     };
@@ -138,11 +134,10 @@ class InvoiceClientService {
             );
         }
 
-        // 2. Check voucher ownership in Supabase (since IDs are same)
-        // Even for ALL scope, we might want to check if it's assigned if the system requires it,
-        // but typically SPECIFIC is the one that needs strict ownership check.
+        // 2. Check voucher ownership and ATOMICALLY update status to USED in Supabase
         if (voucher.applyScope === VoucherApplyScope.SPECIFIC) {
-            const { data, error } = await supabase
+            // First, get the current record to check status and preserve other metadata
+            const { data: voucherUser, error: fetchError } = await supabase
                 .from('voucher_user')
                 .select('*')
                 .eq('customer_id', customerId)
@@ -150,17 +145,42 @@ class InvoiceClientService {
                 .is('deleted_at', null)
                 .single();
 
-            if (error || !data) {
+            if (fetchError || !voucherUser) {
                 throw new BadRequestError(
                     'Bạn không có quyền sử dụng voucher này hoặc voucher không thuộc về bạn'
                 );
             }
 
-            // Check if voucher has been claimed
-            const claimStatus = data.metadata?.status;
-            if (claimStatus !== VoucherClaimStatus.CLAIMED) {
+            const currentStatus = voucherUser.metadata?.status;
+            if (currentStatus === VoucherClaimStatus.USED) {
+                throw new BadRequestError('Voucher này đã được sử dụng');
+            }
+            if (currentStatus !== VoucherClaimStatus.CLAIMED) {
                 throw new BadRequestError(
                     'Voucher chưa được claim. Vui lòng claim voucher trước khi sử dụng'
+                );
+            }
+
+            // Atomically update status to USED
+            const updatedMetadata = {
+                ...(voucherUser.metadata || {}),
+                status: VoucherClaimStatus.USED,
+                updated_at: new Date().toISOString(),
+            };
+
+            const { error: updateError } = await supabase
+                .from('voucher_user')
+                .update({
+                    metadata: updatedMetadata,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('customer_id', customerId)
+                .eq('voucher_id', voucher._id.toString())
+                .is('deleted_at', null);
+
+            if (updateError) {
+                throw new BadRequestError(
+                    'Không thể áp dụng voucher: ' + updateError.message
                 );
             }
         }
@@ -221,8 +241,7 @@ class InvoiceClientService {
         // 1. Increment usage in MongoDB
         await voucherRepository.incrementUsage(voucherId);
 
-        // 2. Update status in Supabase voucher_user if SPECIFIC
-        // (Or always update metadata if you want to track usage per user)
+        // 2. Update metadata in Supabase voucher_user if SPECIFIC
         const { data: currentRecord } = await supabase
             .from('voucher_user')
             .select('metadata')
@@ -248,6 +267,45 @@ class InvoiceClientService {
                 })
                 .eq('customer_id', customerId)
                 .eq('voucher_id', voucherId);
+        }
+    };
+
+    /**
+     * Helper: Revert voucher status to CLAIMED in case of failure
+     */
+    private revertVoucherStatus = async (
+        voucherId: string,
+        customerId: string
+    ) => {
+        const { data: currentRecord } = await supabase
+            .from('voucher_user')
+            .select('metadata')
+            .eq('customer_id', customerId)
+            .eq('voucher_id', voucherId)
+            .is('deleted_at', null)
+            .single();
+
+        if (
+            currentRecord &&
+            currentRecord.metadata?.status === VoucherClaimStatus.USED
+        ) {
+            const newMetadata = {
+                ...currentRecord.metadata,
+                status: VoucherClaimStatus.CLAIMED,
+                reverted_at: new Date().toISOString(),
+            };
+            delete newMetadata.used_at;
+            delete newMetadata.invoice_id;
+
+            await supabase
+                .from('voucher_user')
+                .update({
+                    metadata: newMetadata,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('customer_id', customerId)
+                .eq('voucher_id', voucherId)
+                .is('deleted_at', null);
         }
     };
 
@@ -305,11 +363,22 @@ class InvoiceClientService {
                 const keyRace = `${redisPrefix.productLockRace}:${item.product.product_id}:${item.product.sku}`;
                 const keyOnline = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
                 // === End check stock ===
-                const realProductVariantStock = await productService.getVariantStock(item.product.product_id, item.product.sku);
-                const realProductVariantStockOnline = await redisService.getDataByKey<number>(keyOnline) || 0;
-                const currentProductVariantStock = realProductVariantStock - realProductVariantStockOnline;
+                const realProductVariantStock =
+                    await productService.getVariantStock(
+                        item.product.product_id,
+                        item.product.sku
+                    );
+                const realProductVariantStockOnline =
+                    (await redisService.getDataByKey<number>(keyOnline)) || 0;
+                const currentProductVariantStock =
+                    realProductVariantStock - realProductVariantStockOnline;
                 // ==== Acquire race lock ====
-                await this.acquireProductLock(keyRace, item.quantity, currentProductVariantStock, 'race');
+                await this.acquireProductLock(
+                    keyRace,
+                    item.quantity,
+                    currentProductVariantStock,
+                    'race'
+                );
                 acquiredLocks.push({ key: keyRace, qty: item.quantity });
                 // ==== End acquire race lock ====
                 // If COD, decrease stock immediately
@@ -343,9 +412,16 @@ class InvoiceClientService {
                     const keyRace = `${redisPrefix.productLockRace}:${item.lens.lens_id}:${item.lens.sku}`;
                     const keyOnline = `${redisPrefix.productLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
                     // === End check stock ===
-                    const realLensVariantStock = await productService.getVariantStock(item.lens.lens_id, item.lens.sku);
-                    const realLensVariantStockOnline = await redisService.getDataByKey<number>(keyOnline) || 0;
-                    const currentLensVariantStock = realLensVariantStock - realLensVariantStockOnline;
+                    const realLensVariantStock =
+                        await productService.getVariantStock(
+                            item.lens.lens_id,
+                            item.lens.sku
+                        );
+                    const realLensVariantStockOnline =
+                        (await redisService.getDataByKey<number>(keyOnline)) ||
+                        0;
+                    const currentLensVariantStock =
+                        realLensVariantStock - realLensVariantStockOnline;
                     // Acquire race lock
                     await this.acquireProductLock(
                         keyRace,
@@ -413,7 +489,10 @@ class InvoiceClientService {
             }
 
             // Check if there's any manufacturing product and payment method is COD
-            if (hasManufacturingProduct && payload.paymentMethod === PaymentMethodType.COD) {
+            if (
+                hasManufacturingProduct &&
+                payload.paymentMethod === PaymentMethodType.COD
+            ) {
                 throw new BadRequestError(
                     'MANUFACTURING products must be paid online, please choose another payment method instead of COD'
                 );
@@ -605,13 +684,27 @@ class InvoiceClientService {
             }
             // add notification
             await notificationHandler.onInvoiceCreate({
-                invoiceId: newInvoice._id.toString()
-            })
+                invoiceId: newInvoice._id.toString(),
+            });
             return {
                 invoice: newInvoice,
                 payment: newPayment,
             };
         } catch (error) {
+            // Revert voucher status if it was marked as USED
+            const { voucherId } = await this.validateAndCalculateVoucher(
+                payload.voucher,
+                0, // Dummy value as we just need the ID logic if possible, but actually we should extract voucherId earlier
+                customerId,
+                0
+            ).catch(() => ({ voucherId: undefined }));
+
+            if (voucherId) {
+                await this.revertVoucherStatus(voucherId, customerId).catch(
+                    err =>
+                        console.error('Failed to revert voucher status:', err)
+                );
+            }
             throw error;
         } finally {
             // Release race locks
@@ -747,7 +840,7 @@ class InvoiceClientService {
         if (
             existInvoice.status != InvoiceStatus.PENDING &&
             existInvoice.status != InvoiceStatus.DEPOSITED &&
-            existInvoice.status != InvoiceStatus.REJECTED && 
+            existInvoice.status != InvoiceStatus.REJECTED &&
             existInvoice.status != InvoiceStatus.APPROVED
         ) {
             throw new ConflictRequestError(
