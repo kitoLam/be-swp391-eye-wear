@@ -3,6 +3,7 @@ import invoiceClientService from '../../services/client/invoice.service';
 import { ApiResponse } from '../../utils/api-response';
 import { ClientUpdateInvoice } from '../../types/invoice/client-invoice';
 import { mailAdminService } from '../../services/admin/mail.service';
+import { PaymentMethodType } from '../../config/enums/payment.enum';
 
 class InvoiceController {
     /**
@@ -21,7 +22,12 @@ class InvoiceController {
 
         // Notify customer via email (asynchronous queue-based)
         // data contains { invoice, payment }
-        if (data && data.invoice) {
+        // Only send immediately for COD orders; online orders send after payment success
+        if (
+            data &&
+            data.invoice &&
+            data.payment?.paymentMethod === PaymentMethodType.COD
+        ) {
             mailAdminService.sendInvoiceConfirmation(data.invoice);
         }
     };
