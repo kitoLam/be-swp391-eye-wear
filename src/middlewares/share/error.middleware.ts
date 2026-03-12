@@ -30,10 +30,16 @@ export const errorMiddleware = (
         });
     } else if (err instanceof GoogleOAuthRegisterBeforeError) {
         return res.status(err.statusCode).json({
-            status: false,
+            success: false,
             message: err.message,
             code: err.code,
         });
+    } else if(err instanceof URIError){
+        return res.status(400).json({
+            success: false,
+            message: "Requested URI is not valid",
+            code: 400,
+        })
     }
     res.status(500).json({
         success: false,
