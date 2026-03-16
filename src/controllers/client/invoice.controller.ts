@@ -13,6 +13,7 @@ class InvoiceController {
         const payload = req.body;
         const customerId = req.customer!.id;
         console.log(payload);
+        console.log(customerId);
         //test change commit
         const data = await invoiceClientService.createInvoice(
             customerId,
