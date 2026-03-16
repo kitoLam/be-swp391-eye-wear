@@ -1,0 +1,36 @@
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'src/controllers/client/invoice.controller.ts'
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Claude Review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVIEW_FILE_PATH: 'src/controllers/client/invoice.controller.ts'
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+          CLAUDE_API_BASE: ${{ secrets.CLAUDE_API_BASE }}
+          CLAUDE_MODEL: ${{ secrets.CLAUDE_MODEL }}
+        run: npx ts-node -r tsconfig-paths/register scripts/claude_review.ts
