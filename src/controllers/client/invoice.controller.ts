@@ -12,9 +12,6 @@ class InvoiceController {
     createInvoice = async (req: Request, res: Response, next: NextFunction) => {
         const payload = req.body;
         const customerId = req.customer!.id;
-        console.log(payload);
-        console.log(customerId);
-        //test change commit
         const data = await invoiceClientService.createInvoice(
             customerId,
             payload
