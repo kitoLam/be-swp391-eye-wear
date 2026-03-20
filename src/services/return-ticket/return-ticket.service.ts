@@ -25,6 +25,11 @@ import { ReturnTicketStatus } from '../../config/enums/return-ticket.enum';
 import { OrderStatus } from '../../config/enums/order.enum';
 import { config } from '../../config/env.config';
 import axios from 'axios';
+import { paymentRepository } from '../../repositories/payment/payment.repository';
+import {
+    PaymentMethodType,
+    PaymentStatus,
+} from '../../config/enums/payment.enum';
 
 class ReturnTicketService {
     /**
@@ -79,7 +84,8 @@ class ReturnTicketService {
         const currentDate = new Date();
         const deliveredDate = new Date(invoice.deliveredDate);
         const daysDifference = Math.floor(
-            (currentDate.getTime() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24)
+            (currentDate.getTime() - deliveredDate.getTime()) /
+                (1000 * 60 * 60 * 24)
         );
 
         if (daysDifference > 3) {
@@ -204,17 +210,59 @@ class ReturnTicketService {
             throw new NotFoundRequestError('Return ticket not found');
 
         // validate same staff
-        if(status != ReturnTicketStatus.CANCEL){
-            if(returnTicket.staffVerify != adminContext!.id){
-                throw new ForbiddenRequestError('This ticket is currently verified by another staff');
+        if (status != ReturnTicketStatus.CANCEL) {
+            if (returnTicket.staffVerify != adminContext!.id) {
+                throw new ForbiddenRequestError(
+                    'This ticket is currently verified by another staff'
+                );
             }
         }
         // Validate status transition
         this.validateStatusTransition(returnTicket.status, status);
 
         returnTicket.status = status;
+        const updatedTicket = await returnTicket.save();
 
-        return await returnTicket.save();
+        if (status === ReturnTicketStatus.APPROVED) {
+            const order = await orderRepository.findOne({
+                _id: returnTicket.orderId,
+            });
+            if (!order) {
+                throw new NotFoundRequestError('Order not found');
+            }
+
+            const invoice = await invoiceRepository.findOne({
+                _id: order.invoiceId,
+            });
+            if (!invoice) {
+                throw new NotFoundRequestError('Invoice not found');
+            }
+
+            const existingPayment = await paymentRepository.findOne({
+                invoiceId: returnTicket._id.toString(),
+                deletedAt: null,
+            });
+
+            if (!existingPayment) {
+                const originalInvoicePayment = await paymentRepository.findOne({
+                    invoiceId: order.invoiceId.toString(),
+                    deletedAt: null,
+                });
+
+                await paymentRepository.create({
+                    ownerId: returnTicket.customerId,
+                    invoiceId: returnTicket._id.toString(),
+                    paymentMethod:
+                        originalInvoicePayment?.paymentMethod ||
+                        PaymentMethodType.COD,
+                    status: PaymentStatus.UNPAID,
+                    price: returnTicket.money,
+                    note: `Refund payment for approved return ticket ${returnTicket._id.toString()}`,
+                });
+            }
+        }
+
+        return updatedTicket;
     };
 
     /**
@@ -225,7 +273,10 @@ class ReturnTicketService {
         currentStatus: ReturnTicketStatus,
         newStatus: ReturnTicketStatus
     ) => {
-        const validTransitions: Record<ReturnTicketStatus, ReturnTicketStatus[]> = {
+        const validTransitions: Record<
+            ReturnTicketStatus,
+            ReturnTicketStatus[]
+        > = {
             [ReturnTicketStatus.PENDING]: [
                 ReturnTicketStatus.APPROVED,
                 ReturnTicketStatus.CANCEL,
@@ -247,7 +298,9 @@ class ReturnTicketService {
 
         if (!allowedStatuses.includes(newStatus)) {
             throw new ConflictRequestError(
-                `Cannot update status from ${currentStatus} to ${newStatus}. Allowed transitions: ${allowedStatuses.join(', ') || 'None (final status)'}`
+                `Cannot update status from ${currentStatus} to ${newStatus}. Allowed transitions: ${
+                    allowedStatuses.join(', ') || 'None (final status)'
+                }`
             );
         }
     };
@@ -259,7 +312,7 @@ class ReturnTicketService {
         const returnTicket = await ReturnTicketModel.findById(id);
         if (!returnTicket)
             throw new NotFoundRequestError('Return ticket not found');
-        if(returnTicket.staffVerify)
+        if (returnTicket.staffVerify)
             throw new BadRequestError('Return ticket already verified');
         returnTicket.staffVerify = adminContext.id;
         return await returnTicket.save();
