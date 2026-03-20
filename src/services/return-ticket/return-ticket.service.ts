@@ -231,10 +231,10 @@ class ReturnTicketService {
                 throw new NotFoundRequestError('Order not found');
             }
 
-            const invoice = await invoiceRepository.findOne({
+            const hasInvoice = await invoiceRepository.findOne({
                 _id: order.invoiceId,
             });
-            if (!invoice) {
+            if (!hasInvoice) {
                 throw new NotFoundRequestError('Invoice not found');
             }
 
@@ -250,7 +250,7 @@ class ReturnTicketService {
                 });
 
                 await paymentRepository.create({
-                    ownerId: returnTicket.customerId,
+                    ownerId: returnTicket.customerId.toString(),
                     invoiceId: returnTicket._id.toString(),
                     paymentMethod:
                         originalInvoicePayment?.paymentMethod ||
