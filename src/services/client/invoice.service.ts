@@ -39,6 +39,7 @@ import {
     VoucherClaimStatus,
 } from '../../config/enums/voucher.enum';
 import { notificationHandler } from '../../socket/handlers/notification.handler';
+import { mailAdminService } from '../admin/mail.service';
 
 interface InvoiceProduct {
     productId: string;
@@ -651,6 +652,9 @@ class InvoiceClientService {
                 await addInvoiceToTimeoutQueue({
                     invoiceId: newInvoice._id.toString(),
                 });
+            }
+            else {
+                await mailAdminService.sendInvoiceConfirmation(newInvoice as any); 
             }
             // Create new payment
             const newPayment = await paymentRepository.create({
