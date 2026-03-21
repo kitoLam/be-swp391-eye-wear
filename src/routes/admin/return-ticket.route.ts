@@ -3,10 +3,11 @@ import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware'
 import {
     validateParams,
     validateQuery,
+    validateBody,
 } from '../../middlewares/share/validator.middleware';
 import { ObjectIdSchema } from '../../types/common/objectId';
 import returnTicketController from '../../controllers/return-ticket/return-ticket.controller';
-import { ReturnTicketListQuerySchema } from '../../types/return-ticket/return-ticket.request';
+import { ReturnTicketListQuerySchema, ApproveRejectReturnTicketSchema } from '../../types/return-ticket/return-ticket.request';
 
 const router = Router();
 
@@ -62,11 +63,13 @@ router.patch(
 router.patch(
     '/:id/status/approved',
     validateParams(ObjectIdSchema),
+    validateBody(ApproveRejectReturnTicketSchema),
     returnTicketController.approveReturnTicket
 );
 router.patch(
     '/:id/status/rejected',
     validateParams(ObjectIdSchema),
+    validateBody(ApproveRejectReturnTicketSchema),
     returnTicketController.rejectReturnTicket
 );
 router.patch(

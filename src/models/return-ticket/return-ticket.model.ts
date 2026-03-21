@@ -57,6 +57,10 @@ const returnTicketSchema = new Schema<IReturnTicketDocument>(
             type: Date,
             default: null,
         },
+        staffNote: {
+            type: String,
+            default: null
+        }
     },
     {
         timestamps: true,

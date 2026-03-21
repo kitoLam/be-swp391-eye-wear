@@ -421,7 +421,20 @@ Nhân viên duyệt yêu cầu trả hàng.
 #### Headers
 ```
 Authorization: Bearer {{staff_token}}
+Content-Type: application/json
 ```
+
+#### Request Body
+```json
+{
+  "staffNote": "Đã xác nhận sản phẩm bị lỗi, chấp nhận yêu cầu trả hàng"
+}
+```
+
+#### Request Fields
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `staffNote` | string | ✅ | Ghi chú của nhân viên về quyết định duyệt |
 
 #### Example Request
 ```
@@ -432,22 +445,29 @@ PATCH /api/v1/admin/return-tickets/675b1c2d3e4f5678901234ab/status/approved
 ```json
 {
   "success": true,
-  "message": "Approve return ticket successfully",
+  "message": "Approve return ticket and create shipment successfully",
   "data": {
-    "id": "675b1c2d3e4f5678901234ab",
-    "orderId": "675a1b2c3d4e5f6789012345",
-    "customerId": "674a1b2c3d4e5f6789012300",
-    "reason": "DAMAGE",
-    "description": "Gọng kính bị gãy tay cầm bên phải",
-    "media": [
-      "https://storage.example.com/images/defect1.jpg"
-    ],
-    "quantity": 1,
-    "money": 500000,
-    "staffVerify": "674c1d2e3f4567890123def0",
-    "status": "APPROVED",
-    "createdAt": "10:30:00 21/03/2026",
-    "updatedAt": "12:00:00 21/03/2026"
+    "returnTicket": {
+      "id": "675b1c2d3e4f5678901234ab",
+      "orderId": "675a1b2c3d4e5f6789012345",
+      "customerId": "674a1b2c3d4e5f6789012300",
+      "reason": "DAMAGE",
+      "description": "Gọng kính bị gãy tay cầm bên phải",
+      "media": [
+        "https://storage.example.com/images/defect1.jpg"
+      ],
+      "quantity": 1,
+      "money": 500000,
+      "staffVerify": "674c1d2e3f4567890123def0",
+      "staffNote": "Đã xác nhận sản phẩm bị lỗi, chấp nhận yêu cầu trả hàng",
+      "status": "APPROVED",
+      "createdAt": "10:30:00 21/03/2026",
+      "updatedAt": "12:00:00 21/03/2026"
+    },
+    "shipmentData": {
+      "trackingNumber": "GHN123456789",
+      "estimatedDelivery": "2026-03-25"
+    }
   }
 }
 ```
@@ -464,7 +484,20 @@ Nhân viên từ chối yêu cầu trả hàng.
 #### Headers
 ```
 Authorization: Bearer {{staff_token}}
+Content-Type: application/json
 ```
+
+#### Request Body
+```json
+{
+  "staffNote": "Sản phẩm không có dấu hiệu lỗi từ nhà sản xuất, lỗi do người dùng"
+}
+```
+
+#### Request Fields
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `staffNote` | string | ✅ | Ghi chú của nhân viên về lý do từ chối |
 
 #### Example Request
 ```
@@ -488,6 +521,7 @@ PATCH /api/v1/admin/return-tickets/675b1c2d3e4f5678901234ab/status/rejected
     "quantity": 1,
     "money": 500000,
     "staffVerify": "674c1d2e3f4567890123def0",
+    "staffNote": "Sản phẩm không có dấu hiệu lỗi từ nhà sản xuất, lỗi do người dùng",
     "status": "REJECTED",
     "createdAt": "10:30:00 21/03/2026",
     "updatedAt": "12:30:00 21/03/2026"

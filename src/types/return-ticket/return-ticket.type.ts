@@ -19,6 +19,7 @@ const ReturnTicketSchema = z.object({
     createdAt: z.date(),
     updatedAt: z.date(),
     deletedAt: z.date().nullable(),
+    staffNote: z.string().nullable()
 });
 
 export type ReturnTicket = z.infer<typeof ReturnTicketSchema>;

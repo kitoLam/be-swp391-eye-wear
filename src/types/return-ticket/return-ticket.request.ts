@@ -22,3 +22,9 @@ export const ReturnTicketListQuerySchema = z.object({
 
 export type ReturnTicketListQuery = z.infer<typeof ReturnTicketListQuerySchema>;
 
+export const ApproveRejectReturnTicketSchema = z.object({
+  staffNote: z.string().min(1, "Staff note is required"),
+});
+
+export type ApproveRejectReturnTicketRequest = z.infer<typeof ApproveRejectReturnTicketSchema>;
+

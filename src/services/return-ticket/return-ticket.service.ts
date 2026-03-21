@@ -203,7 +203,8 @@ class ReturnTicketService {
     updateStatus = async (
         id: string,
         status: ReturnTicketStatus,
-        adminContext?: AuthAdminContext
+        adminContext?: AuthAdminContext,
+        staffNote?: string
     ) => {
         const returnTicket = await ReturnTicketModel.findById(id);
         if (!returnTicket)
@@ -221,6 +222,12 @@ class ReturnTicketService {
         this.validateStatusTransition(returnTicket.status, status);
 
         returnTicket.status = status;
+
+        // Update staffNote if provided
+        if (staffNote) {
+            returnTicket.staffNote = staffNote;
+        }
+
         const updatedTicket = await returnTicket.save();
 
         if (status === ReturnTicketStatus.APPROVED) {
@@ -377,15 +384,18 @@ class ReturnTicketService {
      * Mark return ticket as IN_PROGRESS and call shipment API
      * @param id - ID of the return ticket
      * @param adminContext - Context of the admin user
+     * @param staffNote - Note from staff for approval
      */
     approveReturnTicketAndCreateShipment = async (
         id: string,
-        adminContext: AuthAdminContext
+        adminContext: AuthAdminContext,
+        staffNote: string
     ) => {
         const approvedTicket = await this.updateStatus(
             id,
             ReturnTicketStatus.APPROVED,
-            adminContext
+            adminContext,
+            staffNote
         );
 
         // Cập nhật trạng thái IN_PROGRESS ngay khi tạo shipment

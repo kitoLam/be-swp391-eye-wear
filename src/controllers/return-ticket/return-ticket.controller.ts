@@ -5,6 +5,7 @@ import { formatDateToString } from '../../utils/formatter';
 import {
     CreateReturnTicketRequest,
     ReturnTicketListQuery,
+    ApproveRejectReturnTicketRequest,
 } from '../../types/return-ticket/return-ticket.request';
 import { ReturnTicketStatus } from '../../config/enums/return-ticket.enum';
 
@@ -99,10 +100,12 @@ class ReturnTicketController {
 
     approveReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
+        const body = req.body as ApproveRejectReturnTicketRequest;
         const result =
             await returnTicketService.approveReturnTicketAndCreateShipment(
                 id,
-                req.adminAccount!
+                req.adminAccount!,
+                body.staffNote
             );
         res.json(
             ApiResponse.success(
@@ -117,10 +120,12 @@ class ReturnTicketController {
 
     rejectReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
+        const body = req.body as ApproveRejectReturnTicketRequest;
         const updatedTicket = await returnTicketService.updateStatus(
             id,
             ReturnTicketStatus.REJECTED,
-            req.adminAccount!
+            req.adminAccount!,
+            body.staffNote
         );
         res.json(
             ApiResponse.success(
@@ -234,6 +239,7 @@ class ReturnTicketController {
             quantity: item.quantity,
             money: item.money,
             staffVerify: item.staffVerify,
+            staffNote: item.staffNote,
             status: item.status,
             createdAt: formatDateToString(item.createdAt),
             updatedAt: formatDateToString(item.updatedAt),
