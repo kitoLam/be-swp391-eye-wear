@@ -378,6 +378,28 @@ class ReturnTicketService {
      * @param id - ID of the return ticket
      * @param adminContext - Context of the admin user
      */
+    approveReturnTicketAndCreateShipment = async (
+        id: string,
+        adminContext: AuthAdminContext
+    ) => {
+        const approvedTicket = await this.updateStatus(
+            id,
+            ReturnTicketStatus.APPROVED,
+            adminContext
+        );
+
+        // Cập nhật trạng thái IN_PROGRESS ngay khi tạo shipment
+        approvedTicket.status = ReturnTicketStatus.IN_PROGRESS;
+        const updatedTicket = await approvedTicket.save();
+
+        const shipmentData = await this.createReturnShipment(updatedTicket);
+
+        return {
+            updatedTicket,
+            shipmentData,
+        };
+    };
+
     startReturnShipment = async (
         id: string,
         adminContext: AuthAdminContext
@@ -401,6 +423,21 @@ class ReturnTicketService {
             );
         }
 
+        // Cập nhật trạng thái IN_PROGRESS
+        returnTicket.status = ReturnTicketStatus.IN_PROGRESS;
+        const updatedTicket = await returnTicket.save();
+
+        const shipmentData = await this.createReturnShipment(updatedTicket);
+
+        return {
+            updatedTicket,
+            shipmentData,
+        };
+    };
+
+    private createReturnShipment = async (
+        returnTicket: IReturnTicketDocument
+    ) => {
         // Lấy thông tin order và invoice để lấy địa chỉ
         const order = await orderRepository.findOne({
             _id: returnTicket.orderId,
@@ -416,11 +453,6 @@ class ReturnTicketService {
             throw new NotFoundRequestError('Invoice not found');
         }
 
-        // Cập nhật trạng thái IN_PROGRESS
-        returnTicket.status = ReturnTicketStatus.IN_PROGRESS;
-        const updatedTicket = await returnTicket.save();
-
-        // ============ Call api shipment =============
         const api = config.shipment.createApi;
         const bodyData = {
             invoiceId: `${returnTicket._id.toString()}`,
@@ -430,18 +462,16 @@ class ReturnTicketService {
                 invoice.address.ward +
                 ', ' +
                 invoice.address.city,
-            successUrlCallback: `https://eyewear-backend.xyz/api/v1/admin/return-tickets/${id}/status/returned`,
-            failUrlCallback: `https://eyewear-backend.xyz/api/v1/admin/return-tickets/${id}/status/fail-returned`,
-            receiveUrlCallback: `https://eyewear-backend.xyz/api/v1/admin/return-tickets/${id}/status/delivering`,
+            successUrlCallback: `https://eyewear-backend.xyz/api/v1/admin/return-tickets/${returnTicket._id.toString()}/status/returned`,
+            failUrlCallback: `https://eyewear-backend.xyz/api/v1/admin/return-tickets/${returnTicket._id.toString()}/status/fail-returned`,
+            receiveUrlCallback: `https://eyewear-backend.xyz/api/v1/admin/return-tickets/${returnTicket._id.toString()}/status/delivering`,
         };
+
         try {
             const response = await axios.post<{
                 data: { shipCode: string; estimatedShipDate: string };
             }>(api, bodyData);
-            return {
-                updatedTicket,
-                shipmentData: response.data.data,
-            };
+            return response.data.data;
         } catch (error) {
             throw new Error('Failed to call api shipment');
         }

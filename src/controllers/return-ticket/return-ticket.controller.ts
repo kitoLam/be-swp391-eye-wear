@@ -67,7 +67,11 @@ class ReturnTicketController {
     getReturnTicketsByStaff = async (req: Request, res: Response) => {
         const query = req.validatedQuery as ReturnTicketListQuery;
         query.staffVerify = req.adminAccount!.id;
-        const result = await returnTicketService.getReturnTicketList(query, undefined, req.adminAccount);
+        const result = await returnTicketService.getReturnTicketList(
+            query,
+            undefined,
+            req.adminAccount
+        );
         res.json(
             ApiResponse.success('Get return tickets by staff successfully', {
                 pagination: result.pagination,
@@ -95,15 +99,18 @@ class ReturnTicketController {
 
     approveReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.updateStatus(
-            id,
-            ReturnTicketStatus.APPROVED,
-            req.adminAccount!
-        );
+        const result =
+            await returnTicketService.approveReturnTicketAndCreateShipment(
+                id,
+                req.adminAccount!
+            );
         res.json(
             ApiResponse.success(
-                'Approve return ticket successfully',
-                this.mapResponse(updatedTicket)
+                'Approve return ticket and create shipment successfully',
+                {
+                    returnTicket: this.mapResponse(result.updatedTicket),
+                    shipmentData: result.shipmentData,
+                }
             )
         );
     };
@@ -163,7 +170,8 @@ class ReturnTicketController {
         await returnTicketService.deliveringReturnTicket(id);
         res.json(
             ApiResponse.success(
-                'Update status to delivering successfully', null
+                'Update status to delivering successfully',
+                null
             )
         );
     };
@@ -174,7 +182,9 @@ class ReturnTicketController {
      */
     returnedReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.returnedReturnTicket(id);
+        const updatedTicket = await returnTicketService.returnedReturnTicket(
+            id
+        );
         res.json(
             ApiResponse.success(
                 'Update status to returned successfully',
@@ -189,7 +199,8 @@ class ReturnTicketController {
      */
     failReturnedReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        const updatedTicket = await returnTicketService.failReturnedReturnTicket(id);
+        const updatedTicket =
+            await returnTicketService.failReturnedReturnTicket(id);
         res.json(
             ApiResponse.success(
                 'Update status to fail returned successfully',
