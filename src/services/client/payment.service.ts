@@ -348,7 +348,7 @@ class PaymentClientService {
 
         const orderForPayos = {
             orderCode: new Date().getTime(),
-            amount: 2000,
+            amount: (existInvoice.totalPrice - existInvoice.totalDiscount) + existInvoice.feeShip,
             description: `${paymentId}`,
             items: [],
             cancelUrl: `${config.cors.origin[2]}/payment-result?isSuccess=false&invoiceId=${invoiceId}`,
