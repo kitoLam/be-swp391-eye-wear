@@ -6,6 +6,7 @@ import {
     BadRequestError,
 } from '../../errors/apiError/api-error';
 import { VoucherClaimStatus } from '../../config/enums/voucher.enum';
+import { VoucherModel } from '../../models/voucher/voucher.model.mongo';
 
 interface ValidateVoucherPayload {
     code: string;
@@ -95,23 +96,24 @@ class VoucherClientService {
 
         const voucherIds = userVouchers.map((v: any) => v.voucher_id);
 
-        if (voucherIds.length === 0) {
-            return { vouchers: [] };
-        }
 
         // 2. Get voucher details from MongoDB
-        const result = await voucherRepository.find({
-            _id: { $in: voucherIds } as any,
+        const result = await VoucherModel.find({
+            $or: [
+                {
+                    _id: { $in: voucherIds }
+                },
+                {
+                    applyScope: "ALL"
+                }
+            ],
             status: 'ACTIVE',
             deletedAt: null,
-        } as any, {
-            page: 1,
-            limit: voucherIds.length || 100,
         });
 
         // 3. Filter by validity (date range, usage limit)
         const now = new Date();
-        const availableVouchers = result.data.filter(
+        const availableVouchers = result.filter(
             (voucher: any) =>
                 voucher.startedDate <= now &&
                 voucher.endedDate >= now &&

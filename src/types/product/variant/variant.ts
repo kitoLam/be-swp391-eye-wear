@@ -36,6 +36,6 @@ export const VariantSchema = z
     .refine(data => data.finalPrice <= data.price, {
         message: 'Final Price cannot be greater than the default Price',
         path: ['finalPrice'],
-    });
+    }).strict();
 
 export type Variant = z.infer<typeof VariantSchema>;
