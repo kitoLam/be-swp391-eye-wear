@@ -11,6 +11,7 @@ import wishlistRouter from './wishlist.route';
 import returnTicketRouter from './return-ticket.route';
 import aiConversationRouter from './ai-conversation.route';
 import aiMessageRouter from './ai-message.route';
+import preOrderImportRouter from './pre-order-import.route';
 
 const router = Router();
 
@@ -26,4 +27,5 @@ router.use('/wishlist', wishlistRouter);
 router.use('/return-tickets', returnTicketRouter);
 router.use('/ai-conversation', aiConversationRouter);
 router.use('/ai-message', aiMessageRouter);
+router.use('/pre-order-import', preOrderImportRouter);
 export default router;
