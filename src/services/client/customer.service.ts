@@ -75,6 +75,13 @@ class CustomerService {
     if(!foundCustomer){
       throw new NotFoundRequestError('Customer not found');
     }
+    const addressToRemove = foundCustomer.address.find(address => (address as any)._id.toString() === addressId);
+    if(!addressToRemove){
+      throw new NotFoundRequestError('Address not found');
+    }
+    if(addressToRemove.isDefault){
+      throw new BadRequestError('Cannot delete default address. Please set another address as default first.');
+    }
     foundCustomer.address = foundCustomer.address.filter(address => (address as any)._id.toString() != addressId);
     await foundCustomer.save();
   }
@@ -143,6 +150,13 @@ class CustomerService {
     const foundCustomer = await CustomerModel.findOne({_id: customer.id});
     if(!foundCustomer){
       throw new NotFoundRequestError('Customer not found');
+    }
+    const prescriptionToRemove = foundCustomer.parameters.find(prescription => (prescription as any)._id.toString() === prescriptionId);
+    if(!prescriptionToRemove){
+      throw new NotFoundRequestError('Prescription not found');
+    }
+    if(prescriptionToRemove.isDefault){
+      throw new BadRequestError('Cannot delete default prescription. Please set another prescription as default first.');
     }
     foundCustomer.parameters = foundCustomer.parameters.filter(prescription => (prescription as any)._id.toString() != prescriptionId);
     await foundCustomer.save();
