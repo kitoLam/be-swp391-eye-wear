@@ -16,14 +16,14 @@ export const AttributeSchema = z.object({
 });
 
 export const AttributeCreateSchema = z.object({
-    name: z.string().min(1, 'Attribute name is required').max(255, 'Attribute name is max 255 character'),
-    showType: z.enum(['color', 'text'])
+    name: z.string().min(1, 'Attribute name is required').max(100, 'Attribute name is max 100 character'),
+    showType: z.enum(['color', 'text'], { error: "Show type only allow to be color or text"})
 }).strict();
 
 export const AttributeUpdateSchema = z.object({
-    name: z.string().min(1, 'Attribute name is required').max(255, 'Attribute name is max 255 character'),
-    showType: z.enum(['color', 'text'])
-});
+    name: z.string().min(1, 'Attribute name is required').max(100, 'Attribute name is max 100 character'),
+    showType: z.enum(['color', 'text'], { error: "Show type only allow to be color or text"})
+}).strict();
 
 export type Attribute = z.infer<typeof AttributeSchema>;
 export type AttributeCreateDTO = z.infer<typeof AttributeCreateSchema>;

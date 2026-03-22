@@ -7,7 +7,7 @@ export const AdminAccountCreateSchema = z
         name: z
             .string()
             .min(1, 'Admin name is required')
-            .max(255, 'Admin name is max 255 character'),
+            .max(50, 'Admin name is max 50 character').regex(/^[a-zA-Z\s]+$/, 'Name must only contain letters'),
         citizenId: z
             .string()
             .nonempty('CCCD is required')
@@ -16,7 +16,7 @@ export const AdminAccountCreateSchema = z
         email: z.string().nonempty('Email is required').email('Email is invalid'),
         password: z.string().nonempty('Password is required').min(8, 'Password must be at least 8 characters'),
         role: z.enum(RoleType, { error: 'Role is invalid' }),
-        avatar: z.string().nullable(),
+        avatar: z.string().url().nullable(),
     })
     .strict();
 
@@ -24,7 +24,8 @@ export const AdminAccountUpdateSchema = z
     .object({
         name: z
             .string()
-            .max(255, 'Admin name is max 255 character')
+            .nonempty({ error: "Admin name is not allowed to be empty" })
+            .max(50, 'Admin name is max 50 character').regex(/^[a-zA-Z\s]+$/, 'Name must only contain letters')
             .optional(),
         citizenId: z
             .string()
@@ -40,7 +41,7 @@ export const AdminAccountUpdateSchema = z
             .min(8, 'Password must be at least 8 characters')
             .optional(),
         role: z.enum(RoleType, { error: 'Role is invalid' }).optional(),
-        avatar: z.string().nullable().optional(),
+        avatar: z.string().url().nullable().optional(),
     })
     .strict();
 

@@ -9,6 +9,8 @@ import { SendProfileRequestSchema } from '../../types/profile-request/profile-re
 import profileRequestController from '../../controllers/admin/profile-request.controller';
 import { GetProfileRequestListQuerySchema } from '../../types/profile-request/profile-request.query';
 import { ObjectIdSchema } from '../../types/common/objectId';
+import { requireAdminRoles } from '../../middlewares/admin/authorization.middleware';
+import { RoleType } from '../../config/enums/admin-account';
 const router = Router();
 router.use(authenticateMiddleware);
 
@@ -31,16 +33,21 @@ router.post(
     profileRequestController.sendProfileUpdateRequest
 );
 // oper, sale cancel
-router.patch('/cancel-request', profileRequestController.cancelProfileRequest);
+router.patch(
+    '/cancel-request',
+    profileRequestController.cancelProfileRequest
+);
 // manager approve
 router.patch(
     '/:id/status/approved',
+    requireAdminRoles([RoleType.SYSTEM_ADMIN]),
     validateParams(ObjectIdSchema),
     profileRequestController.approveProfileRequest
 );
 // manager reject
 router.patch(
     '/:id/status/rejected',
+    requireAdminRoles([RoleType.SYSTEM_ADMIN]),
     validateParams(ObjectIdSchema),
     profileRequestController.rejectProfileRequest
 );

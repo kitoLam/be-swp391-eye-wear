@@ -3,10 +3,10 @@ import { ReturnTicketStatus } from "../../config/enums/return-ticket.enum";
 
 export const CreateReturnTicketSchema = z.object({
   orderId: z.string().min(1, "Order ID is required"),
-  reason: z.string().min(1, "Reason is required"),
-  description: z.string().min(1, "Description is required"),
+  reason: z.string().min(1, "Reason is required").max(255),
+  description: z.string().min(1, "Description is required").max(255),
   media: z.array(z.string()).optional().default([]),
-});
+}).strict();
 
 export type CreateReturnTicketRequest = z.infer<typeof CreateReturnTicketSchema>;
 
