@@ -4,7 +4,9 @@ import { LensParametersSchema } from "../lens-parameters/lens-parameters";
 
 export const UpdateCustomerProfileSchema = z.object({
     name: z.string().min(1, 'Name is required'),
-    phone: z.string().min(1, 'Phone number is required'),
+    phone: z.string()
+        .min(1, 'Phone number is required')
+        .regex(/^(0[2|3|5|7|8|9])+([0-9]{8})$/, 'Invalid Vietnamese phone number format'),
     gender: z.enum(['F', 'M', 'N']),
     hobbies: z.array(z.string()).optional()
 });

@@ -8,7 +8,9 @@ export const CustomerSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     email: z.string().email('Invalid email format'),
     hashedPassword: z.string().min(1, 'Password is required'),
-    phone: z.string().min(1, 'Phone number is required'),
+    phone: z.string()
+        .min(1, 'Phone number is required')
+        .regex(/^(0[2|3|5|7|8|9])+([0-9]{8})$/, 'Invalid Vietnamese phone number format'),
     gender: z.enum(['F', 'M', 'N']),
     address: z.array(z.object({
         street: z.string().min(1, 'Street is required'),
@@ -47,7 +49,9 @@ export const CreateCustomerSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     email: z.string().nonempty('Email is required').email('Invalid email format'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
-    phone: z.string().min(1, 'Phone number is required'),
+    phone: z.string()
+        .min(1, 'Phone number is required')
+        .regex(/^(0[2|3|5|7|8|9])+([0-9]{8})$/, 'Invalid Vietnamese phone number format'),
     gender: z.enum(['F', 'M', 'N'], {error: "Please choose a gender!"}),
     address: z.array(AddressSchema).min(0),
     hobbies: z.array(z.string()).min(0)
@@ -61,7 +65,10 @@ export const UpdateCustomerSchema = z.object({
         .string()
         .min(8, 'Password must be at least 8 characters')
         .optional(),
-    phone: z.string().min(1, 'Phone number is required').optional(),
+    phone: z.string()
+        .min(1, 'Phone number is required')
+        .regex(/^(0[2|3|5|7|8|9])+([0-9]{8})$/, 'Invalid Vietnamese phone number format')
+        .optional(),
     gender: z.enum(['F', 'M', 'N']).optional(),
     address: z.array(AddressSchema).optional(),
     hobbies: z.array(z.string()).optional(),
