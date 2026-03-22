@@ -32,6 +32,12 @@ router.patch(
 // ============ Protected endpoints (REQUIRE AUTH) ============
 router.use(authenticateMiddleware);
 
+// [GET] monthly report: current vs previous month, total and per status
+router.get(
+    '/monthly-report',
+    returnTicketController.getMonthlyReport
+);
+
 // [GET] staff get list return order
 router.get(
     '/',
@@ -72,11 +78,10 @@ router.patch(
     validateBody(ApproveRejectReturnTicketSchema),
     returnTicketController.rejectReturnTicket
 );
-router.patch(
-    '/:id/status/in-progress',
-    validateParams(ObjectIdSchema),
-    returnTicketController.processReturnTicket
-);
+// router.patch(
+//     '/:id/status/in-progress',
+//     validateParams(ObjectIdSchema),
+//     returnTicketController.processReturnTicket
+// );
 
 export default router;
-

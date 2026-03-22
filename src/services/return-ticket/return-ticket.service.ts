@@ -230,44 +230,44 @@ class ReturnTicketService {
 
         const updatedTicket = await returnTicket.save();
 
-        if (status === ReturnTicketStatus.APPROVED) {
-            const order = await orderRepository.findOne({
-                _id: returnTicket.orderId,
-            });
-            if (!order) {
-                throw new NotFoundRequestError('Order not found');
-            }
+        // if (status === ReturnTicketStatus.APPROVED) {
+        //     const order = await orderRepository.findOne({
+        //         _id: returnTicket.orderId,
+        //     });
+        //     if (!order) {
+        //         throw new NotFoundRequestError('Order not found');
+        //     }
 
-            const hasInvoice = await invoiceRepository.findOne({
-                _id: order.invoiceId,
-            });
-            if (!hasInvoice) {
-                throw new NotFoundRequestError('Invoice not found');
-            }
+        //     const hasInvoice = await invoiceRepository.findOne({
+        //         _id: order.invoiceId,
+        //     });
+        //     if (!hasInvoice) {
+        //         throw new NotFoundRequestError('Invoice not found');
+        //     }
 
-            const existingPayment = await paymentRepository.findOne({
-                invoiceId: returnTicket._id.toString(),
-                deletedAt: null,
-            });
+        //     const existingPayment = await paymentRepository.findOne({
+        //         invoiceId: returnTicket._id.toString(),
+        //         deletedAt: null,
+        //     });
 
-            if (!existingPayment) {
-                const originalInvoicePayment = await paymentRepository.findOne({
-                    invoiceId: order.invoiceId.toString(),
-                    deletedAt: null,
-                });
+        //     if (!existingPayment) {
+        //         const originalInvoicePayment = await paymentRepository.findOne({
+        //             invoiceId: order.invoiceId.toString(),
+        //             deletedAt: null,
+        //         });
 
-                await paymentRepository.create({
-                    ownerId: returnTicket.customerId.toString(),
-                    invoiceId: returnTicket._id.toString(),
-                    paymentMethod:
-                        originalInvoicePayment?.paymentMethod ||
-                        PaymentMethodType.COD,
-                    status: PaymentStatus.UNPAID,
-                    price: returnTicket.money,
-                    note: `Refund payment for approved return ticket ${returnTicket._id.toString()}`,
-                });
-            }
-        }
+        //         await paymentRepository.create({
+        //             ownerId: returnTicket.customerId.toString(),
+        //             invoiceId: returnTicket._id.toString(),
+        //             paymentMethod:
+        //                 originalInvoicePayment?.paymentMethod ||
+        //                 PaymentMethodType.COD,
+        //             status: PaymentStatus.UNPAID,
+        //             price: returnTicket.money,
+        //             note: `Refund payment for approved return ticket ${returnTicket._id.toString()}`,
+        //         });
+        //     }
+        // }
 
         return updatedTicket;
     };
@@ -285,11 +285,11 @@ class ReturnTicketService {
             ReturnTicketStatus[]
         > = {
             [ReturnTicketStatus.PENDING]: [
-                ReturnTicketStatus.APPROVED,
+                ReturnTicketStatus.IN_PROGRESS,
                 ReturnTicketStatus.CANCEL,
                 ReturnTicketStatus.REJECTED,
             ],
-            [ReturnTicketStatus.APPROVED]: [ReturnTicketStatus.IN_PROGRESS],
+            // [ReturnTicketStatus.APPROVED]: [ReturnTicketStatus.IN_PROGRESS],
             [ReturnTicketStatus.IN_PROGRESS]: [ReturnTicketStatus.DELIVERING],
             [ReturnTicketStatus.DELIVERING]: [
                 ReturnTicketStatus.RETURNED,
@@ -391,16 +391,16 @@ class ReturnTicketService {
         adminContext: AuthAdminContext,
         staffNote: string
     ) => {
-        const approvedTicket = await this.updateStatus(
+        const updatedTicket = await this.updateStatus(
             id,
-            ReturnTicketStatus.APPROVED,
+            ReturnTicketStatus.IN_PROGRESS,
             adminContext,
             staffNote
         );
 
         // Cập nhật trạng thái IN_PROGRESS ngay khi tạo shipment
-        approvedTicket.status = ReturnTicketStatus.IN_PROGRESS;
-        const updatedTicket = await approvedTicket.save();
+        // approvedTicket.status = ReturnTicketStatus.IN_PROGRESS;
+        // const updatedTicket = await approvedTicket.save();
 
         const shipmentData = await this.createReturnShipment(updatedTicket);
 
@@ -410,40 +410,40 @@ class ReturnTicketService {
         };
     };
 
-    startReturnShipment = async (
-        id: string,
-        adminContext: AuthAdminContext
-    ) => {
-        const returnTicket = await ReturnTicketModel.findById(id);
-        if (!returnTicket) {
-            throw new NotFoundRequestError('Return ticket not found');
-        }
+    // startReturnShipment = async (
+    //     id: string,
+    //     adminContext: AuthAdminContext
+    // ) => {
+    //     const returnTicket = await ReturnTicketModel.findById(id);
+    //     if (!returnTicket) {
+    //         throw new NotFoundRequestError('Return ticket not found');
+    //     }
 
-        // Logic check: Chỉ cho phép từ APPROVED sang IN_PROGRESS
-        if (returnTicket.status !== ReturnTicketStatus.APPROVED) {
-            throw new ConflictRequestError(
-                'Return ticket status must be APPROVED to update to IN_PROGRESS'
-            );
-        }
+    //     // Logic check: Chỉ cho phép từ APPROVED sang IN_PROGRESS
+    //     if (returnTicket.status !== ReturnTicketStatus.APPROVED) {
+    //         throw new ConflictRequestError(
+    //             'Return ticket status must be APPROVED to update to IN_PROGRESS'
+    //         );
+    //     }
 
-        // Logic check: userId trong token phải trùng với staffVerify
-        if (returnTicket.staffVerify !== adminContext.id) {
-            throw new ConflictRequestError(
-                'Only the assigned staff can update this return ticket to IN_PROGRESS'
-            );
-        }
+    //     // Logic check: userId trong token phải trùng với staffVerify
+    //     if (returnTicket.staffVerify !== adminContext.id) {
+    //         throw new ConflictRequestError(
+    //             'Only the assigned staff can update this return ticket to IN_PROGRESS'
+    //         );
+    //     }
 
-        // Cập nhật trạng thái IN_PROGRESS
-        returnTicket.status = ReturnTicketStatus.IN_PROGRESS;
-        const updatedTicket = await returnTicket.save();
+    //     // Cập nhật trạng thái IN_PROGRESS
+    //     returnTicket.status = ReturnTicketStatus.IN_PROGRESS;
+    //     const updatedTicket = await returnTicket.save();
 
-        const shipmentData = await this.createReturnShipment(updatedTicket);
+    //     const shipmentData = await this.createReturnShipment(updatedTicket);
 
-        return {
-            updatedTicket,
-            shipmentData,
-        };
-    };
+    //     return {
+    //         updatedTicket,
+    //         shipmentData,
+    //     };
+    // };
 
     private createReturnShipment = async (
         returnTicket: IReturnTicketDocument
@@ -535,6 +535,55 @@ class ReturnTicketService {
         const updatedTicket = await returnTicket.save();
 
         return updatedTicket;
+    };
+
+    /**
+     * Get monthly report: current month vs previous month, total and per status
+     */
+    getMonthlyReport = async () => {
+        const now = new Date();
+        const curStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const curEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const preStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const preEnd = curStart;
+
+        const [curResults, preResults] = await Promise.all([
+            ReturnTicketModel.aggregate([
+                { $match: { deletedAt: null, createdAt: { $gte: curStart, $lt: curEnd } } },
+                { $group: { _id: '$status', count: { $sum: 1 } } },
+            ]),
+            ReturnTicketModel.aggregate([
+                { $match: { deletedAt: null, createdAt: { $gte: preStart, $lt: preEnd } } },
+                { $group: { _id: '$status', count: { $sum: 1 } } },
+            ]),
+        ]);
+
+        const curMap = new Map<string, number>(curResults.map(r => [r._id, r.count]));
+        const preMap = new Map<string, number>(preResults.map(r => [r._id, r.count]));
+
+        const curTotal = curResults.reduce((s, r) => s + r.count, 0);
+        const preTotal = preResults.reduce((s, r) => s + r.count, 0);
+
+        const calcDifRate = (cur: number, pre: number): number => {
+            if (pre === 0) return cur > 0 ? 100 : 0;
+            return Math.abs(Math.round(((cur - pre) / pre) * 100));
+        };
+
+        const allStatuses = Object.values(ReturnTicketStatus);
+
+        return {
+            reportByTotal: {
+                curCount: curTotal,
+                preCount: preTotal,
+                difRate: calcDifRate(curTotal, preTotal),
+            },
+            reportByStatus: allStatuses.map(status => ({
+                status,
+                curCount: curMap.get(status) ?? 0,
+                preCount: preMap.get(status) ?? 0,
+                difRate: calcDifRate(curMap.get(status) ?? 0, preMap.get(status) ?? 0),
+            })),
+        };
     };
 
     /**

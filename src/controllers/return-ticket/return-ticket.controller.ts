@@ -135,22 +135,22 @@ class ReturnTicketController {
         );
     };
 
-    processReturnTicket = async (req: Request, res: Response) => {
-        const id = req.params.id as string;
-        const result = await returnTicketService.startReturnShipment(
-            id,
-            req.adminAccount!
-        );
-        res.json(
-            ApiResponse.success(
-                'Process return ticket and create shipment successfully',
-                {
-                    returnTicket: this.mapResponse(result.updatedTicket),
-                    shipmentData: result.shipmentData,
-                }
-            )
-        );
-    };
+    // processReturnTicket = async (req: Request, res: Response) => {
+    //     const id = req.params.id as string;
+    //     const result = await returnTicketService.startReturnShipment(
+    //         id,
+    //         req.adminAccount!
+    //     );
+    //     res.json(
+    //         ApiResponse.success(
+    //             'Process return ticket and create shipment successfully',
+    //             {
+    //                 returnTicket: this.mapResponse(result.updatedTicket),
+    //                 shipmentData: result.shipmentData,
+    //             }
+    //         )
+    //     );
+    // };
 
     cancelReturnTicket = async (req: Request, res: Response) => {
         const id = req.params.id as string;
@@ -210,6 +210,16 @@ class ReturnTicketController {
             ApiResponse.success(
                 'Update status to fail returned successfully',
                 this.mapResponse(updatedTicket)
+            )
+        );
+    };
+
+    getMonthlyReport = async (req: Request, res: Response) => {
+        const report = await returnTicketService.getMonthlyReport();
+        res.json(
+            ApiResponse.success(
+                'Get return ticket monthly report successfully',
+                report
             )
         );
     };
