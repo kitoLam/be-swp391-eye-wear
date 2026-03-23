@@ -165,7 +165,7 @@ class VoucherAdminService {
             code: payload.code
         });
         if(existDuplicateCode){
-            throw new ConflictRequestError("Voucher has the same code!");
+            throw new ConflictRequestError("Voucher has the same code with other voucher!");
         }
         // Validate status ACTIVE
         if (payload.status === VoucherStatus.ACTIVE) {
