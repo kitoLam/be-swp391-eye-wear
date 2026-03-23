@@ -8,5 +8,6 @@ export enum PaymentMethodType {
 
 export enum PaymentStatus {
   PAID = "PAID",
-  UNPAID = "UNPAID"
+  UNPAID = "UNPAID",
+  PAID_FAIL = "PAID_FAIL"
 }

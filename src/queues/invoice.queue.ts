@@ -36,7 +36,7 @@ export const removeJobFromQueue = async (data: InvoiceJobData) => {
 // Hàm gọi khi tạo invoice cần thanh toán online
 export const addInvoiceToTimeoutQueue = async (data: InvoiceJobData) => {
     await invoiceTimeoutQueue.add('invoice-timeout' as any, data, {
-        delay: 15 * 60 * 1000, // 15 phút
+        delay: 1 * 60 * 1000, // 15 phút
         jobId: data.invoiceId,
     });
     console.log(`[Queue] Đã thêm job timeout cho hóa đơn: ${data.invoiceId}`);
