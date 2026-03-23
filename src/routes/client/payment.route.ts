@@ -18,6 +18,10 @@ router.post(
     '/payos/result-callback',
     paymentController.handlePayOsResultCallback
 );
+router.get(
+    '/payos/cancel-result-callback',
+    paymentController.handlePayOsCancelCallback
+);
 // Create payment
 router.use(authenticateMiddlewareClient);
 router.get(

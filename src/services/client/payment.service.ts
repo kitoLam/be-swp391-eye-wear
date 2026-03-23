@@ -418,7 +418,7 @@ class PaymentClientService {
             amount: (existInvoice.totalPrice - existInvoice.totalDiscount) + existInvoice.feeShip,
             description: `${paymentId}`,
             items: [],
-            cancelUrl: `${config.cors.origin[2]}/payment-result?isSuccess=false&invoiceId=${invoiceId}`,
+            cancelUrl: `${process.env.APP_API}/payments/payos/cancel-result-callback?invoiceId=${invoiceId}&paymentId=${paymentId}`,
             returnUrl: `${config.cors.origin[2]}/payment-result?isSuccess=true&invoiceId=${invoiceId}`,
         };
 
@@ -430,6 +430,20 @@ class PaymentClientService {
 
         const paymentUrl = await payOS.paymentRequests.create(orderForPayos);
         return paymentUrl.checkoutUrl;
+    };
+    handlePayosCancelCallback = async (paymentId: string) => {
+        const foundPayment = await paymentRepository.findOne({
+            _id: paymentId,
+            deletedAt: null,
+        });
+        if (!foundPayment) {
+            throw new NotFoundRequestError('Thanh toán không thông tin');
+        } else {
+            await this.handlePaymentFailCallback(
+                foundPayment.invoiceId,
+                foundPayment._id.toString()
+            );
+        }
     };
     handlePayosResultCallback = async (paymentId: string) => {
         const foundPayment = await paymentRepository.findOne({
