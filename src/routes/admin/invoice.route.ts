@@ -7,6 +7,7 @@ import {
 import {
     InvoiceListQuerySchema,
     InvoiceRevenueQuerySchema,
+    InvoiceTopSaleQuerySchema,
 } from '../../types/invoice/invoice.query';
 import invoiceController from '../../controllers/admin/invoice.controller';
 import { authenticateMiddleware } from '../../middlewares/admin/auth.middleware';
@@ -53,6 +54,12 @@ router.get(
     '/stats/revenue',
     validateQuery(InvoiceRevenueQuerySchema),
     invoiceController.getRevenueByPeriod
+);
+
+router.get(
+    '/stats/top-sales',
+    validateQuery(InvoiceTopSaleQuerySchema),
+    invoiceController.getTopSalesDashboard
 );
 
 router.get(

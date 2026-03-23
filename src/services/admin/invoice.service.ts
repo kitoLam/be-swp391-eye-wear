@@ -3,6 +3,7 @@ import { invoiceRepository } from '../../repositories/invoice/invoice.repository
 import {
     InvoiceListQuery,
     InvoiceRevenueQuery,
+    InvoiceTopSaleQuery,
 } from '../../types/invoice/invoice.query';
 import { IInvoiceDocument } from '../../models/invoice/invoice.model.mongo';
 import { AuthAdminContext } from '../../types/context/context';
@@ -604,6 +605,24 @@ class InvoiceService {
 
     getRevenueByPeriod = async (query: InvoiceRevenueQuery) => {
         return await invoiceRepository.getRevenueByPeriod(query);
+    };
+
+    getTopSalesDashboard = async (query: InvoiceTopSaleQuery) => {
+        const [topCities, topProducts] = await Promise.all([
+            invoiceRepository.getTopPurchaseCities(3),
+            invoiceRepository.getTopSellingProductsByMonth(query, 8),
+        ]);
+
+        const now = new Date();
+        const targetMonth = query.month ?? now.getMonth() + 1;
+        const targetYear = query.year ?? now.getFullYear();
+
+        return {
+            month: targetMonth,
+            year: targetYear,
+            topCities,
+            topProducts,
+        };
     };
 }
 

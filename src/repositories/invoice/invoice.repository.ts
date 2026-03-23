@@ -9,6 +9,7 @@ import { FilterQuery } from 'mongoose';
 import {
     InvoiceRevenuePeriod,
     InvoiceRevenueQuery,
+    InvoiceTopSaleQuery,
 } from '../../types/invoice/invoice.query';
 
 export class InvoiceRepository extends BaseRepository<IInvoiceDocument> {
@@ -279,6 +280,171 @@ export class InvoiceRepository extends BaseRepository<IInvoiceDocument> {
                     period: '$_id',
                     totalRevenue: 1,
                     invoiceCount: 1,
+                },
+            },
+        ]);
+
+        return result;
+    }
+
+    async getTopPurchaseCities(limit = 3): Promise<
+        {
+            city: string;
+            totalQuantity: number;
+            totalAmount: number;
+            invoiceCount: number;
+        }[]
+    > {
+        const result = await InvoiceModel.aggregate([
+            {
+                $match: {
+                    deletedAt: null,
+                    status: InvoiceStatus.DELIVERED,
+                },
+            },
+            {
+                $lookup: {
+                    from: 'orders',
+                    localField: '_id',
+                    foreignField: 'invoiceId',
+                    as: 'orderDetails',
+                },
+            },
+            {
+                $addFields: {
+                    totalQuantity: {
+                        $reduce: {
+                            input: '$orderDetails',
+                            initialValue: 0,
+                            in: {
+                                $add: [
+                                    '$value',
+                                    {
+                                        $sum: {
+                                            $map: {
+                                                input: { $ifNull: ['$this.products', []] },
+                                                as: 'p',
+                                                in: { $ifNull: ['$p.quantity', 0] },
+                                            },
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                    finalAmount: {
+                        $max: [
+                            {
+                                $subtract: [
+                                    { $ifNull: ['$totalPrice', 0] },
+                                    { $ifNull: ['$totalDiscount', 0] },
+                                ],
+                            },
+                            0,
+                        ],
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: '$address.city',
+                    totalQuantity: { $sum: '$totalQuantity' },
+                    totalAmount: { $sum: '$finalAmount' },
+                    invoiceCount: { $sum: 1 },
+                },
+            },
+            { $sort: { totalQuantity: -1, totalAmount: -1 } },
+            { $limit: limit },
+            {
+                $project: {
+                    _id: 0,
+                    city: '$_id',
+                    totalQuantity: 1,
+                    totalAmount: 1,
+                    invoiceCount: 1,
+                },
+            },
+        ]);
+
+        return result;
+    }
+
+    async getTopSellingProductsByMonth(
+        query: InvoiceTopSaleQuery,
+        limit = 8
+    ): Promise<
+        {
+            productId: string;
+            sku: string;
+            totalQuantity: number;
+            totalRevenue: number;
+        }[]
+    > {
+        const now = new Date();
+        const month = query.month ?? now.getMonth() + 1;
+        const year = query.year ?? now.getFullYear();
+
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 1);
+
+        const result = await InvoiceModel.aggregate([
+            {
+                $match: {
+                    deletedAt: null,
+                    status: InvoiceStatus.DELIVERED,
+                    createdAt: {
+                        $gte: startDate,
+                        $lt: endDate,
+                    },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'orders',
+                    localField: '_id',
+                    foreignField: 'invoiceId',
+                    as: 'orderDetails',
+                },
+            },
+            { $unwind: '$orderDetails' },
+            { $unwind: '$orderDetails.products' },
+            {
+                $match: {
+                    'orderDetails.products.product': { $ne: null },
+                },
+            },
+            {
+                $project: {
+                    productId: '$orderDetails.products.product.product_id',
+                    sku: '$orderDetails.products.product.sku',
+                    quantity: { $ifNull: ['$orderDetails.products.quantity', 0] },
+                    lineRevenue: {
+                        $multiply: [
+                            { $ifNull: ['$orderDetails.products.quantity', 0] },
+                            { $ifNull: ['$orderDetails.products.product.pricePerUnit', 0] },
+                        ],
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        productId: '$productId',
+                        sku: '$sku',
+                    },
+                    totalQuantity: { $sum: '$quantity' },
+                    totalRevenue: { $sum: '$lineRevenue' },
+                },
+            },
+            { $sort: { totalQuantity: -1, totalRevenue: -1 } },
+            { $limit: limit },
+            {
+                $project: {
+                    _id: 0,
+                    productId: '$_id.productId',
+                    sku: '$_id.sku',
+                    totalQuantity: 1,
+                    totalRevenue: 1,
                 },
             },
         ]);
