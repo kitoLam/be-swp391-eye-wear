@@ -9,12 +9,14 @@ import {
 import {
     NotFoundRequestError,
     BadRequestError,
+    ConflictRequestError,
 } from '../../errors/apiError/api-error';
 import moment from 'moment';
 import {
     addVoucherToTimeoutQueue,
     removeVoucherJobFromQueue,
 } from '../../queues/voucher.queue';
+import { VoucherModel } from '../../models/voucher/voucher.model.mongo';
 
 class VoucherAdminService {
     /**
@@ -156,7 +158,15 @@ class VoucherAdminService {
         if (!voucher) {
             throw new NotFoundRequestError('Voucher not found');
         }
-
+        const existDuplicateCode = await VoucherModel.findOne({
+            _id: {
+                $ne: voucherId
+            },
+            code: payload.code
+        });
+        if(existDuplicateCode){
+            throw new ConflictRequestError("Voucher has the same code!");
+        }
         // Validate status ACTIVE
         if (payload.status === VoucherStatus.ACTIVE) {
             const now = moment();

@@ -105,6 +105,7 @@ export const CreateVoucherSchema = z
 export const UpdateVoucherSchema = z
     .object({
         name: z.string().min(1, 'Voucher name is required').optional(),
+        code: z.string().min(1, 'Voucher code is required').toUpperCase(),
         description: z.string().min(1, 'Description is required').optional(),
         typeDiscount: z.nativeEnum(VoucherType).optional(),
         value: z.number().min(0, 'Value must be non-negative').optional(),
