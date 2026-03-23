@@ -8,7 +8,7 @@ export const LoginCustomerSchema = z.object({
 
 // Register DTO (same as CreateCustomer but for clarity)
 export const RegisterCustomerSchema = z.object({
-    name: z.string().min(5, 'Name is required at least 5 characters').max(50).regex(/^[a-zA-Z\s]+$/, 'Name must only contain letters'),
+    name: z.string().min(5, 'Name is required at least 5 characters').max(50).regex(/^[\p{L}\s]+$/u, 'Name must only contain letters'),
     email: z.string().email('Invalid email format'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     phone: z

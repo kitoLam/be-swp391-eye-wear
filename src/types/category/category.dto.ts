@@ -10,7 +10,7 @@ export const CreateCategorySchema = z
             .string()
             .min(1, 'Category name is required')
             .max(100, { error: 'name can only under 100 char' })
-            .regex(/^[a-zA-Z\s]+$/, 'Name must only contain letters'),
+            .regex(/^[\p{L}\s]+$/u, 'Name must only contain letters'),
         parentId: z
             .string()
             .refine(
@@ -33,7 +33,7 @@ export const UpdateCategorySchema = z
             .string()
             .min(1, 'Category name is required')
             .max(100, { error: 'name can only under 100 char' })
-            .regex(/^[a-zA-Z\s]+$/, 'Name must only contain letters'),
+            .regex(/^[\p{L}\s]+$/u, 'Name must only contain letters'),
         parentId: z
             .string()
             .refine(
