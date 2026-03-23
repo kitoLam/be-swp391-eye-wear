@@ -61,6 +61,7 @@ export const invoiceWorker = new Worker(
                 _id: invoiceId,
             }, {
                 status: InvoiceStatus.CANCELED,
+                paymentUrl: null
             });
 
             // 5. Clean up Redis invoice-products mapping

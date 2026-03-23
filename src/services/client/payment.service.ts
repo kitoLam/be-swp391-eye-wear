@@ -150,7 +150,7 @@ class PaymentClientService {
 
             await invoiceRepository.updateByFilter(
                 { _id: invoiceId },
-                { status: targetStatus }
+                { status: targetStatus, paymentUrl: null }
             );
 
             // Send invoice confirmation email after successful online payment
@@ -201,7 +201,7 @@ class PaymentClientService {
 
             await invoiceRepository.updateByFilter(
                 { _id: invoiceId },
-                { status: InvoiceStatus.CANCELED }
+                { status: InvoiceStatus.CANCELED, paymentUrl: null }
             );
         }
     }
@@ -259,6 +259,8 @@ class PaymentClientService {
         let signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
         vnp_Params['vnp_SecureHash'] = signed;
         vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
+        invoiceDetail.paymentUrl = vnpUrl;
+        await invoiceDetail.save();
         return vnpUrl;
     };
     handleVnpayPaymentResultCallback = async (vnp_Params: any) => {

@@ -97,6 +97,11 @@ const InvoiceSchema = new Schema<IInvoiceDocument>(
             type: Date,
             required: false,
             default: null,
+        },
+        paymentUrl: {
+            type: String,
+            required: false,
+            default: null,
         }
     },
     {
