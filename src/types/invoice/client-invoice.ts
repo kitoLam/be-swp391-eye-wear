@@ -31,7 +31,7 @@ export const ClientCreateInvoiceSchema = z
             .string()
             .min(1, 'Full name is required')
             .max(50)
-            .regex(/^[a-zA-Z\s]+$/, 'Name must only contain letters'),
+            .regex(/^[\p{L}\s]+$/u, 'Name must only contain letters'),
         phone: z
             .string()
             .min(1, 'Phone number is required')
@@ -55,7 +55,7 @@ export const ClientUpdateInvoiceSchema = z
             .string()
             .min(1, 'Full name is required')
             .max(50)
-            .regex(/^[a-zA-Z\s]+$/, 'Name must only contain letters'),
+            .regex(/^[\p{L}\s]+$/u, 'Name must only contain letters'),
         phone: z
             .string()
             .min(1, 'Phone number is required')

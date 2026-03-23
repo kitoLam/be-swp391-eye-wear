@@ -7,7 +7,7 @@ export const AdminAccountCreateSchema = z
         name: z
             .string()
             .min(1, 'Admin name is required')
-            .max(50, 'Admin name is max 50 character').regex(/^[a-zA-Z\s]+$/, 'Name must only contain letters'),
+            .max(50, 'Admin name is max 50 character').regex(/^[\p{L}\s]+$/u, 'Name must only contain letters'),
         citizenId: z
             .string()
             .nonempty('CCCD is required')
