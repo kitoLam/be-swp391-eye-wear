@@ -4,6 +4,7 @@ import invoiceService from '../../services/admin/invoice.service';
 import {
     InvoiceListQuery,
     InvoiceRevenueQuery,
+    InvoiceTopSaleQuery,
 } from '../../types/invoice/invoice.query';
 import { formatDateToString, formatNumberToVND } from '../../utils/formatter';
 import { InvoiceAssignHandleDeliveryRequest, RejectInvoiceRequest } from '../../types/invoice/invoice.request';
@@ -207,6 +208,12 @@ class InvoiceController {
             ...query,
             rows: data,
         }));
+    };
+
+    getTopSalesDashboard = async (req: Request, res: Response) => {
+        const query = req.validatedQuery as InvoiceTopSaleQuery;
+        const data = await invoiceService.getTopSalesDashboard(query);
+        res.json(ApiResponse.success('Get top sales dashboard success', data));
     };
 }
 export default new InvoiceController();

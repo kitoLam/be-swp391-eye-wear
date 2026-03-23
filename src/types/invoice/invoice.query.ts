@@ -62,5 +62,11 @@ export const InvoiceRevenueQuerySchema = z
         }
     );
 
+export const InvoiceTopSaleQuerySchema = z.object({
+    month: z.coerce.number().min(1).max(12).optional().catch(undefined),
+    year: z.coerce.number().min(2000).max(3000).optional().catch(undefined),
+});
+
 export type InvoiceListQuery = z.infer<typeof InvoiceListQuerySchema>;
 export type InvoiceRevenueQuery = z.infer<typeof InvoiceRevenueQuerySchema>;
+export type InvoiceTopSaleQuery = z.infer<typeof InvoiceTopSaleQuerySchema>;
