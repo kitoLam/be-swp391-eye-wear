@@ -6,7 +6,6 @@ import {
     BadRequestError,
 } from '../../errors/apiError/api-error';
 import { VoucherClaimStatus } from '../../config/enums/voucher.enum';
-import { VoucherModel } from '../../models/voucher/voucher.model.mongo';
 
 interface ValidateVoucherPayload {
     code: string;
@@ -83,7 +82,7 @@ class VoucherClientService {
      * Get user's available vouchers (unused only)
      */
     getMyVouchers = async (customerId: string) => {
-        // 1. Get unused voucher IDs from Supabase
+        // 1. Get user-assigned voucher IDs from Supabase (không bắt buộc metadata.status = CLAIMED)
         const { data: userVouchers, error } = await supabase
             .from('voucher_user')
             .select('voucher_id')
@@ -96,24 +95,46 @@ class VoucherClientService {
 
         const voucherIds = userVouchers.map((v: any) => v.voucher_id);
 
+        // 2. Get vouchers assigned to user (SPECIFIC flow)
+        const assignedVoucherResult = voucherIds.length
+            ? await voucherRepository.find(
+                  {
+                      _id: { $in: voucherIds } as any,
+                      status: 'ACTIVE',
+                      deletedAt: null,
+                  } as any,
+                  {
+                      page: 1,
+                      limit: voucherIds.length || 100,
+                  }
+              )
+            : { data: [] as any[] };
 
-        // 2. Get voucher details from MongoDB
-        const result = await VoucherModel.find({
-            $or: [
-                {
-                    _id: { $in: voucherIds }
-                },
-                {
-                    applyScope: "ALL"
-                }
-            ],
-            status: 'ACTIVE',
-            deletedAt: null,
-        });
+        // 3. Get ALL-scope vouchers to always show in my-vouchers
+        const allScopeVouchersResult = await voucherRepository.find(
+            {
+                applyScope: 'ALL',
+                status: 'ACTIVE',
+                deletedAt: null,
+            } as any,
+            {
+                page: 1,
+                limit: 1000,
+            }
+        );
 
-        // 3. Filter by validity (date range, usage limit)
+        // 4. Merge + dedupe by voucher id
+        const mergedMap = new Map<string, any>();
+        for (const voucher of assignedVoucherResult.data || []) {
+            mergedMap.set(voucher._id.toString(), voucher);
+        }
+        for (const voucher of allScopeVouchersResult.data || []) {
+            mergedMap.set(voucher._id.toString(), voucher);
+        }
+
+        // 5. Filter by validity (date range, usage limit)
         const now = new Date();
-        const availableVouchers = result.filter(
+        const availableVouchers = Array.from(mergedMap.values()).filter(
             (voucher: any) =>
                 voucher.startedDate <= now &&
                 voucher.endedDate >= now &&

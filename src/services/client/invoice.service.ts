@@ -117,6 +117,7 @@ class InvoiceClientService {
         voucherId?: string;
         voucherDoc?: any;
         finalFeeShip: number;
+        voucherRecordCreated?: boolean;
     }> => {
         if (!voucherCodes || voucherCodes.length === 0) {
             return { discount: 0, finalFeeShip: currentFeeShip };
@@ -135,9 +136,34 @@ class InvoiceClientService {
             );
         }
 
-        // 2. Check voucher ownership and ATOMICALLY update status to USED in Supabase
+        // 2. Global guard: nếu đã có bản ghi metadata.status = USED thì không cho dùng lại
+        const { data: voucherUserRecords, error: voucherUserRecordsError } =
+            await supabase
+                .from('voucher_user')
+                .select('metadata')
+                .eq('customer_id', customerId)
+                .eq('voucher_id', voucher._id.toString());
+
+        if (voucherUserRecordsError) {
+            throw new BadRequestError(
+                'Không thể kiểm tra lịch sử sử dụng voucher: ' +
+                    voucherUserRecordsError.message
+            );
+        }
+
+        const hasUsedRecord = (voucherUserRecords || []).some(
+            (record: any) =>
+                record?.metadata?.status === VoucherClaimStatus.USED
+        );
+
+        if (hasUsedRecord) {
+            throw new BadRequestError('Voucher này đã được sử dụng');
+        }
+
+        // 3. Check voucher ownership/update voucher_user status in Supabase
+        let voucherRecordCreated = false;
         if (voucher.applyScope === VoucherApplyScope.SPECIFIC) {
-            // First, get the current record to check status and preserve other metadata
+            // SPECIFIC: must belong to customer and must be CLAIMED before use
             const { data: voucherUser, error: fetchError } = await supabase
                 .from('voucher_user')
                 .select('*')
@@ -162,7 +188,6 @@ class InvoiceClientService {
                 );
             }
 
-            // Atomically update status to USED
             const updatedMetadata = {
                 ...(voucherUser.metadata || {}),
                 status: VoucherClaimStatus.USED,
@@ -183,6 +208,106 @@ class InvoiceClientService {
                 throw new BadRequestError(
                     'Không thể áp dụng voucher: ' + updateError.message
                 );
+            }
+        }
+
+        if (voucher.applyScope === VoucherApplyScope.ALL) {
+            // ALL: không cần check ownership, nhưng cần tạo voucher_user record như grant và đánh dấu USED luôn
+            const { data: existingVoucherUser, error: existingError } =
+                await supabase
+                    .from('voucher_user')
+                    .select('*')
+                    .eq('customer_id', customerId)
+                    .eq('voucher_id', voucher._id.toString())
+                    .is('deleted_at', null)
+                    .maybeSingle();
+
+            if (existingError) {
+                throw new BadRequestError(
+                    'Không thể kiểm tra trạng thái voucher: ' +
+                        existingError.message
+                );
+            }
+
+            if (existingVoucherUser) {
+                const currentStatus = existingVoucherUser.metadata?.status;
+                if (currentStatus === VoucherClaimStatus.USED) {
+                    throw new BadRequestError('Voucher này đã được sử dụng');
+                }
+
+                const updatedMetadata = {
+                    ...(existingVoucherUser.metadata || {}),
+                    status: VoucherClaimStatus.USED,
+                    updated_at: new Date().toISOString(),
+                };
+
+                const { error: updateError } = await supabase
+                    .from('voucher_user')
+                    .update({
+                        metadata: updatedMetadata,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq('customer_id', customerId)
+                    .eq('voucher_id', voucher._id.toString())
+                    .is('deleted_at', null);
+
+                if (updateError) {
+                    throw new BadRequestError(
+                        'Không thể áp dụng voucher: ' + updateError.message
+                    );
+                }
+            } else {
+                // Ensure FK customer_id tồn tại trong bảng customer của Supabase
+                const { data: supabaseCustomer, error: customerFetchError } =
+                    await supabase
+                        .from('customer')
+                        .select('id')
+                        .eq('id', customerId)
+                        .maybeSingle();
+
+                if (customerFetchError) {
+                    throw new BadRequestError(
+                        'Không thể kiểm tra customer trong Supabase: ' +
+                            customerFetchError.message
+                    );
+                }
+
+                if (!supabaseCustomer) {
+                    const { error: customerInsertError } = await supabase
+                        .from('customer')
+                        .insert([{ id: customerId }]);
+
+                    if (customerInsertError) {
+                        throw new BadRequestError(
+                            'Không thể đồng bộ customer sang Supabase: ' +
+                                customerInsertError.message
+                        );
+                    }
+                }
+
+                const { error: insertError } = await supabase
+                    .from('voucher_user')
+                    .insert([
+                        {
+                            id: crypto.randomUUID(),
+                            customer_id: customerId,
+                            voucher_id: voucher._id.toString(),
+                            metadata: {
+                                status: VoucherClaimStatus.USED,
+                                granted_by: 'SYSTEM_ALL_SCOPE',
+                                updated_at: new Date().toISOString(),
+                            },
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                        },
+                    ]);
+
+                if (insertError) {
+                    throw new BadRequestError(
+                        'Không thể áp dụng voucher: ' + insertError.message
+                    );
+                }
+                voucherRecordCreated = true;
             }
         }
 
@@ -228,6 +353,7 @@ class InvoiceClientService {
             voucherId: voucher._id.toString(),
             voucherDoc: voucher,
             finalFeeShip,
+            voucherRecordCreated,
         };
     };
 
@@ -276,8 +402,18 @@ class InvoiceClientService {
      */
     private revertVoucherStatus = async (
         voucherId: string,
-        customerId: string
+        customerId: string,
+        voucherRecordCreated: boolean = false
     ) => {
+        if (voucherRecordCreated) {
+            await supabase
+                .from('voucher_user')
+                .delete()
+                .eq('customer_id', customerId)
+                .eq('voucher_id', voucherId);
+            return;
+        }
+
         const { data: currentRecord } = await supabase
             .from('voucher_user')
             .select('metadata')
@@ -329,6 +465,8 @@ class InvoiceClientService {
             mode: ProductVariantMode;
         }[] = [];
         const invoiceProducts: InvoiceProduct[] = [];
+        let appliedVoucherId: string | undefined;
+        let appliedVoucherRecordCreated = false;
 
         try {
             // Separate products by type
@@ -504,12 +642,16 @@ class InvoiceClientService {
                 discount: totalDiscount,
                 voucherId,
                 finalFeeShip,
+                voucherRecordCreated,
             } = await this.validateAndCalculateVoucher(
                 payload.voucher,
                 totalPrice,
                 customerId,
                 feeShip
             );
+
+            appliedVoucherId = voucherId;
+            appliedVoucherRecordCreated = Boolean(voucherRecordCreated);
 
             // Create Invoice
             // Determine invoice status based on payment method and product types
@@ -652,9 +794,10 @@ class InvoiceClientService {
                 await addInvoiceToTimeoutQueue({
                     invoiceId: newInvoice._id.toString(),
                 });
-            }
-            else {
-                await mailAdminService.sendInvoiceConfirmation(newInvoice as any); 
+            } else {
+                await mailAdminService.sendInvoiceConfirmation(
+                    newInvoice as any
+                );
             }
             // Create new payment
             const newPayment = await paymentRepository.create({
@@ -696,17 +839,13 @@ class InvoiceClientService {
             };
         } catch (error) {
             // Revert voucher status if it was marked as USED
-            const { voucherId } = await this.validateAndCalculateVoucher(
-                payload.voucher,
-                0, // Dummy value as we just need the ID logic if possible, but actually we should extract voucherId earlier
-                customerId,
-                0
-            ).catch(() => ({ voucherId: undefined }));
-
-            if (voucherId) {
-                await this.revertVoucherStatus(voucherId, customerId).catch(
-                    err =>
-                        console.error('Failed to revert voucher status:', err)
+            if (appliedVoucherId) {
+                await this.revertVoucherStatus(
+                    appliedVoucherId,
+                    customerId,
+                    appliedVoucherRecordCreated
+                ).catch(err =>
+                    console.error('Failed to revert voucher status:', err)
                 );
             }
             throw error;
