@@ -340,6 +340,7 @@ class PaymentClientService {
                 throw new ForbiddenRequestError('Thanh toán khỏng thành công');
             }
         } catch (error) {
+            console.log(error);
             return {
                 isSuccess: false,
                 invoiceId,
@@ -462,7 +463,7 @@ class PaymentClientService {
             deletedAt: null,
         });
         if (!foundPayment) {
-            throw new NotFoundRequestError('Thanh toán khỏng thông tin');
+            throw new NotFoundRequestError('Không tìm thấy thông tin thanh toán');
         } else {
             await this.handlePaymentCallback(
                 foundPayment.invoiceId,
