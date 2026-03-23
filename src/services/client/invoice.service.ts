@@ -940,10 +940,11 @@ class InvoiceClientService {
         }
         let invoiceStatus;
         if (
-            invoice.status === InvoiceStatus.PENDING ||
-            invoice.status === InvoiceStatus.DEPOSITED
+            invoice.status === InvoiceStatus.PENDING
         ) {
             invoiceStatus = 'PENDING';
+        } else if(invoice.status === InvoiceStatus.DEPOSITED){
+            invoiceStatus = 'DEPOSITED';
         } else if (invoice.status === InvoiceStatus.REJECTED) {
             invoiceStatus = 'REJECTED';
         } else if (invoice.status === InvoiceStatus.CANCELED) {
