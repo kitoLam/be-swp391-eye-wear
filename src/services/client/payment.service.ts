@@ -229,7 +229,7 @@ class PaymentClientService {
         // let amount = orderDetail.payment.finalPrice;
         let vnPayOrderId = `${invoiceDetail._id.toString()}-${Date.now()}`;
         let amount =
-            (invoiceDetail.totalPrice - invoiceDetail.totalDiscount) * 100;
+            (invoiceDetail.totalPrice - invoiceDetail.totalDiscount + invoiceDetail.feeShip) * 100;
         let bankCode = '';
 
         let locale = 'vi';
