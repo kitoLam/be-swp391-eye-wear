@@ -28,6 +28,7 @@ import { isPayOSConfigured, payOS } from '../../config/payos.config';
 import { config } from '../../config/env.config';
 class PaymentClientService {
     handlePaymentCallback = async (invoiceId: string, paymentId: string) => {
+        
         // xóa timeout job
         removeJobFromQueue({
             invoiceId: invoiceId,
@@ -41,6 +42,9 @@ class PaymentClientService {
             status: PaymentStatus.UNPAID,
             deletedAt: null,
         });
+        if(!paymentDetail){
+            throw new ConflictRequestError("This payment have already been expired or paid");
+        }
         if (invoiceDetail && paymentDetail) {
             // trừ stock thật mongo
             const itemsUpdateRedis: { key: string; qty: number }[] = [];
@@ -203,6 +207,11 @@ class PaymentClientService {
                 { _id: invoiceId },
                 { status: InvoiceStatus.CANCELED, paymentUrl: null }
             );
+            await paymentRepository.updateByFilter({
+                _id: paymentId,
+            }, {
+                status: PaymentStatus.PAID_FAIL
+            });
         }
     }
 

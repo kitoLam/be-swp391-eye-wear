@@ -4,6 +4,8 @@ import { invoiceRepository } from '../repositories/invoice/invoice.repository';
 import redisService from '../services/redis.service';
 import { redisPrefix } from '../config/constants/redis.constant';
 import { InvoiceStatus } from '../config/enums/invoice.enum';
+import { paymentRepository } from '../repositories/payment/payment.repository';
+import { PaymentStatus } from '../config/enums/payment.enum';
 
 interface InvoiceProduct {
     productId: string;
@@ -19,7 +21,20 @@ export const invoiceWorker = new Worker(
         console.log(`[Worker] Processing timeout for invoice: ${invoiceId}`);
 
         try {
-            // 1. Get products from Redis
+            
+            // 1. Update Invoice status to CANCELLED
+            await invoiceRepository.updateByFilter({
+                _id: invoiceId,
+            }, {
+                status: InvoiceStatus.CANCELED,
+                paymentUrl: null
+            });
+            await paymentRepository.updateByFilter({
+                invoiceId: invoiceId,
+            }, {
+                status: PaymentStatus.PAID_FAIL
+            })
+            // 2. Get products from Redis
             const productsKey = `${redisPrefix.invoiceProducts}:${invoiceId}`;
             const productsData =
                 await redisService.getDataByKey<InvoiceProduct[]>(productsKey);
@@ -31,7 +46,7 @@ export const invoiceWorker = new Worker(
                 return;
             }
 
-            // 2. Release all stock locks
+            // 3. Release all stock locks
             for (const product of productsData) {
                 const lockKey = `${redisPrefix.productLockOnline}:${product.productId}:${product.sku}`;
                 const currentLock =
@@ -56,15 +71,7 @@ export const invoiceWorker = new Worker(
                 }
             }
 
-            // 3. Update Invoice status to CANCELLED
-            await invoiceRepository.updateByFilter({
-                _id: invoiceId,
-            }, {
-                status: InvoiceStatus.CANCELED,
-                paymentUrl: null
-            });
-
-            // 5. Clean up Redis invoice-products mapping
+            // 4. Clean up Redis invoice-products mapping
             await redisService.deleteDataByKey(productsKey);
             console.log(
                 `[Worker] Cleaned up Redis data for invoice: ${invoiceId}`
