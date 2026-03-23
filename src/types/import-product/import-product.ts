@@ -13,7 +13,7 @@ export const ImportProductRequestSchema = z.object({
     sku: z.string().min(1, 'SKU is required'),
     quantity: z.number().min(1, 'Quantity is required'),
     preOrderImportId: z.string().nullable(),
-});
+}).strict();
 
 export type ImportProductRequest = z.infer<typeof ImportProductRequestSchema>;
 export type ImportProduct = z.infer<typeof ImportProductSchema>;

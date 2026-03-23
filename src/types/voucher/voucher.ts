@@ -61,8 +61,8 @@ export const VoucherSchema = z
 // Create Voucher Schema
 export const CreateVoucherSchema = z
     .object({
-        name: z.string().min(1, 'Voucher name is required'),
-        description: z.string().min(1, 'Description is required'),
+        name: z.string().min(1, 'Voucher name is required').max(50),
+        description: z.string().min(1, 'Description is required').max(500),
         code: z.string().min(1, 'Voucher code is required').toUpperCase(),
         typeDiscount: z.nativeEnum(VoucherType),
         value: z.number().min(0, 'Value must be non-negative'),
@@ -99,7 +99,7 @@ export const CreateVoucherSchema = z
             message: 'End date must be after start date',
             path: ['endedDate'],
         }
-    );
+    ).strict();
 
 // Update Voucher Schema
 export const UpdateVoucherSchema = z
@@ -145,7 +145,7 @@ export const UpdateVoucherSchema = z
             message: 'End date must be after start date',
             path: ['endedDate'],
         }
-    );
+    ).strict();
 
 export type Voucher = z.infer<typeof VoucherSchema>;
 export type CreateVoucher = z.infer<typeof CreateVoucherSchema>;

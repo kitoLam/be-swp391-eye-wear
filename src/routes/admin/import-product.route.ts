@@ -18,7 +18,7 @@ router.get(
 router.post(
     '/',
     authenticateMiddleware,
-    // requireAdminRoles([RoleType.OPERATION_STAFF]),
+    requireAdminRoles([RoleType.OPERATION_STAFF, RoleType.MANAGER]),
     validateBody(ImportProductRequestSchema),
     importProductController.importProduct
 );

@@ -8,10 +8,16 @@ export const LoginCustomerSchema = z.object({
 
 // Register DTO (same as CreateCustomer but for clarity)
 export const RegisterCustomerSchema = z.object({
-    name: z.string().min(5, 'Name is required at least 5 characters'),
+    name: z.string().min(5, 'Name is required at least 5 characters').max(50).regex(/^[\p{L}\s]+$/u, 'Name must only contain letters'),
     email: z.string().email('Invalid email format'),
     password: z.string().min(8, 'Password must be at least 8 characters'),
-    phone: z.string().min(1, 'Phone number is required').refine((value: string) => /(84|0[3|5|7|8|9])+([0-9]{8})\b/g.test(value), 'Invalid phone number format'),
+    phone: z
+                .string()
+                .min(1, 'Phone number is required')
+                .regex(
+                    /^(0[2|3|5|7|8|9])+([0-9]{8})$/,
+                    'Invalid Vietnamese phone number format'
+                ),
     gender: z.enum(['F', 'M', 'N'], "Please choose a gender!"),
 }).strict();
 
