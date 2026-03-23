@@ -158,6 +158,54 @@ class PaymentClientService {
         }
     };
 
+    handlePaymentFailCallback = async (invoiceId: string, paymentId: string) => {
+        // xóa timeout job
+        removeJobFromQueue({
+            invoiceId: invoiceId,
+        });
+        const invoiceDetail = await invoiceRepository.findOne({
+            _id: invoiceId,
+            deletedAt: null,
+        });
+        const paymentDetail = await paymentRepository.findOne({
+            _id: paymentId,
+            status: PaymentStatus.UNPAID,
+            deletedAt: null,
+        });
+        if (invoiceDetail && paymentDetail) {
+            const itemsUpdateRedis: { key: string; qty: number }[] = [];
+            const orderList = await orderRepository.findAllNoPagination({
+                invoiceId: invoiceDetail._id,
+            });
+            for (const orderDetail of orderList) {
+                if (orderDetail) {
+                    for (const item of orderDetail.products) {
+                        if (item.lens) {
+                            const key = `${redisPrefix.productLockOnline}:${item.lens.lens_id}:${item.lens.sku}`;
+                            itemsUpdateRedis.push({
+                                key,
+                                qty: item.quantity,
+                            });
+                        }
+                        if (item.product) {
+                            const key = `${redisPrefix.productLockOnline}:${item.product.product_id}:${item.product.sku}`;
+                            itemsUpdateRedis.push({
+                                key,
+                                qty: item.quantity,
+                            });
+                        }
+                    }
+                }
+            }
+            await invoiceService.releaseProductLock(itemsUpdateRedis, 'online');
+
+            await invoiceRepository.updateByFilter(
+                { _id: invoiceId },
+                { status: InvoiceStatus.CANCELED }
+            );
+        }
+    }
+
     getVnPayUrl = async (
         customerId: string,
         invoiceId: string,
@@ -260,7 +308,24 @@ class PaymentClientService {
                     invoiceId,
                 };
                 // END XỬ LÍ LOGIC HẬU THANH TOÁN
-            } else {
+            } else if(vnp_Params.vnp_ResponseCode == '24'){
+                console.log(">>> handle cancel cb here::", invoiceId);
+                const paymentDetail = await paymentRepository.findOne({
+                    invoiceId: invoiceId,
+                    deletedAt: null,
+                });
+                if (!paymentDetail) {
+                    throw new NotFoundRequestError(
+                        'Not found payment to handle'
+                    );
+                }
+                await this.handlePaymentFailCallback(invoiceId, paymentDetail._id.toString());
+                return {
+                    isSuccess: false,
+                    invoiceId,
+                }
+            }
+            else {
                 throw new ForbiddenRequestError('Thanh toán khỏng thành công');
             }
         } catch (error) {
