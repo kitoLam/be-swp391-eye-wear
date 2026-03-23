@@ -429,6 +429,8 @@ class PaymentClientService {
         }
 
         const paymentUrl = await payOS.paymentRequests.create(orderForPayos);
+        existInvoice.paymentUrl = paymentUrl.checkoutUrl;
+        await existInvoice.save();
         return paymentUrl.checkoutUrl;
     };
     handlePayosCancelCallback = async (paymentId: string) => {
