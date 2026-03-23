@@ -787,7 +787,7 @@ class InvoiceClientService {
                 await redisService.setDataWithExpiredTime(
                     invoiceProductsKey,
                     invoiceProducts,
-                    1 * 60
+                    15 * 60
                 );
 
                 // Add to timeout queue
