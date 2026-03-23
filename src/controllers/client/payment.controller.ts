@@ -59,8 +59,18 @@ class PaymentController {
         const [_notUseVar, paymentId] = payload.description.split(" ");
         console.log(">>> paymentId::", paymentId);
         await paymentClientService.handlePayosResultCallback(paymentId);
-        res.json(ApiResponse.success('Thanh toán payos thanh cong', null));
+        res.json(ApiResponse.success('Thanh toán payos thành công', null));
     };
+
+    handlePayOsCancelCallback = async (req: Request, res: Response) => {
+        const invoiceId = req.query.invoiceId as string;
+        const paymentId = req.query.paymentId as string;
+        console.log(">>> handle cancel payos::", invoiceId, paymentId);
+        await paymentClientService.handlePayosCancelCallback(paymentId);
+        res.redirect(
+            `${config.cors.origin[2]}/payment-result?isSuccess=false&invoiceId=${invoiceId}`
+        );
+    }
 
     handleZalopayResultCallback = async (req: Request, res: Response) => {
         const result = await paymentClientService.handleZalopayResultCallback({
