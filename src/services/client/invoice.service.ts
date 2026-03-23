@@ -870,8 +870,13 @@ class InvoiceClientService {
         };
 
         if (status) {
-            filter.status = status;
+            if(status == "PROCESSING"){
+                filter.status = { $in: [InvoiceStatus.ONBOARD, InvoiceStatus.COMPLETED, InvoiceStatus.READY_TO_SHIP] }
+            }
+            else 
+                filter.status = status;
         }
+        
 
         const result = await invoiceRepository.find(filter, {
             page,
