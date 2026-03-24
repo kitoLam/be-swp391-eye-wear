@@ -40,6 +40,7 @@ import {
 } from '../../config/enums/voucher.enum';
 import { notificationHandler } from '../../socket/handlers/notification.handler';
 import { mailAdminService } from '../admin/mail.service';
+import { ShipFeeModel } from '../../models/ship/ship-fee.model.mongo';
 
 interface InvoiceProduct {
     productId: string;
@@ -49,6 +50,23 @@ interface InvoiceProduct {
 }
 
 class InvoiceClientService {
+    private getShipFeeFromDatabase = async () => {
+        const globalFeeConfig = await ShipFeeModel.findOne({
+            province: 'GLOBAL',
+            district: null,
+            ward: null,
+            isActive: true,
+        });
+
+        if (!globalFeeConfig || typeof globalFeeConfig.fee !== 'number') {
+            throw new BadRequestError(
+                'Không tìm thấy cấu hình phí ship GLOBAL trong DB'
+            );
+        }
+
+        return globalFeeConfig.fee;
+    };
+
     /**
      * Helper: Acquire product lock in Redis
      */
@@ -456,7 +474,7 @@ class InvoiceClientService {
         customerId: string,
         payload: ClientCreateInvoice
     ) => {
-        const feeShip = 10000;
+        const feeShip = await this.getShipFeeFromDatabase();
         const acquiredLocks: { key: string; qty: number }[] = [];
         const alreadyDecreasedItems: {
             _id: string;

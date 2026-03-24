@@ -75,6 +75,7 @@ interface Config {
 
     shipment: {
         createApi: string;
+        feeApi: string;
     };
 
     googleOAuth20: {
@@ -167,6 +168,7 @@ export const config: Config = {
     },
     shipment: {
         createApi: process.env.SHIPMENT_CREATE_API || '',
+        feeApi: process.env.SHIPMENT_FEE_API || '',
     },
 
     googleOAuth20: {
