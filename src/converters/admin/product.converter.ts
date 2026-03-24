@@ -33,6 +33,7 @@ export const toProductCreateDTO = (
             finalPrice: variant.finalPrice,
             stock: variant.stock,
             imgs: variant.imgs,
+            virTryOnUrl: variant.virTryOnUrl,
             isDefault: variant.isDefault,
         })),
     };
