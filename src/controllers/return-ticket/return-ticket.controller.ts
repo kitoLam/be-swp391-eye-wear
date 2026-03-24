@@ -197,6 +197,19 @@ class ReturnTicketController {
             )
         );
     };
+    refundReturnTicket = async (req: Request, res: Response) => {
+        const id = req.params.id as string;
+        const updatedTicket = await returnTicketService.refundToTicket(
+            id,
+            req.adminAccount!
+        );
+        res.json(
+            ApiResponse.success(
+                'Update status to returned successfully',
+                this.mapResponse(updatedTicket)
+            )
+        );
+    };
 
     /**
      * Callback from shipment service - NO AUTH REQUIRED

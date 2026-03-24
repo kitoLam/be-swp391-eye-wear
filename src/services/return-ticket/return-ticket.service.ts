@@ -299,6 +299,7 @@ class ReturnTicketService {
             [ReturnTicketStatus.REJECTED]: [],
             [ReturnTicketStatus.RETURNED]: [],
             [ReturnTicketStatus.FAIL_RETURNED]: [],
+            [ReturnTicketStatus.REFUNDED]: [ReturnTicketStatus.RETURNED]
         };
 
         const allowedStatuses = validTransitions[currentStatus] || [];
@@ -536,7 +537,27 @@ class ReturnTicketService {
 
         return updatedTicket;
     };
+    refundToTicket = async (id: string, adminContext: AuthAdminContext) => {
+        const returnTicket = await ReturnTicketModel.findById(id);
+        if (!returnTicket) {
+            throw new NotFoundRequestError('Return ticket not found');
+        }
 
+        if (
+            returnTicket.status === ReturnTicketStatus.RETURNED
+        ) {
+            throw new ConflictRequestError(
+                'Return ticket need to be returned before being refunded'
+            );
+        }
+        if(returnTicket.staffVerify != adminContext.id){
+            throw new ConflictRequestError("Only assigned staff can handle this");
+        }
+        returnTicket.status = ReturnTicketStatus.REFUNDED;
+        const updatedTicket = await returnTicket.save();
+
+        return updatedTicket;
+    };
     /**
      * Get monthly report: current month vs previous month, total and per status
      */

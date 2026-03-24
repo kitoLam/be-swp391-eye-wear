@@ -78,6 +78,11 @@ router.patch(
     validateBody(ApproveRejectReturnTicketSchema),
     returnTicketController.rejectReturnTicket
 );
+router.patch(
+    '/:id/status/refunded',
+    validateParams(ObjectIdSchema),
+    returnTicketController.refundReturnTicket
+);
 // router.patch(
 //     '/:id/status/in-progress',
 //     validateParams(ObjectIdSchema),
