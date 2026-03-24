@@ -77,6 +77,27 @@ async function callAishopTextCompletion(
 }
 
 class AIConversation {
+    private isMeaninglessOrGreetingMessage(message: string): boolean {
+        const normalized = (message || '').trim().toLowerCase();
+        if (!normalized) return true;
+
+        const greetingPatterns = [
+            /^hi+$/,
+            /^hello+$/,
+            /^hey+$/,
+            /^alo+$/,
+            /^xin chào+$/,
+            /^chào+$/,
+            /^ok+$/,
+            /^uh+$/,
+            /^h+m+$/,
+            /^\.+$/,
+        ];
+
+        if (normalized.length <= 2) return true;
+        return greetingPatterns.some(pattern => pattern.test(normalized));
+    }
+
     async getConversationByCustomerId(customerId: string) {
         let session = await AIConversationSessionModel.findOne({ customerId });
 
@@ -108,6 +129,23 @@ class AIConversation {
             session._id.toString(),
             message
         );
+
+        if (this.isMeaninglessOrGreetingMessage(message)) {
+            const fallbackMessage =
+                'Xin chào! Bạn có thể cho mình biết nhu cầu mua kính cụ thể hơn không (ví dụ màu, dáng mặt, tầm giá)?';
+
+            await aiMessageService.createMessage(
+                'AI',
+                session._id.toString(),
+                fallbackMessage
+            );
+            await session.save();
+
+            return {
+                message: fallbackMessage,
+                products: [],
+            };
+        }
 
         const classificationPrompt = buildIntentClassificationPrompt(message);
         const classificationText =
