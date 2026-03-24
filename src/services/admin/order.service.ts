@@ -1,4 +1,4 @@
-import { FilterQuery } from 'mongoose';
+import mongoose, { FilterQuery } from 'mongoose';
 import { RoleType } from '../../config/enums/admin-account';
 import { InvoiceStatus } from '../../config/enums/invoice.enum';
 import { OrderStatus, OrderType } from '../../config/enums/order.enum';
@@ -20,7 +20,7 @@ import {
     ApproveOrderDTO,
     AssignOrderDTO,
 } from '../../types/order/order.request';
-import { IOrderDocument } from '../../models/order/order.model.mongo';
+import { IOrderDocument, OrderModel } from '../../models/order/order.model.mongo';
 import { productRepository } from '../../repositories/product/product.repository';
 import { ProductVariantMode } from '../../config/enums/product.enum';
 import { notificationHandler } from '../../socket/handlers/notification.handler';
@@ -383,28 +383,67 @@ class OrderService {
         orderId: string,
         payload: ApproveOrderDTO
     ) => {
-        const foundOrder = await orderRepository.findOne({
-            _id: orderId,
-        });
-        if (!foundOrder) {
-            throw new NotFoundRequestError('Order not found');
-        }
+        const session = await mongoose.startSession();
 
-        if (foundOrder.status !== OrderStatus.PENDING) {
-            throw new ConflictRequestError('Only approve order is pending!');
+        try {
+            let updatedOrder: IOrderDocument | null = null;
+
+            await session.withTransaction(async () => {
+                const foundOrder = await OrderModel.findOne({
+                    _id: orderId,
+                    deletedAt: null,
+                }).session(session);
+
+                if (!foundOrder) {
+                    throw new NotFoundRequestError('Order not found');
+                }
+
+                if (foundOrder.status !== OrderStatus.PENDING) {
+                    throw new ConflictRequestError('Only approve order is pending!');
+                }
+
+                const updatePayload: Partial<IOrderDocument> = {
+                    verifiedBy: adminContext.id,
+                    verifiedAt: new Date(),
+                    status: OrderStatus.APPROVED,
+                    staffNote: payload.note ?? '',
+                };
+
+                const firstProduct = foundOrder.products[0];
+                if (firstProduct?.lens) {
+                    firstProduct.lens.parameters = payload.parameters;
+                    updatePayload.products = foundOrder.products;
+                }
+
+                updatedOrder = await OrderModel.findOneAndUpdate(
+                    {
+                        _id: orderId,
+                        status: OrderStatus.PENDING,
+                        deletedAt: null,
+                    },
+                    { $set: updatePayload },
+                    {
+                        new: true,
+                        runValidators: true,
+                        session,
+                    }
+                );
+
+                if (!updatedOrder) {
+                    throw new ConflictRequestError(
+                        'Order was approved by another staff. Please refresh and try again.'
+                    );
+                }
+            });
+
+            if (!updatedOrder) {
+                throw new ConflictRequestError('Approve order failed. Please try again.');
+            }
+
+            return updatedOrder;
+        } finally {
+            await session.endSession();
         }
-        // update prescription detail
-        if (foundOrder.products[0] && foundOrder.products[0].lens) {
-            foundOrder.products[0].lens.parameters = payload.parameters;
-        }
-        // update verified staff
-        foundOrder.verifiedBy = adminContext.id;
-        (foundOrder.verifiedAt = new Date()),
-            // update order status
-            (foundOrder.status = OrderStatus.APPROVED);
-        foundOrder.staffNote = payload.note ?? '';
-        await foundOrder.save();
-        return foundOrder;
     };
 
     updateWaitingStockOrderToAssigned = async (orderId: string) => {
