@@ -646,14 +646,14 @@ class InvoiceClientService {
             }
 
             // Check if there's any manufacturing product and payment method is COD
-            if (
-                hasManufacturingProduct &&
-                payload.paymentMethod === PaymentMethodType.COD
-            ) {
-                throw new BadRequestError(
-                    'MANUFACTURING products must be paid online, please choose another payment method instead of COD'
-                );
-            }
+            // if (
+            //     hasManufacturingProduct &&
+            //     payload.paymentMethod === PaymentMethodType.COD
+            // ) {
+            //     throw new BadRequestError(
+            //         'MANUFACTURING products must be paid online, please choose another payment method instead of COD'
+            //     );
+            // }
 
             // Apply Voucher
             const {

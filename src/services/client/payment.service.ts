@@ -135,20 +135,15 @@ class PaymentClientService {
                 { status: PaymentStatus.PAID }
             );
             // Cập nhật invoice status
-            let hasPreOrder = false;
             let hasManufacturing = false;
 
             for (const order of orderList) {
-                if (order.type.includes(OrderType.PRE_ORDER)) {
-                    hasPreOrder = true;
-                }
                 if (order.type.includes(OrderType.MANUFACTURING)) {
                     hasManufacturing = true;
                 }
             }
 
-            const targetStatus =
-                hasPreOrder && !hasManufacturing
+            const targetStatus = !hasManufacturing
                     ? InvoiceStatus.APPROVED
                     : InvoiceStatus.DEPOSITED;
 
