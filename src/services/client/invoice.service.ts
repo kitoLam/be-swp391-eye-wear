@@ -362,7 +362,9 @@ class InvoiceClientService {
         }
 
         if (voucher.typeDiscount !== VoucherType.FREE_SHIP) {
-            discount = Math.min(discount, voucher.maxDiscountValue);
+            if (voucher.typeDiscount === VoucherType.PERCENTAGE) {
+                discount = Math.min(discount, voucher.maxDiscountValue);
+            }
             discount = Math.min(discount, totalPrice);
         }
 
@@ -646,14 +648,14 @@ class InvoiceClientService {
             }
 
             // Check if there's any manufacturing product and payment method is COD
-            // if (
-            //     hasManufacturingProduct &&
-            //     payload.paymentMethod === PaymentMethodType.COD
-            // ) {
-            //     throw new BadRequestError(
-            //         'MANUFACTURING products must be paid online, please choose another payment method instead of COD'
-            //     );
-            // }
+            if (
+                hasManufacturingProduct &&
+                payload.paymentMethod === PaymentMethodType.COD
+            ) {
+                throw new BadRequestError(
+                    'MANUFACTURING products must be paid online, please choose another payment method instead of COD'
+                );
+            }
 
             // Apply Voucher
             const {
