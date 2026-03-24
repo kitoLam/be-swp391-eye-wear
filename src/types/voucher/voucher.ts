@@ -61,9 +61,9 @@ export const VoucherSchema = z
 // Create Voucher Schema
 export const CreateVoucherSchema = z
     .object({
-        name: z.string().min(1, 'Voucher name is required').max(255).regex(/^[\p{L}\s]+$/u, 'Name must only contain letters'),
+        name: z.string().min(1, 'Voucher name is required').max(255),
         description: z.string().min(1, 'Description is required').max(500),
-        code: z.string().min(1, 'Voucher code is required').max(50, 'Code must not exceed 50 characters').regex(/^[a-zA-Z0-9]+$/, 'Code must only contain letters and numbers').toUpperCase(),
+        code: z.string().min(1, 'Voucher code is required').max(50, 'Code must not exceed 50 characters').toUpperCase(),
         typeDiscount: z.nativeEnum(VoucherType),
         value: z.number().min(0, 'Value must be non-negative'),
         usageLimit: z.number().int().min(1, 'Usage limit must be at least 1'),
@@ -104,8 +104,8 @@ export const CreateVoucherSchema = z
 // Update Voucher Schema
 export const UpdateVoucherSchema = z
     .object({
-        name: z.string().min(1, 'Voucher name is required').max(255).regex(/^[\p{L}\s]+$/u, 'Name must only contain letters').optional(),
-        code: z.string().min(1, 'Voucher code is required').max(50, 'Code must not exceed 50 characters').regex(/^[a-zA-Z0-9]+$/, 'Code must only contain letters and numbers').toUpperCase(),
+        name: z.string().min(1, 'Voucher name is required').max(255).optional(),
+        code: z.string().min(1, 'Voucher code is required').max(50, 'Code must not exceed 50 characters').toUpperCase(),
         description: z.string().min(1, 'Description is required').optional(),
         typeDiscount: z.nativeEnum(VoucherType).optional(),
         value: z.number().min(0, 'Value must be non-negative').optional(),

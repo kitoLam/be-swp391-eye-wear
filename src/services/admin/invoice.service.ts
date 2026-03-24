@@ -529,7 +529,7 @@ class InvoiceService {
                 'Invoice status must be COMPLETED to assign'
             );
         }
-
+        
         // check all orders are completed
         const countAllOrders = await orderRepository.count({
             invoiceId: foundInvoice._id,

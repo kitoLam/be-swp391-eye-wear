@@ -73,6 +73,9 @@ class OrderService {
                 'Assigned staff is not operation staff'
             );
         }
+        if(foundInvoice.managerOnboard != adminContext.id){
+            throw new ConflictRequestError("Only onboard admin can do this action");
+        }
         await orderRepository.update(orderId, {
             assignedStaff: payload.assignedStaff,
             assignerStaff: adminContext.id,
