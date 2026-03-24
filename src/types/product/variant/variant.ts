@@ -32,6 +32,7 @@ export const VariantSchema = z
         createdAt: z.date().optional(),
         deletedAt: z.date().nullable().optional(),
         mode: z.enum(ProductVariantMode, {error: "Mode must be either 'AVAILABLE' or 'PRE_ORDER'"}),
+        virTryOnUrl: z.string().url().nullable().optional()
     })
     .refine(data => data.finalPrice <= data.price, {
         message: 'Final Price cannot be greater than the default Price',
