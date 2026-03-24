@@ -85,7 +85,7 @@ class VoucherClientService {
         // 1. Get user-assigned voucher IDs from Supabase (không bắt buộc metadata.status = CLAIMED)
         const { data: userVouchers, error } = await supabase
             .from('voucher_user')
-            .select('voucher_id')
+            .select('voucher_id, metadata')
             .eq('customer_id', customerId)
             .is('deleted_at', null);
 
@@ -94,6 +94,13 @@ class VoucherClientService {
         }
 
         const voucherIds = userVouchers.map((v: any) => v.voucher_id);
+        const usedVoucherIds = new Set(
+            userVouchers
+                .filter(
+                    (v: any) => v?.metadata?.status === VoucherClaimStatus.USED
+                )
+                .map((v: any) => v.voucher_id)
+        );
 
         // 2. Get vouchers assigned to user (SPECIFIC flow)
         const assignedVoucherResult = voucherIds.length
@@ -138,7 +145,8 @@ class VoucherClientService {
             (voucher: any) =>
                 voucher.startedDate <= now &&
                 voucher.endedDate >= now &&
-                voucher.usageCount < voucher.usageLimit
+                voucher.usageCount < voucher.usageLimit &&
+                !usedVoucherIds.has(voucher._id.toString())
         );
 
         return { vouchers: availableVouchers };
@@ -316,7 +324,9 @@ class VoucherClientService {
             .eq('voucher_id', voucher._id.toString());
 
         if (updateError) {
-            throw new BadRequestError('Không thể claim voucher: ' + updateError.message);
+            throw new BadRequestError(
+                'Không thể claim voucher: ' + updateError.message
+            );
         }
 
         return {
