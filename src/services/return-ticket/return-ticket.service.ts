@@ -542,9 +542,9 @@ class ReturnTicketService {
         if (!returnTicket) {
             throw new NotFoundRequestError('Return ticket not found');
         }
-
+        console.log(returnTicket.status);
         if (
-            returnTicket.status === ReturnTicketStatus.RETURNED
+            returnTicket.status !== ReturnTicketStatus.RETURNED
         ) {
             throw new ConflictRequestError(
                 'Return ticket need to be returned before being refunded'
