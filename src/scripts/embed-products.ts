@@ -1,15 +1,20 @@
 import mongoose from 'mongoose';
 import { connectMongoDB } from '../config/database/mongodb.config';
-import { embeddingModel } from '../config/google-gemini-ai.config';
+import {
+    EMBEDDING_MODEL_NAME,
+    embeddingModel,
+} from '../config/google-gemini-ai.config';
 import { ProductModel } from '../models/product/product.model.mongo';
 
 type PlainObject = Record<string, unknown>;
 
-const EMBEDDING_MODEL_FIXED_NAME = 'gemini-embedding-001';
 const REQUEST_DELAY_MS = 400;
 const MAX_RETRIES = 4;
 const ONLY_MISSING_EMBEDDING = process.env.ONLY_MISSING_EMBEDDING !== 'false';
+const REEMBED_WHEN_MODEL_MISMATCH =
+    process.env.REEMBED_WHEN_MODEL_MISMATCH !== 'false';
 const BULK_WRITE_BATCH_SIZE = 20;
+const MAX_VARIANTS_PER_PRODUCT_IN_EMBED_TEXT = 4;
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -63,15 +68,58 @@ function getFaceFitByShape(shape: string): string {
     return 'phù hợp nhiều dáng mặt';
 }
 
-function getDefaultVariant(product: PlainObject): PlainObject | null {
+function getPrioritizedVariants(product: PlainObject): PlainObject[] {
     const variants = Array.isArray(product.variants)
         ? (product.variants as PlainObject[])
         : [];
 
-    if (variants.length === 0) return null;
+    if (variants.length <= 1) {
+        return variants;
+    }
 
-    const foundDefault = variants.find(variant => variant.isDefault === true);
-    return foundDefault ?? variants[0] ?? null;
+    const sorted = [...variants].sort((a, b) => {
+        const aDefault = a.isDefault === true ? 1 : 0;
+        const bDefault = b.isDefault === true ? 1 : 0;
+        if (aDefault !== bDefault) {
+            return bDefault - aDefault;
+        }
+
+        const aStock = asNumber(a.stock) ?? -1;
+        const bStock = asNumber(b.stock) ?? -1;
+        return bStock - aStock;
+    });
+
+    return sorted.slice(0, MAX_VARIANTS_PER_PRODUCT_IN_EMBED_TEXT);
+}
+
+function buildVariantSummary(
+    variant: PlainObject,
+    fallbackName: string
+): string {
+    const sku = asString(variant.sku, 'n/a');
+    const variantName = asString(variant.name, fallbackName);
+    const mode = asString(variant.mode, 'không rõ trạng thái');
+    const stock = asNumber(variant.stock);
+    const finalPrice = asNumber(variant.finalPrice);
+    const status = normalizeStockStatus(mode, stock);
+
+    const options = Array.isArray(variant.options)
+        ? (variant.options as PlainObject[])
+        : [];
+
+    const colorOption = options.find(option => {
+        const attr = asString(option.attributeName).toLowerCase();
+        return attr.includes('color') || attr.includes('màu');
+    });
+
+    const colorName = asString(colorOption?.label, 'không rõ màu');
+
+    return [
+        `sku ${sku} ${variantName}`,
+        `color ${colorName}`,
+        `stock ${status}`,
+        `price ${formatCurrencyVND(finalPrice)}`,
+    ].join(', ');
 }
 
 function buildEmbeddingText(product: unknown): string {
@@ -83,7 +131,6 @@ function buildEmbeddingText(product: unknown): string {
     const brand = asString(p.brand, 'không rõ thương hiệu');
     const type = asString(p.type, 'không rõ loại');
     const nameBase = asString(p.nameBase, 'Sản phẩm');
-    const skuBase = asString(p.skuBase, 'không rõ skuBase');
 
     const spec =
         p.spec && typeof p.spec === 'object' ? (p.spec as PlainObject) : {};
@@ -107,34 +154,17 @@ function buildEmbeddingText(product: unknown): string {
     const height = asNumber(dimensions.height);
     const depth = asNumber(dimensions.depth);
 
-    const variant = getDefaultVariant(p) ?? {};
-
-    const sku = asString(variant.sku, skuBase);
-    const variantName = asString(variant.name, nameBase);
-    const mode = asString(variant.mode, 'không rõ trạng thái');
-    const stock = asNumber(variant.stock);
-    const finalPrice = asNumber(variant.finalPrice);
-    const status = normalizeStockStatus(mode, stock);
-
-    const options = Array.isArray(variant.options)
-        ? (variant.options as PlainObject[])
-        : [];
-
-    const colorOption = options.find(option =>
-        asString(option.attributeName).toLowerCase().includes('color')
+    const variants = getPrioritizedVariants(p);
+    const variantSummaries = variants.map(variant =>
+        buildVariantSummary(variant, nameBase)
     );
-
-    const colorName = asString(colorOption?.label, 'không rõ màu');
 
     return [
         `${brand} ${type} ${nameBase}`,
-        `sku ${sku} ${variantName}`,
         `shape ${shape} ${faceFit}`,
         `material ${material}`,
         `size ${width ?? '?'}-${height ?? '?'}-${depth ?? '?'} mm`,
-        `color ${colorName}`,
-        `stock ${status}`,
-        `price ${formatCurrencyVND(finalPrice)}`,
+        `variants: ${variantSummaries.join(' | ')}`,
     ].join('. ');
 }
 
@@ -186,6 +216,13 @@ async function embedAllProducts(): Promise<void> {
                   { embedding: { $exists: false } },
                   { embedding: null },
                   { embedding: { $size: 0 } },
+                  ...(REEMBED_WHEN_MODEL_MISMATCH
+                      ? [
+                            { embeddingModel: { $exists: false } },
+                            { embeddingModel: null },
+                            { embeddingModel: { $ne: EMBEDDING_MODEL_NAME } },
+                        ]
+                      : []),
               ],
           }
         : { deletedAt: null };
@@ -203,7 +240,7 @@ async function embedAllProducts(): Promise<void> {
         .lean();
 
     console.log(
-        `Found ${products.length} products to embed. onlyMissing=${ONLY_MISSING_EMBEDDING}`
+        `Found ${products.length} products to embed. onlyMissing=${ONLY_MISSING_EMBEDDING}, reembedOnModelMismatch=${REEMBED_WHEN_MODEL_MISMATCH}, model=${EMBEDDING_MODEL_NAME}`
     );
 
     let successCount = 0;
@@ -223,7 +260,7 @@ async function embedAllProducts(): Promise<void> {
                     update: {
                         $set: {
                             embedding: vector,
-                            embeddingModel: EMBEDDING_MODEL_FIXED_NAME,
+                            embeddingModel: EMBEDDING_MODEL_NAME,
                             embeddingUpdatedAt: new Date(),
                         },
                     },

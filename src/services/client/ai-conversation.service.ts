@@ -199,6 +199,23 @@ class AIConversation {
                 products.map(item => item._id.toString()).join(',')
             );
 
+            if (!suggestedProducts.length) {
+                aiResponse =
+                    'Mình chưa tìm thấy sản phẩm thật sự phù hợp với yêu cầu này. Bạn có thể nói rõ thêm về màu, dáng mặt hoặc tầm giá để mình tìm chính xác hơn nhé.';
+
+                await aiMessageService.createMessage(
+                    'AI',
+                    session._id.toString(),
+                    aiResponse
+                );
+                await session.save();
+
+                return {
+                    message: aiResponse,
+                    products: [],
+                };
+            }
+
             // Re-hydrate bằng product detail để đảm bảo có đủ variants/options mới nhất trước khi prompt AI
             const productIds = products.map(item => item._id);
             const productDetails = await ProductModel.find({
