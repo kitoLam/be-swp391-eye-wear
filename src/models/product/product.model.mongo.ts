@@ -120,6 +120,11 @@ const ProductSchema = new Schema<IProductDocument>(
                     enum: ProductVariantMode,
                     default: 'AVAILABLE',
                 },
+                virTryOnUrl: {
+                    type: String,
+                    required: false,
+                    default: null,
+                }
             },
         ],
         deletedAt: {
