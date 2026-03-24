@@ -1,65 +1,15 @@
 import mongoose from 'mongoose';
 import { connectMongoDB } from '../config/database/mongodb.config';
-import {
-    EMBEDDING_MODEL_NAME,
-    embeddingModel,
-} from '../config/google-gemini-ai.config';
+import { embeddingModel } from '../config/google-gemini-ai.config';
 import { ProductModel } from '../models/product/product.model.mongo';
 
 type PlainObject = Record<string, unknown>;
 
-type ChatCompletionResponse = {
-    choices?: Array<{
-        message?: {
-            role?: string;
-            content?: string | Array<{ type?: string; text?: string }>;
-        };
-    }>;
-};
-
-const REQUEST_DELAY_MS = 1200;
-const MAX_RETRIES = 5;
-const DESCRIPTION_MAX_RETRIES = 3;
-
-const DESCRIPTION_API_BASE_URL =
-    process.env.AISHOP24H_BASE_URL ?? 'https://aishop24h.com/v1';
-const DESCRIPTION_MODEL =
-    process.env.AISHOP24H_MODEL ?? 'google/gemini-2.0-flash-lite';
-const DESCRIPTION_API_KEY = process.env.AISHOP24H_API_KEY;
-
-let hasLoggedMissingDescriptionApiKey = false;
-
-function removeIgnoredKeys(value: unknown): unknown {
-    const ignoredKeys = new Set([
-        'createdAt',
-        'updatedAt',
-        'deletedAt',
-        'embedding',
-        'embeddingModel',
-        'embeddingUpdatedAt',
-        '__v',
-    ]);
-
-    if (Array.isArray(value)) {
-        return value.map(item => removeIgnoredKeys(item));
-    }
-
-    if (value !== null && typeof value === 'object') {
-        const obj = value as PlainObject;
-        const filtered: PlainObject = {};
-
-        for (const [key, child] of Object.entries(obj)) {
-            if (ignoredKeys.has(key)) {
-                continue;
-            }
-            filtered[key] = removeIgnoredKeys(child);
-        }
-
-        return filtered;
-    }
-
-    return value;
-}
+const EMBEDDING_MODEL_FIXED_NAME = 'gemini-embedding-001';
+const REQUEST_DELAY_MS = 400;
+const MAX_RETRIES = 4;
+const ONLY_MISSING_EMBEDDING = process.env.ONLY_MISSING_EMBEDDING !== 'false';
+const BULK_WRITE_BATCH_SIZE = 20;
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -70,241 +20,122 @@ function isRetryableError(error: unknown): boolean {
     return status === 429 || status === 503 || status === 502;
 }
 
-function normalizeChatContent(
-    content: string | Array<{ type?: string; text?: string }> | undefined
-): string {
-    if (typeof content === 'string') {
-        return content.trim();
-    }
-
-    if (Array.isArray(content)) {
-        return content
-            .map(item => item.text ?? '')
-            .join(' ')
-            .trim();
-    }
-
-    return '';
+function asString(value: unknown, fallback = ''): string {
+    return typeof value === 'string' && value.trim() ? value.trim() : fallback;
 }
 
-function buildLocalDescription(product: PlainObject): string {
-    const nameBase = (product.nameBase as string | undefined) ?? 'Sản phẩm';
-    const slugBase =
-        (product.slugBase as string | undefined) ?? 'không rõ slug';
-    const skuBase = (product.skuBase as string | undefined) ?? 'không rõ SKU';
-    const brand =
-        (product.brand as string | undefined) ?? 'không rõ thương hiệu';
-    const type = (product.type as string | undefined) ?? 'không rõ loại';
+function asNumber(value: unknown): number | null {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
 
-    const categories = Array.isArray(product.categories)
-        ? (product.categories as unknown[])
-        : [];
-    const categoryText =
-        categories.length > 0
-            ? categories.map(item => String(item)).join(', ')
-            : 'không có category';
+function formatCurrencyVND(value: number | null): string {
+    if (value === null) return 'không rõ giá';
+    return `${value.toLocaleString('vi-VN')} VND`;
+}
 
-    const spec = product.spec;
-    const specText = spec ? JSON.stringify(spec) : 'không có spec';
+function normalizeStockStatus(mode: string, stock: number | null): string {
+    const upperMode = mode.toUpperCase();
+    if (upperMode === 'OUT_OF_STOCK' || (stock !== null && stock <= 0)) {
+        return 'Hết hàng';
+    }
+    if (upperMode === 'AVAILABLE' || (stock !== null && stock > 0)) {
+        return 'Đang còn hàng';
+    }
+    return mode || 'Không rõ trạng thái';
+}
 
+function getFaceFitByShape(shape: string): string {
+    const normalized = shape.toLowerCase();
+
+    if (normalized.includes('butterfly') || normalized.includes('cat')) {
+        return 'phù hợp mặt oval, square, heart';
+    }
+    if (normalized.includes('round')) {
+        return 'phù hợp mặt square, rectangle';
+    }
+    if (normalized.includes('square')) {
+        return 'phù hợp mặt round, oval';
+    }
+    if (normalized.includes('aviator')) {
+        return 'phù hợp mặt oval, triangle, square';
+    }
+
+    return 'phù hợp nhiều dáng mặt';
+}
+
+function getDefaultVariant(product: PlainObject): PlainObject | null {
     const variants = Array.isArray(product.variants)
         ? (product.variants as PlainObject[])
         : [];
 
-    const variantsText =
-        variants.length > 0
-            ? variants
-                  .map((variant, index) => {
-                      const variantName =
-                          (variant.name as string | undefined) ??
-                          `variant-${index + 1}`;
-                      const variantSku =
-                          (variant.sku as string | undefined) ?? 'không rõ SKU';
-                      const variantSlug =
-                          (variant.slug as string | undefined) ??
-                          'không rõ slug';
-                      const mode =
-                          (variant.mode as string | undefined) ??
-                          'không rõ trạng thái';
+    if (variants.length === 0) return null;
 
-                      const stock =
-                          typeof variant.stock === 'number'
-                              ? variant.stock
-                              : 'không rõ tồn kho';
-
-                      const finalPrice =
-                          typeof variant.finalPrice === 'number'
-                              ? `${variant.finalPrice.toLocaleString('vi-VN')}đ`
-                              : 'không rõ giá khuyến mãi';
-
-                      const originPrice =
-                          typeof variant.price === 'number'
-                              ? `${variant.price.toLocaleString('vi-VN')}đ`
-                              : 'không rõ giá gốc';
-
-                      const options = Array.isArray(variant.options)
-                          ? (variant.options as PlainObject[])
-                          : [];
-
-                      const optionText =
-                          options.length > 0
-                              ? options
-                                    .map(option => {
-                                        const attributeName =
-                                            (option.attributeName as
-                                                | string
-                                                | undefined) ?? 'Thuộc tính';
-                                        const label =
-                                            (option.label as
-                                                | string
-                                                | undefined) ?? 'không rõ';
-                                        const rawValue = option.value as
-                                            | string
-                                            | number
-                                            | PlainObject
-                                            | undefined;
-                                        const value =
-                                            typeof rawValue === 'object' &&
-                                            rawValue !== null
-                                                ? JSON.stringify(rawValue)
-                                                : rawValue ?? 'không rõ';
-                                        return `${attributeName}: ${label} (${value})`;
-                                    })
-                                    .join(', ')
-                              : 'không có option';
-
-                      return `${variantName} [sku: ${variantSku}, slug: ${variantSlug}, mode: ${mode}, stock: ${stock}, finalPrice: ${finalPrice}, price: ${originPrice}, options: ${optionText}]`;
-                  })
-                  .join('; ')
-            : 'không có variant';
-
-    return `Sản phẩm ${nameBase} thuộc thương hiệu ${brand}, loại ${type}, slugBase ${slugBase}, skuBase ${skuBase}. Categories: ${categoryText}. Spec: ${specText}. Danh sách variants: ${variantsText}.`;
+    const foundDefault = variants.find(variant => variant.isDefault === true);
+    return foundDefault ?? variants[0] ?? null;
 }
 
-async function generateNaturalDescription(
-    product: PlainObject
-): Promise<string> {
-    if (!DESCRIPTION_API_KEY) {
-        if (!hasLoggedMissingDescriptionApiKey) {
-            hasLoggedMissingDescriptionApiKey = true;
-            console.warn(
-                '[WARN] Missing AISHOP24H_API_KEY. Fallback to local description template.'
-            );
-        }
-        return buildLocalDescription(product);
-    }
+function buildEmbeddingText(product: unknown): string {
+    const p =
+        product && typeof product === 'object'
+            ? (product as PlainObject)
+            : ({} as PlainObject);
 
-    const url = `${DESCRIPTION_API_BASE_URL.replace(
-        /\/$/,
-        ''
-    )}/chat/completions`;
+    const brand = asString(p.brand, 'không rõ thương hiệu');
+    const type = asString(p.type, 'không rõ loại');
+    const nameBase = asString(p.nameBase, 'Sản phẩm');
+    const skuBase = asString(p.skuBase, 'không rõ skuBase');
 
-    const prompt = [
-        'Dựa trên dữ liệu JSON sản phẩm bên dưới, hãy viết đúng 1 đoạn mô tả tiếng Việt tự nhiên như người tư vấn bán hàng.',
-        'Yêu cầu bắt buộc:',
-        '- Phải liệt kê đầy đủ tất cả variants, không bỏ sót variant nào.',
-        '- Với mỗi variant: nêu name, sku, slug, mode, stock, price, finalPrice.',
-        '- Với mỗi variant: liệt kê toàn bộ options gồm attributeName, label, value (nếu có).',
-        '- Nêu rõ thông tin gốc của product: nameBase, slugBase, skuBase, brand, type, categories, spec.',
-        '- Nếu có dữ liệu về tròng kính/lens (ví dụ độ cận, loạn, chiết suất, lớp phủ, màu tròng...), phải nêu đầy đủ theo đúng JSON.',
-        '- Đặc biệt nếu spec có feature hoặc material (ví dụ công nghệ đổi màu, chống ánh sáng xanh...), phải đưa rõ vào mô tả để tối ưu search theo chức năng.',
-        '- Không bịa thêm thông tin không có trong JSON.',
-        '- Hãy tìm kiếm và phân tích đưa ra thông tin phù hợp với khuôn mặt',
-        '- Trả về duy nhất đoạn mô tả, không markdown, không bullet.',
-        '- Các variants hay options có những options color attribute thì có các màu hơi đặc biệt chút như Prizm Rudy chẳng hạn thì bạn hãy tự động nhận biết màu gần giống nhất, ví dụ bạn có thể nói đó là màu Prizm Ruby(đỏ, red)',
-        '',
-        'JSON sản phẩm:',
-        JSON.stringify(product, null, 2),
-    ].join('\n');
+    const spec =
+        p.spec && typeof p.spec === 'object' ? (p.spec as PlainObject) : {};
 
-    let lastError: unknown;
+    const shape = asString(spec.shape, 'không rõ dáng');
+    const faceFit = getFaceFitByShape(shape);
 
-    for (let attempt = 1; attempt <= DESCRIPTION_MAX_RETRIES; attempt++) {
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${DESCRIPTION_API_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    model: DESCRIPTION_MODEL,
-                    temperature: 0.3,
-                    messages: [
-                        {
-                            role: 'system',
-                            content:
-                                'Bạn là chuyên gia viết mô tả sản phẩm thương mại điện tử bằng tiếng Việt.',
-                        },
-                        {
-                            role: 'user',
-                            content: prompt,
-                        },
-                    ],
-                }),
-            });
+    const material = Array.isArray(spec.material)
+        ? (spec.material as unknown[])
+              .map(item => String(item))
+              .filter(Boolean)
+              .join(', ')
+        : asString(spec.material, 'không rõ chất liệu');
 
-            if (!response.ok) {
-                const error = new Error(
-                    `Description API request failed with status ${response.status}`
-                ) as Error & { status?: number };
-                error.status = response.status;
-                throw error;
-            }
+    const dimensions =
+        spec.dimensions && typeof spec.dimensions === 'object'
+            ? (spec.dimensions as PlainObject)
+            : {};
 
-            const payload = (await response.json()) as ChatCompletionResponse;
-            const assistantChoice = payload.choices?.find(
-                choice => choice.message?.role === 'assistant'
-            );
-            const content = normalizeChatContent(
-                assistantChoice?.message?.content ??
-                    payload.choices?.[0]?.message?.content
-            );
+    const width = asNumber(dimensions.width);
+    const height = asNumber(dimensions.height);
+    const depth = asNumber(dimensions.depth);
 
-            if (!content) {
-                throw new Error('Description API returned empty content');
-            }
+    const variant = getDefaultVariant(p) ?? {};
 
-            return content;
-        } catch (error) {
-            lastError = error;
+    const sku = asString(variant.sku, skuBase);
+    const variantName = asString(variant.name, nameBase);
+    const mode = asString(variant.mode, 'không rõ trạng thái');
+    const stock = asNumber(variant.stock);
+    const finalPrice = asNumber(variant.finalPrice);
+    const status = normalizeStockStatus(mode, stock);
 
-            if (
-                !isRetryableError(error) ||
-                attempt === DESCRIPTION_MAX_RETRIES
-            ) {
-                console.warn(
-                    '[WARN] Description API failed, using local description template.'
-                );
-                return buildLocalDescription(product);
-            }
+    const options = Array.isArray(variant.options)
+        ? (variant.options as PlainObject[])
+        : [];
 
-            const backoffMs = REQUEST_DELAY_MS * attempt;
-            console.warn(
-                `[RETRY] Description attempt ${attempt}/${DESCRIPTION_MAX_RETRIES} failed. Waiting ${backoffMs}ms...`
-            );
-            await sleep(backoffMs);
-        }
-    }
+    const colorOption = options.find(option =>
+        asString(option.attributeName).toLowerCase().includes('color')
+    );
 
-    if (lastError) {
-        console.warn('[WARN] Description API exhausted retries:', lastError);
-    }
-    return buildLocalDescription(product);
-}
-
-async function buildEmbeddingText(product: unknown): Promise<string> {
-    const cleaned = removeIgnoredKeys(product) as PlainObject;
-    const keyValueData = JSON.stringify(cleaned, null, 2);
-    const naturalDescription = await generateNaturalDescription(cleaned);
+    const colorName = asString(colorOption?.label, 'không rõ màu');
 
     return [
-        'PRODUCT_KEY_VALUE_DATA:',
-        keyValueData,
-        '',
-        'PRODUCT_NATURAL_DESCRIPTION:',
-        naturalDescription,
-    ].join('\n');
+        `${brand} ${type} ${nameBase}`,
+        `sku ${sku} ${variantName}`,
+        `shape ${shape} ${faceFit}`,
+        `material ${material}`,
+        `size ${width ?? '?'}-${height ?? '?'}-${depth ?? '?'} mm`,
+        `color ${colorName}`,
+        `stock ${status}`,
+        `price ${formatCurrencyVND(finalPrice)}`,
+    ].join('. ');
 }
 
 async function getEmbeddingVector(text: string): Promise<number[]> {
@@ -339,32 +170,69 @@ async function getEmbeddingVector(text: string): Promise<number[]> {
     throw lastError;
 }
 
+async function flushBulkUpdates(ops: any[]): Promise<void> {
+    if (!ops.length) return;
+    await ProductModel.bulkWrite(ops, { ordered: false });
+    ops.length = 0;
+}
+
 async function embedAllProducts(): Promise<void> {
     await connectMongoDB();
 
-    const products = await ProductModel.find({ deletedAt: null }).lean();
-    console.log(`Found ${products.length} products to embed.`);
+    const query = ONLY_MISSING_EMBEDDING
+        ? {
+              deletedAt: null,
+              $or: [
+                  { embedding: { $exists: false } },
+                  { embedding: null },
+                  { embedding: { $size: 0 } },
+              ],
+          }
+        : { deletedAt: null };
+
+    const products = await ProductModel.find(query)
+        .select({
+            _id: 1,
+            nameBase: 1,
+            skuBase: 1,
+            type: 1,
+            brand: 1,
+            spec: 1,
+            variants: 1,
+        })
+        .lean();
+
+    console.log(
+        `Found ${products.length} products to embed. onlyMissing=${ONLY_MISSING_EMBEDDING}`
+    );
 
     let successCount = 0;
     let failedCount = 0;
+    const bulkOps: any[] = [];
 
     for (const product of products) {
         const productId = product._id.toString();
 
         try {
-            const text = await buildEmbeddingText(product);
+            const text = buildEmbeddingText(product);
             const vector = await getEmbeddingVector(text);
 
-            await ProductModel.updateOne(
-                { _id: product._id },
-                {
-                    $set: {
-                        embedding: vector,
-                        embeddingModel: EMBEDDING_MODEL_NAME,
-                        embeddingUpdatedAt: new Date(),
+            bulkOps.push({
+                updateOne: {
+                    filter: { _id: product._id },
+                    update: {
+                        $set: {
+                            embedding: vector,
+                            embeddingModel: EMBEDDING_MODEL_FIXED_NAME,
+                            embeddingUpdatedAt: new Date(),
+                        },
                     },
-                }
-            );
+                },
+            });
+
+            if (bulkOps.length >= BULK_WRITE_BATCH_SIZE) {
+                await flushBulkUpdates(bulkOps);
+            }
 
             successCount += 1;
             console.log(
@@ -377,6 +245,8 @@ async function embedAllProducts(): Promise<void> {
 
         await sleep(REQUEST_DELAY_MS);
     }
+
+    await flushBulkUpdates(bulkOps);
 
     console.log(`Done. Success: ${successCount}, Failed: ${failedCount}`);
 }

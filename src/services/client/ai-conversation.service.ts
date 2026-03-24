@@ -131,6 +131,7 @@ class AIConversation {
         console.log('>>> Intent Classification:', intentClassification);
 
         let aiResponse: string;
+        let suggestedProducts: any[] = [];
 
         if (intentClassification.intentType === 'INFO') {
             const infoPrompt = buildInfoResponsePrompt(message);
@@ -145,11 +146,15 @@ class AIConversation {
         } else {
             const messageHistory = await aiMessageService.getRecentMessages(
                 session._id.toString(),
-                1
+                12
             );
 
             const { paraphrasedIntent, products } =
-                await productService.buildQueryForAISuggestion(messageHistory);
+                await productService.buildQueryForAISuggestion(
+                    messageHistory,
+                    message
+                );
+            suggestedProducts = products;
             console.log('>>> paraphrased intent::', paraphrasedIntent);
             console.log(
                 `>>> id match:${products.length} products:`,
@@ -193,7 +198,17 @@ class AIConversation {
         );
         await session.save();
 
-        return { message: aiResponse };
+        const sanitizedProducts = suggestedProducts.map((item: any) => {
+            if (!item || typeof item !== 'object') return item;
+
+            const { embedding, ...rest } = item;
+            return rest;
+        });
+
+        return {
+            message: aiResponse,
+            products: sanitizedProducts,
+        };
     }
 }
 

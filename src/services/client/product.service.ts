@@ -50,6 +50,11 @@ const QUERY_REWRITE_MODEL =
 const QUERY_REWRITE_API_KEY = process.env.AISHOP24H_API_KEY;
 const QUERY_REWRITE_MAX_RETRIES = 2;
 
+const VECTOR_SEARCH_NUM_CANDIDATES = 60;
+const VECTOR_SEARCH_LIMIT = 12;
+const FINAL_PRODUCTS_LIMIT = 4;
+const MIN_VECTOR_SCORE = 0.72;
+
 async function callAishopTextCompletion(
     prompt: string,
     systemPrompt: string,
@@ -663,10 +668,15 @@ Quy tắc:
         }
     };
 
-    buildQueryForAISuggestion = async (messageHistory?: any[]) => {
+    buildQueryForAISuggestion = async (
+        messageHistory?: any[],
+        latestUserMessage?: string
+    ) => {
         let queryText = '';
 
-        if (messageHistory && messageHistory.length > 0) {
+        if (latestUserMessage && latestUserMessage.trim()) {
+            queryText = latestUserMessage.trim();
+        } else if (messageHistory && messageHistory.length > 0) {
             queryText = await this.generateQueryFromHistory(messageHistory);
         } else {
             throw new Error('Message history is required for AI suggestions');
@@ -674,7 +684,7 @@ Quy tắc:
 
         const optimizedQueryText = await this.rewriteQueryWithAishop(
             queryText,
-            messageHistory
+            messageHistory ?? []
         );
 
         const queryEmbedding = await this.embedQueryText(optimizedQueryText);
@@ -684,21 +694,31 @@ Quy tắc:
                     index: 'vector_index_embedding',
                     path: 'embedding',
                     queryVector: queryEmbedding,
-                    numCandidates: 100,
-                    limit: 8,
+                    numCandidates: VECTOR_SEARCH_NUM_CANDIDATES,
+                    limit: VECTOR_SEARCH_LIMIT,
                     filter: { deletedAt: null },
                 },
             },
             {
                 $project: {
                     _id: 1,
+                    vectorScore: { $meta: 'vectorSearchScore' },
                 },
             },
         ]);
 
         let products;
         if (candidates.length > 0) {
-            const ids = candidates.map((item: any) => item._id);
+            const filteredCandidates = candidates.filter(
+                (item: any) =>
+                    typeof item.vectorScore === 'number' &&
+                    item.vectorScore >= MIN_VECTOR_SCORE
+            );
+
+            const selectedCandidates =
+                filteredCandidates.length > 0 ? filteredCandidates : candidates;
+
+            const ids = selectedCandidates.map((item: any) => item._id);
             const fullProducts = await ProductModel.find({
                 _id: { $in: ids },
                 deletedAt: null,
@@ -711,26 +731,35 @@ Quy tắc:
                 .map((id: any) => productMap.get(String(id)))
                 .filter(Boolean) as any[];
 
-            products = await this.rankProductsBySuitabilityWithAI(
-                optimizedQueryText,
-                orderedByVector
-            );
+            const shouldRunAIRank =
+                orderedByVector.length > FINAL_PRODUCTS_LIMIT &&
+                Boolean(QUERY_REWRITE_API_KEY);
 
-            products = products.slice(0, 4);
+            products = shouldRunAIRank
+                ? await this.rankProductsBySuitabilityWithAI(
+                      optimizedQueryText,
+                      orderedByVector
+                  )
+                : orderedByVector;
+
+            products = products.slice(0, FINAL_PRODUCTS_LIMIT);
         } else {
             products = await ProductModel.find({
                 deletedAt: null,
                 embedding: { $exists: true, $ne: null },
             })
-                .limit(8)
+                .limit(VECTOR_SEARCH_LIMIT)
                 .lean();
 
-            products = await this.rankProductsBySuitabilityWithAI(
-                optimizedQueryText,
-                products
-            );
+            const shouldRunAIRank = Boolean(QUERY_REWRITE_API_KEY);
+            products = shouldRunAIRank
+                ? await this.rankProductsBySuitabilityWithAI(
+                      optimizedQueryText,
+                      products
+                  )
+                : products;
 
-            products = products.slice(0, 4);
+            products = products.slice(0, FINAL_PRODUCTS_LIMIT);
         }
 
         return {
