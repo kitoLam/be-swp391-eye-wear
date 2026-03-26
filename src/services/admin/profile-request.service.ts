@@ -72,7 +72,9 @@ class ProfileRequestService {
     };
 
     getProfileRequestList = async (query: GetProfileRequestListQuery) => {
-        const pageData = await profileRequestRepository.findAll({
+        const pageData = await profileRequestRepository.find({
+            status: {$ne: ProfileRequestStatus.CANCELLED}
+        }, {
             limit: query.limit,
             page: query.page,
             sortBy: 'createdAt',

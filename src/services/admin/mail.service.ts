@@ -2,6 +2,7 @@ import { addMailToQueue } from '../../queues/mail.queue';
 import { Invoice } from '../../types/invoice/invoice';
 import { generateInvoiceConfirmationHtml } from '../../templates/emails/invoice-confirmation';
 import { CustomerModel } from '../../models/customer/customer.model.mongo';
+import { sendMail } from '../../utils/mail.util';
 
 class MailAdminService {
     /**
@@ -21,12 +22,11 @@ class MailAdminService {
 
             const html = generateInvoiceConfirmationHtml(invoice);
 
-            await addMailToQueue({
-                to: customer.email,
-                subject: `[Eyewear Optic] Xác nhận đơn hàng #${invoice.invoiceCode}`,
-                html: html,
-            });
-
+   
+            const to = customer.email;
+            const subject = `[Eyewear Optic] Xác nhận đơn hàng #${invoice.invoiceCode}`;
+            await sendMail(to, subject, html);
+                        console.log(`[MailWorker] Successfully sent email to: ${to}`);
             console.log(
                 `[MailService] Invoice confirmation queued for: ${customer.email}`
             );
