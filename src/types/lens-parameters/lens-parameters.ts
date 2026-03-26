@@ -6,13 +6,13 @@ export const LensParametersSchema = z.object({
         SPH: z.number().min(-20).max(20),
         CYL: z.number().min(-20).max(20),
         AXIS: z.number().min(0).max(180), 
-        ADD: z.number().min(0.75).max(3.5)
+        ADD: z.number().min(0.75).max(3.5).optional()
     }),
     right: z.object({
         SPH: z.number().min(-20).max(20),
         CYL: z.number().min(-20).max(20),
         AXIS: z.number().min(0).max(180),
-        ADD: z.number().min(0.75).max(3.5)
+        ADD: z.number().min(0.75).max(3.5).optional()
     }),
     PD: z.number().min(35).max(65),
 });
