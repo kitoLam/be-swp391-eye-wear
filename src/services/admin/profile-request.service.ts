@@ -125,6 +125,9 @@ class ProfileRequestService {
         foundRequest.processedAt = new Date();
         foundRequest.processedBy = adminContext.id;
         await foundRequest.save();
+
+        // Return updated data
+        return foundRequest;
     };
     rejectProfileRequest = async (
         adminContext: AuthAdminContext,
@@ -142,6 +145,9 @@ class ProfileRequestService {
         foundRequest.processedAt = new Date();
         foundRequest.processedBy = adminContext.id;
         await foundRequest.save();
+
+        // Return updated data
+        return foundRequest;
     };
 
     cancelProfileRequest = async (
@@ -158,6 +164,9 @@ class ProfileRequestService {
         }
         foundRequest.status = ProfileRequestStatus.CANCELLED;
         await foundRequest.save();
+
+        // Return updated data
+        return foundRequest;
     };
 
     getRequestDetail = async (id: string) => {

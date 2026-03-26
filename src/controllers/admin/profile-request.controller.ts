@@ -19,6 +19,7 @@ class ProfileRequestController {
         const data = await profileRequestService.getProfileRequestList(query);
         const profileListFinal = data.profileRequestList.map(item => {
             return {
+                _id: item._id.toString(),
                 staffId: item.staffId,
                 name: item.name,
                 email: item.email,
@@ -43,6 +44,7 @@ class ProfileRequestController {
         const id = req.params.id as string;
         const data = await profileRequestService.getRequestDetail(id);
         const dataFinal = {
+            _id: data._id.toString(),
             staffId: data.staffId,
             name: data.name,
             email: data.email,
@@ -63,20 +65,76 @@ class ProfileRequestController {
 
     approveProfileRequest = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        await profileRequestService.approveProfileRequest(
+        const data = await profileRequestService.approveProfileRequest(
             req.adminAccount!,
             id
         );
-        res.json(ApiResponse.success('Approve request success', null));
+        const dataFinal = {
+            _id: data._id.toString(),
+            staffId: data.staffId,
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            status: data.status,
+            createdAt: formatDateToString(data.createdAt),
+            processedAt: data.processedAt
+                ? formatDateToString(data.processedAt)
+                : null,
+            processedBy: data.processedBy,
+        };
+        res.json(
+            ApiResponse.success('Approve request success', {
+                profileRequest: dataFinal,
+            })
+        );
     };
     rejectProfileRequest = async (req: Request, res: Response) => {
         const id = req.params.id as string;
-        await profileRequestService.rejectProfileRequest(req.adminAccount!, id);
-        res.json(ApiResponse.success('Reject request success', null));
+        const data = await profileRequestService.rejectProfileRequest(
+            req.adminAccount!,
+            id
+        );
+        const dataFinal = {
+            _id: data._id.toString(),
+            staffId: data.staffId,
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            status: data.status,
+            createdAt: formatDateToString(data.createdAt),
+            processedAt: data.processedAt
+                ? formatDateToString(data.processedAt)
+                : null,
+            processedBy: data.processedBy,
+        };
+        res.json(
+            ApiResponse.success('Reject request success', {
+                profileRequest: dataFinal,
+            })
+        );
     };
     cancelProfileRequest = async (req: Request, res: Response) => {
-        await profileRequestService.cancelProfileRequest(req.adminAccount!);
-        res.json(ApiResponse.success('Cancel request success', null));
+        const data = await profileRequestService.cancelProfileRequest(
+            req.adminAccount!
+        );
+        const dataFinal = {
+            _id: data._id.toString(),
+            staffId: data.staffId,
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            status: data.status,
+            createdAt: formatDateToString(data.createdAt),
+            processedAt: data.processedAt
+                ? formatDateToString(data.processedAt)
+                : null,
+            processedBy: data.processedBy,
+        };
+        res.json(
+            ApiResponse.success('Cancel request success', {
+                profileRequest: dataFinal,
+            })
+        );
     };
 }
 
