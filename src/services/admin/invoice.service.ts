@@ -48,6 +48,9 @@ class InvoiceService {
         if (query.statuses?.length) {
             filter.status = { $in: query.statuses };
         }
+        if(query.customerId){
+            filter.owner = query.customerId;
+        }
         const result = await invoiceRepository.find(filter, {
             limit: query.limit,
             page: query.page,
