@@ -123,6 +123,7 @@ export class InvoiceRepository extends BaseRepository<IInvoiceDocument> {
         status?: string;
         statuses?: string[];
         staffHandleDelivery?: string;
+        owner?: string,
     }): Promise<{ data: DepositedInvoiceResponse[]; total: number }> {
         const match: FilterQuery<IInvoiceDocument> = { deletedAt: null };
 
@@ -142,7 +143,9 @@ export class InvoiceRepository extends BaseRepository<IInvoiceDocument> {
         if (params.staffHandleDelivery) {
             match.staffHandleDelivery = params.staffHandleDelivery;
         }
-
+        if(params.owner){
+            match.owner = params.owner;
+        }
         const skip = (params.page - 1) * params.limit;
 
         const result = await InvoiceModel.aggregate([

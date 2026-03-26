@@ -51,6 +51,7 @@ class InvoiceService {
         if(query.customerId){
             filter.owner = query.customerId;
         }
+        console.log(filter);
         const result = await invoiceRepository.find(filter, {
             limit: query.limit,
             page: query.page,
@@ -79,6 +80,7 @@ class InvoiceService {
             status: query.status,
             statuses: query.statuses,
             staffHandleDelivery,
+            owner: query.customerId
         });
         return {
             invoiceList: result.data,
