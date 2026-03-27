@@ -376,7 +376,7 @@ class ProductService {
     private async embedQueryText(text: string): Promise<number[]> {
         const result = await embeddingModel.embedContent(text);
         const values = (result as any)?.embedding?.values;
-
+        // console.log(values);
         if (!Array.isArray(values) || values.length === 0) {
             throw new Error('Embedding result is empty or invalid');
         }
@@ -672,7 +672,8 @@ Quy tắc:
         //     throw new Error('Message history is required for AI suggestions');
         // }
 
-        const optimizedQueryText = messageHistory[0].content;
+        const optimizedQueryText = messageHistory[messageHistory.length - 1].content;
+        console.log(optimizedQueryText);
         // await this.rewriteQueryWithAishop(
         //     queryText,
         //     messageHistory
@@ -687,7 +688,6 @@ Quy tắc:
                     queryVector: queryEmbedding,
                     numCandidates: 100,
                     limit: 5,
-                    filter: { deletedAt: null },
                 },
             },
             {
@@ -699,6 +699,7 @@ Quy tắc:
 
         let products;
         if (candidates.length > 0) {
+            console.log("found candidate");
             const ids = candidates.map((item: any) => item._id);
             const fullProducts = await ProductModel.find({
                 _id: { $in: ids },
@@ -719,6 +720,7 @@ Quy tắc:
 
             products = fullProducts.slice(0, 4);
         } else {
+            console.log(">>> not found candidate");
             products = await ProductModel.find({
                 deletedAt: null,
                 embedding: { $exists: true, $ne: null },
