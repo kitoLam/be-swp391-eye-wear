@@ -209,23 +209,7 @@ async function flushBulkUpdates(ops: any[]): Promise<void> {
 async function embedAllProducts(): Promise<void> {
     await connectMongoDB();
 
-    const query = ONLY_MISSING_EMBEDDING
-        ? {
-              deletedAt: null,
-              $or: [
-                  { embedding: { $exists: false } },
-                  { embedding: null },
-                  { embedding: { $size: 0 } },
-                  ...(REEMBED_WHEN_MODEL_MISMATCH
-                      ? [
-                            { embeddingModel: { $exists: false } },
-                            { embeddingModel: null },
-                            { embeddingModel: { $ne: EMBEDDING_MODEL_NAME } },
-                        ]
-                      : []),
-              ],
-          }
-        : { deletedAt: null };
+    const query = { deletedAt: null }
 
     const products = await ProductModel.find(query)
         .select({
