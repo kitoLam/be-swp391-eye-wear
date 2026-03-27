@@ -50,13 +50,6 @@ const QUERY_REWRITE_MODEL =
 const QUERY_REWRITE_API_KEY = process.env.AISHOP24H_API_KEY;
 const QUERY_REWRITE_MAX_RETRIES = 2;
 
-const VECTOR_SEARCH_NUM_CANDIDATES = 60;
-const VECTOR_SEARCH_LIMIT = 12;
-const FINAL_PRODUCTS_LIMIT = 4;
-const MIN_VECTOR_SCORE = 0.62;
-const MIN_VECTOR_SCORE_FALLBACK = 0.45;
-const MIN_VECTOR_SCORE_HARD_FLOOR = 0.3;
-
 async function callAishopTextCompletion(
     prompt: string,
     systemPrompt: string,
@@ -670,321 +663,75 @@ Quy tắc:
         }
     };
 
-    buildQueryForAISuggestion = async (
-        messageHistory?: any[],
-        latestUserMessage?: string
-    ) => {
+    buildQueryForAISuggestion = async (messageHistory: any[]) => {
         let queryText = '';
 
-        if (latestUserMessage && latestUserMessage.trim()) {
-            queryText = latestUserMessage.trim();
-        } else if (messageHistory && messageHistory.length > 0) {
-            queryText = await this.generateQueryFromHistory(messageHistory);
-        } else {
-            throw new Error('Message history is required for AI suggestions');
-        }
+        // if (messageHistory && messageHistory.length > 0) {
+        //     queryText = await this.generateQueryFromHistory(messageHistory);
+        // } else {
+        //     throw new Error('Message history is required for AI suggestions');
+        // }
 
-        const optimizedQueryText = await this.rewriteQueryWithAishop(
-            queryText,
-            messageHistory ?? []
-        );
+        const optimizedQueryText = messageHistory[0].content;
+        // await this.rewriteQueryWithAishop(
+        //     queryText,
+        //     messageHistory
+        // );
 
-        const vectorQueryText =
-            queryText.trim().length >= 3 ? queryText : optimizedQueryText;
-        const queryEmbedding = await this.embedQueryText(vectorQueryText);
-
-        const runVectorSearch = async (filter: Record<string, unknown>) =>
-            ProductModel.aggregate([
-                {
-                    $vectorSearch: {
-                        index: 'vector_index_embedding',
-                        path: 'embedding',
-                        queryVector: queryEmbedding,
-                        numCandidates: VECTOR_SEARCH_NUM_CANDIDATES,
-                        limit: VECTOR_SEARCH_LIMIT,
-                        filter,
-                    },
+        const queryEmbedding = await this.embedQueryText(optimizedQueryText);
+        const candidates = await ProductModel.aggregate([
+            {
+                $vectorSearch: {
+                    index: 'vector_index_embedding',
+                    path: 'embedding',
+                    queryVector: queryEmbedding,
+                    numCandidates: 100,
+                    limit: 5,
+                    filter: { deletedAt: null },
                 },
-                {
-                    $project: {
-                        _id: 1,
-                        vectorScore: { $meta: 'vectorSearchScore' },
-                    },
+            },
+            {
+                $project: {
+                    _id: 1,
                 },
-            ]);
-
-        let candidates: any[] = await runVectorSearch({ deletedAt: null });
-
-        if (candidates.length) {
-            const topScoresPreview = candidates
-                .slice(0, 5)
-                .map((item: any) =>
-                    typeof item.vectorScore === 'number'
-                        ? Number(item.vectorScore.toFixed(4))
-                        : null
-                );
-            console.log('[RAG] vectorQueryText:', vectorQueryText);
-            console.log('[RAG] top vector scores:', topScoresPreview);
-        }
+            },
+        ]);
 
         let products;
         if (candidates.length > 0) {
-            const filteredCandidates = candidates.filter(
-                (item: any) =>
-                    typeof item.vectorScore === 'number' &&
-                    item.vectorScore >= MIN_VECTOR_SCORE
-            );
-
-            let selectedCandidates = filteredCandidates;
-
-            if (selectedCandidates.length === 0) {
-                const topScore =
-                    typeof candidates[0]?.vectorScore === 'number'
-                        ? candidates[0].vectorScore
-                        : 0;
-
-                // Adaptive fallback: nếu score cao nhất vẫn đủ tín hiệu semantic,
-                // nhận các item >= ngưỡng mềm để tránh rỗng hoàn toàn.
-                if (topScore >= MIN_VECTOR_SCORE_FALLBACK) {
-                    selectedCandidates = candidates.filter(
-                        (item: any) =>
-                            typeof item.vectorScore === 'number' &&
-                            item.vectorScore >= MIN_VECTOR_SCORE_FALLBACK
-                    );
-                }
-
-                // Fallback cuối: vẫn trả top-k nếu score không quá thấp,
-                // tránh trường hợp người dùng luôn nhận products rỗng.
-                if (
-                    !selectedCandidates.length &&
-                    topScore >= MIN_VECTOR_SCORE_HARD_FLOOR
-                ) {
-                    selectedCandidates = candidates.slice(
-                        0,
-                        FINAL_PRODUCTS_LIMIT
-                    );
-                }
-            }
-
-            if (selectedCandidates.length === 0) {
-                return {
-                    paraphrasedIntent: optimizedQueryText,
-                    products: [],
-                };
-            }
-
-            const ids = selectedCandidates.map((item: any) => item._id);
+            const ids = candidates.map((item: any) => item._id);
             const fullProducts = await ProductModel.find({
                 _id: { $in: ids },
                 deletedAt: null,
             }).lean();
 
-            const productMap = new Map<string, any>(
-                fullProducts.map((item: any) => [String(item._id), item])
-            );
-            const orderedByVector = ids
-                .map((id: any) => productMap.get(String(id)))
-                .filter(Boolean) as any[];
+            // const productMap = new Map<string, any>(
+            //     fullProducts.map((item: any) => [String(item._id), item])
+            // );
+            // const orderedByVector = ids
+            //     .map((id: any) => productMap.get(String(id)))
+            //     .filter(Boolean) as any[];
 
-            const normalizedQuery = `${queryText} ${optimizedQueryText}`
-                .toLowerCase()
-                .trim();
+            // products = await this.rankProductsBySuitabilityWithAI(
+            //     optimizedQueryText,
+            //     orderedByVector
+            // );
 
-            const colorAliases: Record<string, string[]> = {
-                black: ['black', 'đen', '#000000'],
-                white: ['white', 'trắng', '#ffffff'],
-                blue: ['blue', 'xanh', '#0000ff'],
-                red: ['red', 'đỏ', '#ff0000'],
-                brown: ['brown', 'nâu', '#8b4513', '#a52a2a'],
-                pink: ['pink', 'hồng', '#ffc0cb'],
-                gold: ['gold', 'vàng', '#d4af37'],
-                silver: ['silver', 'bạc', '#c0c0c0'],
-                grey: ['grey', 'gray', 'xám', '#808080'],
-            };
-
-            const productTypeHints: Array<{
-                key: string;
-                values: ProductType[];
-            }> = [
-                { key: 'frame', values: [ProductType.FRAME] },
-                { key: 'gọng', values: [ProductType.FRAME] },
-                { key: 'sunglass', values: [ProductType.SUNGLASS] },
-                { key: 'kính mát', values: [ProductType.SUNGLASS] },
-                { key: 'lens', values: [ProductType.LENS] },
-                { key: 'tròng', values: [ProductType.LENS] },
-            ];
-
-            const detectedTypeSet = new Set<ProductType>();
-            for (const hint of productTypeHints) {
-                if (normalizedQuery.includes(hint.key)) {
-                    hint.values.forEach(v => detectedTypeSet.add(v));
-                }
-            }
-
-            const detectedColorAlias = Object.values(colorAliases).find(
-                aliasGroup =>
-                    aliasGroup.some(alias => normalizedQuery.includes(alias))
-            );
-
-            const filteredByIntent = orderedByVector.filter((product: any) => {
-                const byType =
-                    detectedTypeSet.size === 0 ||
-                    detectedTypeSet.has(product.type as ProductType);
-
-                if (!byType) return false;
-
-                if (!detectedColorAlias) return true;
-
-                const variants = Array.isArray(product.variants)
-                    ? product.variants
-                    : [];
-
-                return variants.some((variant: any) => {
-                    const options = Array.isArray(variant?.options)
-                        ? variant.options
-                        : [];
-
-                    return options.some((option: any) => {
-                        const optionText = `${option?.attributeName ?? ''} ${
-                            option?.label ?? ''
-                        } ${option?.value ?? ''}`.toLowerCase();
-                        return detectedColorAlias.some(alias =>
-                            optionText.includes(alias)
-                        );
-                    });
-                });
-            });
-
-            let candidatesAfterIntentFilter =
-                filteredByIntent.length > 0
-                    ? filteredByIntent
-                    : detectedTypeSet.size > 0
-                    ? []
-                    : orderedByVector;
-
-            if (
-                !candidatesAfterIntentFilter.length &&
-                detectedTypeSet.size > 0
-            ) {
-                const typeValues = Array.from(detectedTypeSet);
-                const typeAndColorFilter: any = {
-                    deletedAt: null,
-                    type: { $in: typeValues },
-                };
-
-                if (detectedColorAlias) {
-                    typeAndColorFilter.$or = [
-                        {
-                            nameBase: {
-                                $regex: detectedColorAlias.join('|'),
-                                $options: 'i',
-                            },
-                        },
-                        {
-                            'variants.name': {
-                                $regex: detectedColorAlias.join('|'),
-                                $options: 'i',
-                            },
-                        },
-                        {
-                            'variants.options.label': {
-                                $regex: detectedColorAlias.join('|'),
-                                $options: 'i',
-                            },
-                        },
-                        {
-                            'variants.options.value': {
-                                $regex: detectedColorAlias.join('|'),
-                                $options: 'i',
-                            },
-                        },
-                    ];
-                }
-
-                const strictTypeProducts = await ProductModel.find(
-                    typeAndColorFilter
-                )
-                    .limit(VECTOR_SEARCH_LIMIT)
-                    .lean();
-
-                candidatesAfterIntentFilter = strictTypeProducts;
-            }
-
-            const shouldRunAIRank =
-                candidatesAfterIntentFilter.length > FINAL_PRODUCTS_LIMIT &&
-                Boolean(QUERY_REWRITE_API_KEY);
-
-            products = shouldRunAIRank
-                ? await this.rankProductsBySuitabilityWithAI(
-                      optimizedQueryText,
-                      candidatesAfterIntentFilter
-                  )
-                : candidatesAfterIntentFilter;
-
-            products = products.slice(0, FINAL_PRODUCTS_LIMIT);
+            products = fullProducts.slice(0, 4);
         } else {
-            const normalized = queryText.toLowerCase();
-            const colorHints = [
-                'đen',
-                'black',
-                'trắng',
-                'white',
-                'nâu',
-                'brown',
-                'xanh',
-                'blue',
-                'đỏ',
-                'red',
-                'hồng',
-                'pink',
-                'vàng',
-                'gold',
-                'bạc',
-                'silver',
-            ];
-
-            const matchedColor = colorHints.find(color =>
-                normalized.includes(color)
-            );
-
-            if (!matchedColor) {
-                return {
-                    paraphrasedIntent: optimizedQueryText,
-                    products: [],
-                };
-            }
-
-            const keywordProducts = await ProductModel.find({
+            products = await ProductModel.find({
                 deletedAt: null,
-                $or: [
-                    { nameBase: { $regex: matchedColor, $options: 'i' } },
-                    {
-                        'variants.name': {
-                            $regex: matchedColor,
-                            $options: 'i',
-                        },
-                    },
-                    {
-                        'variants.options.label': {
-                            $regex: matchedColor,
-                            $options: 'i',
-                        },
-                    },
-                    {
-                        'variants.options.value': {
-                            $regex: matchedColor,
-                            $options: 'i',
-                        },
-                    },
-                ],
+                embedding: { $exists: true, $ne: null },
             })
-                .limit(FINAL_PRODUCTS_LIMIT)
+                .limit(8)
                 .lean();
 
-            return {
-                paraphrasedIntent: optimizedQueryText,
-                products: keywordProducts,
-            };
+            // products = await this.rankProductsBySuitabilityWithAI(
+            //     optimizedQueryText,
+            //     products
+            // );
+
+            products = products.slice(0, 4);
         }
 
         return {

@@ -8,6 +8,7 @@ import { isAISessionExpired, resetSession } from '../../utils/sale-ai.util';
 import aiMessageService from './ai-message.service';
 import productService from './product.service';
 import { ProductModel } from '../../models/product/product.model.mongo';
+import { model } from '../../config/google-gemini-ai.config';
 
 type ChatCompletionResponse = {
     choices?: Array<{
@@ -190,7 +191,6 @@ class AIConversation {
             const { paraphrasedIntent, products } =
                 await productService.buildQueryForAISuggestion(
                     messageHistory,
-                    message
                 );
             suggestedProducts = products;
             console.log('>>> paraphrased intent::', paraphrasedIntent);
@@ -233,16 +233,17 @@ class AIConversation {
             });
 
             const prompt = buildAnswerPrompt(
-                paraphrasedIntent,
+                message,
                 enrichedProducts
             );
-            aiResponse =
-                (await callAishopTextCompletion(
-                    prompt,
-                    'Bạn là nhân viên bán kính, tư vấn đúng dữ liệu products, không bịa.',
-                    0.3
-                )) ||
-                'Mình đã tìm được một số sản phẩm, bạn vui lòng thử lại để mình tư vấn chi tiết hơn nhé.';
+            const aiResult = await model.generateContent(prompt);
+            aiResponse = aiResult.response.text();
+                // (await callAishopTextCompletion(
+                //     prompt,
+                //     'Bạn là nhân viên bán kính, tư vấn đúng dữ liệu products, không bịa.',
+                //     0.3
+                // )) ||
+                // 'Mình đã tìm được một số sản phẩm, bạn vui lòng thử lại để mình tư vấn chi tiết hơn nhé.';
             console.log('>>> SHOPPING intent - Product search executed');
         }
 
