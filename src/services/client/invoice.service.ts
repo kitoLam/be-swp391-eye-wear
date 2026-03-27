@@ -496,6 +496,7 @@ class InvoiceClientService {
             const preOrderProductModeSkuSet = new Set();
             let totalPrice = 0;
             let hasManufacturingProduct = false;
+            let normalQuantity = 0;
 
             for (const item of payload.products) {
                 let itemPrice = 0;
@@ -641,6 +642,7 @@ class InvoiceClientService {
                             },
                             quantity: item.quantity,
                         });
+                        normalQuantity += item.quantity;
                     }
                 }
 
@@ -856,6 +858,7 @@ class InvoiceClientService {
             return {
                 invoice: newInvoice,
                 payment: newPayment,
+                ...(normalQuantity > 0 ? { quantity: normalQuantity } : {}),
             };
         } catch (error) {
             // Revert voucher status if it was marked as USED
@@ -890,13 +893,16 @@ class InvoiceClientService {
         };
 
         if (status) {
-            if(status == "PROCESSING"){
-                filter.status = { $in: [InvoiceStatus.ONBOARD, InvoiceStatus.COMPLETED, InvoiceStatus.READY_TO_SHIP] }
-            }
-            else 
-                filter.status = status;
+            if (status == 'PROCESSING') {
+                filter.status = {
+                    $in: [
+                        InvoiceStatus.ONBOARD,
+                        InvoiceStatus.COMPLETED,
+                        InvoiceStatus.READY_TO_SHIP,
+                    ],
+                };
+            } else filter.status = status;
         }
-        
 
         const result = await invoiceRepository.find(filter, {
             page,
@@ -964,11 +970,9 @@ class InvoiceClientService {
             }
         }
         let invoiceStatus;
-        if (
-            invoice.status === InvoiceStatus.PENDING
-        ) {
+        if (invoice.status === InvoiceStatus.PENDING) {
             invoiceStatus = 'PENDING';
-        } else if(invoice.status === InvoiceStatus.DEPOSITED){
+        } else if (invoice.status === InvoiceStatus.DEPOSITED) {
             invoiceStatus = 'DEPOSITED';
         } else if (invoice.status === InvoiceStatus.REJECTED) {
             invoiceStatus = 'REJECTED';

@@ -85,9 +85,9 @@ class InvoiceController {
         const adminContext = req.adminAccount!;
         const invoiceId = req.params.id as string;
         const body = req.body as RejectInvoiceRequest;
-        const updatedInvoice = await invoiceService.rejectInvoice(invoiceId, adminContext, body);
+        await invoiceService.rejectInvoice(invoiceId, adminContext, body);
         res.json(ApiResponse.success('Reject invoice success', {
-            rejectedNote: updatedInvoice?.rejectedNote,
+            rejectedNote: body.note,
         }));
     };
 

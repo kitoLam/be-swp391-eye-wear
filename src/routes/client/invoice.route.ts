@@ -18,11 +18,11 @@ router.post(
 // Get invoice
 router.get('/', invoiceController.getInvoices);
 
-// update invoice
-router.patch('/:id', validateBody(ClientUpdateInvoiceSchema), invoiceController.updateInvoice);
-router.patch('/:id/cancel', invoiceController.cancelInvoice);
-
 // Get invoice detail
 router.get('/:invoiceId', invoiceController.getInvoiceDetail);
+
+// Update invoice
+router.patch('/:id', validateBody(ClientUpdateInvoiceSchema), invoiceController.updateInvoice);
+router.patch('/:id/cancel', invoiceController.cancelInvoice);
 
 export default router;
