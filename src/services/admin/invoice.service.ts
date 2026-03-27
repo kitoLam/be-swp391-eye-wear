@@ -1,4 +1,4 @@
-import { FilterQuery } from 'mongoose';
+import mongoose, { FilterQuery } from 'mongoose';
 import { invoiceRepository } from '../../repositories/invoice/invoice.repository';
 import {
     InvoiceListQuery,
@@ -48,7 +48,7 @@ class InvoiceService {
         if (query.statuses?.length) {
             filter.status = { $in: query.statuses };
         }
-        if(query.customerId){
+        if (query.customerId) {
             filter.owner = query.customerId;
         }
         console.log(filter);
@@ -80,7 +80,7 @@ class InvoiceService {
             status: query.status,
             statuses: query.statuses,
             staffHandleDelivery,
-            owner: query.customerId
+            owner: query.customerId,
         });
         return {
             invoiceList: result.data,
@@ -154,137 +154,230 @@ class InvoiceService {
         adminContext: AuthAdminContext,
         requestBody: RejectInvoiceRequest
     ) => {
-        const invoiceDetail = await invoiceRepository.findById(invoiceId);
-        if (!invoiceDetail) {
-            throw new NotFoundRequestError('Invoice not found');
-        }
-        // Đơn bị hủy rồi thì ko cho reject nữa
-        if (
-            invoiceDetail.status == InvoiceStatus.CANCELED ||
-            invoiceDetail.status == InvoiceStatus.REJECTED
-        ) {
-            throw new ConflictRequestError(
-                'Invoice is canceled or rejected , you can not change status anymore'
-            );
-        }
-        // cập nhật lại kho
-        // Cập nhật lại stock của từng order trong đơn về lại kho
-        const orderList = await orderRepository.findAllNoPagination({
-            invoiceId: invoiceDetail._id,
-        });
-        for (const orderDetail of orderList) {
-            if (orderDetail) {
-                for (const orderProduct of orderDetail.products) {
-                    if (orderProduct.product) {
-                        const productDetail = await productRepository.findOne({
-                            _id: orderProduct.product.product_id,
-                            'variants.sku': orderProduct.product.sku,
-                        });
-                        if (!productDetail) {
-                            throw new NotFoundRequestError('Product not found');
-                        }
-                        const productVariant = productDetail.variants.find(
-                            v => v.sku === orderProduct.product.sku
-                        );
-                        if (!productVariant) {
-                            throw new NotFoundRequestError(
-                                `Product with sku ${orderProduct.product.sku} not found`
-                            );
-                        }
-                        if (
-                            productVariant.mode == ProductVariantMode.PRE_ORDER
-                        ) {
-                            await PreOrderImportModel.updateOne(
-                                {
-                                    sku: orderProduct.product.sku,
-                                },
-                                {
-                                    $inc: {
-                                        preOrderedQuantity:
-                                            -orderProduct.quantity,
-                                    },
+        const session = await mongoose.startSession();
+
+        try {
+            let updatedInvoice: IInvoiceDocument | null = null;
+
+            await session.withTransaction(async () => {
+                const invoiceDetail = await mongoose
+                    .model<IInvoiceDocument>('Invoice')
+                    .findOne({ _id: invoiceId, deletedAt: null })
+                    .session(session);
+
+                if (!invoiceDetail) {
+                    throw new NotFoundRequestError('Invoice not found');
+                }
+
+                // Chỉ reject khi status đang DEPOSITED để tránh race condition với approve
+                if (invoiceDetail.status !== InvoiceStatus.DEPOSITED) {
+                    throw new ConflictRequestError(
+                        'Only reject invoice when current status is DEPOSITED'
+                    );
+                }
+
+                // cập nhật lại kho
+                // Cập nhật lại stock của từng order trong đơn về lại kho
+                const orderList = await mongoose
+                    .model('Order')
+                    .find({ invoiceId: invoiceDetail._id, deletedAt: null })
+                    .session(session);
+
+                for (const orderDetail of orderList) {
+                    if (orderDetail) {
+                        for (const orderProduct of orderDetail.products) {
+                            if (orderProduct.product) {
+                                const productDetail = await mongoose
+                                    .model('Product')
+                                    .findOne({
+                                        _id: orderProduct.product.product_id,
+                                        'variants.sku':
+                                            orderProduct.product.sku,
+                                        deletedAt: null,
+                                    })
+                                    .session(session);
+
+                                if (!productDetail) {
+                                    throw new NotFoundRequestError(
+                                        'Product not found'
+                                    );
                                 }
-                            );
-                        } else {
-                            await productRepository.updateByFilter(
-                                {
-                                    _id: orderProduct.product.product_id,
-                                    'variants.sku': orderProduct.product.sku,
-                                },
-                                {
-                                    $inc: {
-                                        'variants.$.stock':
-                                            orderProduct.quantity,
-                                    },
+
+                                const productVariant =
+                                    productDetail.variants.find(
+                                        (v: {
+                                            sku: string;
+                                            mode: ProductVariantMode;
+                                        }) => v.sku === orderProduct.product.sku
+                                    );
+
+                                if (!productVariant) {
+                                    throw new NotFoundRequestError(
+                                        `Product with sku ${orderProduct.product.sku} not found`
+                                    );
                                 }
-                            );
-                        }
-                    }
-                    if (orderProduct.lens) {
-                        const lensDetail = await productRepository.findOne({
-                            _id: orderProduct.lens.lens_id,
-                            'variants.sku': orderProduct.lens.sku,
-                        });
-                        if (!lensDetail) {
-                            throw new NotFoundRequestError('Product not found');
-                        }
-                        const lensVariant = lensDetail.variants.find(
-                            v => v.sku === orderProduct.lens!.sku
-                        );
-                        if (!lensVariant) {
-                            throw new NotFoundRequestError(
-                                `Product with sku ${orderProduct.lens.sku} not found`
-                            );
-                        }
-                        if (lensVariant.mode == ProductVariantMode.PRE_ORDER) {
-                            await PreOrderImportModel.updateOne(
-                                {
-                                    sku: orderProduct.lens.sku,
-                                },
-                                {
-                                    $inc: {
-                                        preOrderedQuantity:
-                                            -orderProduct.quantity,
-                                    },
+
+                                if (
+                                    productVariant.mode ==
+                                    ProductVariantMode.PRE_ORDER
+                                ) {
+                                    await mongoose
+                                        .model('PreOrderImport')
+                                        .updateOne(
+                                            {
+                                                sku: orderProduct.product.sku,
+                                            },
+                                            {
+                                                $inc: {
+                                                    preOrderedQuantity:
+                                                        -orderProduct.quantity,
+                                                },
+                                            },
+                                            { session }
+                                        );
+                                } else {
+                                    await mongoose.model('Product').updateOne(
+                                        {
+                                            _id: orderProduct.product
+                                                .product_id,
+                                            'variants.sku':
+                                                orderProduct.product.sku,
+                                            deletedAt: null,
+                                        },
+                                        {
+                                            $inc: {
+                                                'variants.$.stock':
+                                                    orderProduct.quantity,
+                                            },
+                                        },
+                                        { session }
+                                    );
                                 }
-                            );
-                        } else {
-                            await productRepository.updateByFilter(
-                                {
-                                    _id: orderProduct.lens.lens_id,
-                                    'variants.sku': orderProduct.lens.sku,
-                                },
-                                {
-                                    $inc: {
-                                        'variants.$.stock':
-                                            orderProduct.quantity,
-                                    },
+                            }
+
+                            if (orderProduct.lens) {
+                                const lensDetail = await mongoose
+                                    .model('Product')
+                                    .findOne({
+                                        _id: orderProduct.lens.lens_id,
+                                        'variants.sku': orderProduct.lens.sku,
+                                        deletedAt: null,
+                                    })
+                                    .session(session);
+
+                                if (!lensDetail) {
+                                    throw new NotFoundRequestError(
+                                        'Product not found'
+                                    );
                                 }
-                            );
+
+                                const lensVariant = lensDetail.variants.find(
+                                    (v: {
+                                        sku: string;
+                                        mode: ProductVariantMode;
+                                    }) => v.sku === orderProduct.lens!.sku
+                                );
+
+                                if (!lensVariant) {
+                                    throw new NotFoundRequestError(
+                                        `Product with sku ${orderProduct.lens.sku} not found`
+                                    );
+                                }
+
+                                if (
+                                    lensVariant.mode ==
+                                    ProductVariantMode.PRE_ORDER
+                                ) {
+                                    await mongoose
+                                        .model('PreOrderImport')
+                                        .updateOne(
+                                            {
+                                                sku: orderProduct.lens.sku,
+                                            },
+                                            {
+                                                $inc: {
+                                                    preOrderedQuantity:
+                                                        -orderProduct.quantity,
+                                                },
+                                            },
+                                            { session }
+                                        );
+                                } else {
+                                    await mongoose.model('Product').updateOne(
+                                        {
+                                            _id: orderProduct.lens.lens_id,
+                                            'variants.sku':
+                                                orderProduct.lens.sku,
+                                            deletedAt: null,
+                                        },
+                                        {
+                                            $inc: {
+                                                'variants.$.stock':
+                                                    orderProduct.quantity,
+                                            },
+                                        },
+                                        { session }
+                                    );
+                                }
+                            }
                         }
                     }
                 }
+
+                // Nếu 1 invoice bị reject => all trạng thái order là cancelled
+                await mongoose.model('Order').updateMany(
+                    {
+                        invoiceId: invoiceDetail._id,
+                        deletedAt: null,
+                    },
+                    {
+                        $set: {
+                            status: OrderStatus.CANCELED,
+                            verifiedBy: adminContext.id,
+                            verifiedAt: new Date(),
+                        },
+                    },
+                    { session }
+                );
+
+                updatedInvoice = await mongoose
+                    .model<IInvoiceDocument>('Invoice')
+                    .findOneAndUpdate(
+                        {
+                            _id: invoiceId,
+                            status: InvoiceStatus.DEPOSITED,
+                            deletedAt: null,
+                        },
+                        {
+                            $set: {
+                                status: InvoiceStatus.REJECTED,
+                                staffVerified: adminContext.id,
+                                verifiedAt: new Date(),
+                                rejectedNote: requestBody.note,
+                            },
+                        },
+                        {
+                            new: true,
+                            runValidators: true,
+                            session,
+                        }
+                    );
+
+                if (!updatedInvoice) {
+                    throw new ConflictRequestError(
+                        'Invoice was handled by another staff. Please refresh and try again.'
+                    );
+                }
+            });
+
+            if (!updatedInvoice) {
+                throw new ConflictRequestError('Reject invoice failed');
             }
+
+            return updatedInvoice;
+        } finally {
+            await session.endSession();
         }
-        // Nếu 1 invoice bị reject => all trạng thái order là cancelled
-        await orderRepository.updateMany(
-            {
-                invoiceId: invoiceDetail._id,
-            },
-            {
-                status: OrderStatus.CANCELED,
-                verifiedBy: adminContext.id,
-                verifiedAt: new Date()
-            }
-        );
-        // Cập nhật trạng thái rejected
-        const updatedInvoice = await invoiceRepository.update(invoiceId, {
-            status: InvoiceStatus.REJECTED,
-            staffVerified: adminContext.id,
-            verifiedAt: new Date(),
-            rejectedNote: requestBody.note,
-        });
-        return updatedInvoice;
     };
 
     /**
@@ -534,7 +627,7 @@ class InvoiceService {
                 'Invoice status must be COMPLETED to assign'
             );
         }
-        
+
         // check all orders are completed
         const countAllOrders = await orderRepository.count({
             invoiceId: foundInvoice._id,
@@ -595,8 +688,8 @@ class InvoiceService {
             assignStaffHandleDeliveryAt: new Date(),
         });
         await notificationHandler.onAssignInvoice({
-            invoiceId: foundInvoice._id.toString()
-        })
+            invoiceId: foundInvoice._id.toString(),
+        });
         return updatedInvoice;
     };
 
