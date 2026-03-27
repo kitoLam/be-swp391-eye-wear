@@ -937,6 +937,7 @@ class InvoiceClientService {
             for (const curItem of order.products) {
                 const item: any = {
                     type: order.type,
+                    quantity: curItem.quantity
                 };
                 if (curItem.lens) {
                     const lensProduct = await productRepository.findOne({
