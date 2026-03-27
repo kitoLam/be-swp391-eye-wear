@@ -22,7 +22,7 @@ class AdminAccountService {
             const regex = new RegExp(query.search, 'gi');
             filter.$or = [
                 { name: regex },
-                { email: regex },
+                // { email: regex },
                 { phone: regex },
             ];
         }
