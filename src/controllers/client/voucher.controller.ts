@@ -10,7 +10,7 @@ class VoucherClientController {
     getVouchersByClientId = async (req: Request, res: Response) => {
         const clientId = req.params.clientId as string;
         const result = await voucherClientService.getVouchersByClientId(clientId);
-        res.json(ApiResponse.success('Lấy danh sách voucher thành công!', result));
+        res.json(ApiResponse.success('Get voucher list successfully!', result));
     };
 
     /**
@@ -20,7 +20,7 @@ class VoucherClientController {
         const customerId = req.customer!.id;
         const result = await voucherClientService.getMyVouchers(customerId);
         res.json(
-            ApiResponse.success('Lấy danh sách voucher thành công!', result)
+            ApiResponse.success('Get voucher list successfully!', result)
         );
     };
 
@@ -34,7 +34,7 @@ class VoucherClientController {
             customerId,
             payload
         );
-        res.json(ApiResponse.success('Voucher hợp lệ!', result));
+        res.json(ApiResponse.success('Voucher is valid!', result));
     };
 
     /**
@@ -44,7 +44,7 @@ class VoucherClientController {
         const result = await voucherClientService.getAvailableVouchers();
         res.json(
             ApiResponse.success(
-                'Lấy danh sách vouchers khả dụng thành công!',
+                'Get available vouchers successfully!',
                 result
             )
         );
@@ -72,12 +72,12 @@ class VoucherClientController {
 
         if (!voucherCode) {
             return res.status(400).json(
-                ApiResponse.error('Vui lòng cung cấp mã voucher')
+                ApiResponse.error('Please provide a voucher code')
             );
         }
 
         const result = await voucherClientService.claimVoucher(customerId, voucherCode);
-        res.json(ApiResponse.success('Claim voucher thành công!', result));
+        res.json(ApiResponse.success('Claimed voucher successfully!', result));
     };
 }
 

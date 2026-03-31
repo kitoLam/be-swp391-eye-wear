@@ -168,26 +168,26 @@ class VoucherClientService {
         });
 
         if (!voucher) {
-            throw new NotFoundRequestError('Voucher không tồn tại');
+            throw new NotFoundRequestError('Voucher not found');
         }
 
         // 2. Check if voucher is active
         if (voucher.status !== 'ACTIVE') {
-            throw new BadRequestError('Voucher chưa được kích hoạt');
+            throw new BadRequestError('Voucher not activated');
         }
 
         // 3. Check date range
         const now = new Date();
         if (now < voucher.startedDate) {
-            throw new BadRequestError('Voucher chưa đến thời gian sử dụng');
+            throw new BadRequestError('Voucher is not yet available for use');
         }
         if (now > voucher.endedDate) {
-            throw new BadRequestError('Voucher đã hết hạn');
+            throw new BadRequestError('Voucher has expired');
         }
 
         // 4. Check usage limit
         if (voucher.usageCount >= voucher.usageLimit) {
-            throw new BadRequestError('Voucher đã hết lượt sử dụng');
+            throw new BadRequestError('Voucher usage limit reached');
         }
 
         // 5. Check if user has access (for SPECIFIC vouchers)
@@ -203,7 +203,7 @@ class VoucherClientService {
 
             if (error || !data) {
                 throw new BadRequestError(
-                    'Bạn không có quyền sử dụng voucher này'
+                    'You are not authorized to use this voucher'
                 );
             }
         }
@@ -211,7 +211,7 @@ class VoucherClientService {
         // 6. Check minimum order value
         if (orderValue < voucher.minOrderValue) {
             throw new BadRequestError(
-                `Giá trị đơn hàng tối thiểu là ${voucher.minOrderValue.toLocaleString()}đ`
+                `Minimum order value is ${voucher.minOrderValue.toLocaleString()} VND`
             );
         }
 
@@ -280,7 +280,7 @@ class VoucherClientService {
         });
 
         if (!voucher) {
-            throw new NotFoundRequestError('Voucher không tồn tại');
+            throw new NotFoundRequestError('Voucher not found');
         }
 
         // 2. Check if user has this voucher in Supabase
@@ -293,18 +293,18 @@ class VoucherClientService {
             .single();
 
         if (fetchError || !voucherUser) {
-            throw new BadRequestError('Bạn không có voucher này');
+            throw new BadRequestError('You do not have this voucher');
         }
 
         // 3. Check current status in metadata
         const currentStatus = voucherUser.metadata?.status;
 
         if (currentStatus === VoucherClaimStatus.CLAIMED) {
-            throw new BadRequestError('Voucher đã được claim rồi');
+            throw new BadRequestError('Voucher already claimed');
         }
 
         if (currentStatus !== VoucherClaimStatus.WAITING_CLAIM) {
-            throw new BadRequestError('Voucher không ở trạng thái chờ claim');
+            throw new BadRequestError('Voucher is not in waiting for claim status');
         }
 
         // 4. Update status to CLAIMED
@@ -325,12 +325,12 @@ class VoucherClientService {
 
         if (updateError) {
             throw new BadRequestError(
-                'Không thể claim voucher: ' + updateError.message
+                'Cannot claim voucher: ' + updateError.message
             );
         }
 
         return {
-            message: 'Claim voucher thành công',
+            message: 'Claimed voucher successfully',
             voucher: {
                 code: voucher.code,
                 name: voucher.name,

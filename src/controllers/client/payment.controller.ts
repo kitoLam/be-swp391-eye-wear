@@ -14,7 +14,7 @@ class PaymentController {
             invoiceId,
             ipAddr as string
         );
-        res.json(ApiResponse.success('Tạo cổng thanh toán vnpay', { url }));
+        res.json(ApiResponse.success('Created VNPay payment gateway', { url }));
     };
     handlePaymentWithVnPayResult = async (req: Request, res: Response) => {
         let vnp_Params = req.query;
@@ -37,7 +37,7 @@ class PaymentController {
             paymentId
         );
         res.json(
-            ApiResponse.success('Tạo cổng thanh toán zalo thành công', { url })
+            ApiResponse.success('Created ZaloPay payment gateway successfully', { url })
         );
     };
     getPayosPaymentUrl = async (req: Request, res: Response) => {
@@ -50,7 +50,7 @@ class PaymentController {
             paymentId
         );
         res.json(
-            ApiResponse.success('Tạo cổng thanh toán payos thành công', { url })
+            ApiResponse.success('Created PayOS payment gateway successfully', { url })
         );
     };
 
@@ -59,7 +59,7 @@ class PaymentController {
         const [_notUseVar, paymentId] = payload.description.split(" ");
         console.log(">>> paymentId::", paymentId);
         await paymentClientService.handlePayosResultCallback(paymentId);
-        res.json(ApiResponse.success('Thanh toán payos thành công', null));
+        res.json(ApiResponse.success('PayOS payment successful', null));
     };
 
     handlePayOsCancelCallback = async (req: Request, res: Response) => {
@@ -77,7 +77,7 @@ class PaymentController {
             dataStr: req.body.data,
             reqMac: req.body.mac,
         });
-        res.json(ApiResponse.success('Thanh toán zalo thanh cong', result));
+        res.json(ApiResponse.success('ZaloPay payment successful', result));
     };
 
     getPaymentDetail = async (req: Request, res: Response) => {
@@ -88,7 +88,7 @@ class PaymentController {
             paymentId
         );
         res.json(
-            ApiResponse.success('Lấy thông tin thanh toán thành công', payment)
+            ApiResponse.success('Get payment information successfully', payment)
         );
     };
 }

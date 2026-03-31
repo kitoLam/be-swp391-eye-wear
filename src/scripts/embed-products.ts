@@ -211,7 +211,9 @@ async function embedAllProducts(): Promise<void> {
 
     const query = { deletedAt: null }
 
-    const products = await ProductModel.find(query)
+    const products = await ProductModel.find({
+        _id: "69c2b638ca366ab95aacde9e"
+    })
         .select({
             _id: 1,
             nameBase: 1,
@@ -221,6 +223,10 @@ async function embedAllProducts(): Promise<void> {
             spec: 1,
             variants: 1,
         })
+        .sort({
+            createdAt: -1
+        })
+        .limit(3)
         .lean();
 
     console.log(
@@ -233,7 +239,7 @@ async function embedAllProducts(): Promise<void> {
 
     for (const product of products) {
         const productId = product._id.toString();
-
+        console.log(">>> run::", product.nameBase);
         try {
             const text = buildEmbeddingText(product);
             const vector = await getEmbeddingVector(text);

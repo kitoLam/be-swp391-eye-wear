@@ -115,7 +115,7 @@ class ProductService {
     //     payload: ProductConfigManufacturing
     // ): Promise<OrderProductClientCreate> {
     //     if (payload.products.length > 2) {
-    //         throw new ConflictRequestError('Vui lòng chọn tối đa 2 mặt hàng!');
+    //         throw new ConflictRequestError('Please select a maximum of 2 items!');
     //     }
     //     const productFinal: OrderProductClientCreate = {
     //         quantity: 1,
@@ -127,7 +127,7 @@ class ProductService {
     //             'variants.sku': product.sku,
     //         });
     //         if (!item) {
-    //             throw new NotFoundRequestError('Mặt hàng không tồn tại!');
+    //             throw new NotFoundRequestError('Item does not exist!');
     //         }
     //         items.push(item);
     //     }
@@ -135,7 +135,7 @@ class ProductService {
     //     if (items.length == 1) {
     //         // nếu chỉ có 1 sp thì phải là lens
     //         if (items[0].type != ProductType.LENS) {
-    //             throw new ConflictRequestError('Vui lòng chọn thêmn tròng!');
+    //             throw new ConflictRequestError('Please select a lens!');
     //         }
     //         productFinal.lens = {
     //             lens_id: payload.products[0].id,
@@ -172,7 +172,7 @@ class ProductService {
     //             };
     //         } else {
     //             throw new ConflictRequestError(
-    //                 'Vui lòng chọn thêm gọng hoặc tròng!'
+    //                 'Please select an additional frame or lens!'
     //             );
     //         }
     //     }
@@ -402,17 +402,17 @@ class ProductService {
             .join('\n');
 
         const prompt = [
-            'Bạn là hệ thống chuẩn hóa truy vấn tìm kiếm sản phẩm kính mắt.',
-            'Nhiệm vụ: viết lại truy vấn người dùng thành 1 câu ngắn gọn để semantic search hiệu quả hơn.',
-            'Yêu cầu bắt buộc:',
-            '- Không đổi ý định gốc của người dùng.',
-            '- Giữ đầy đủ ràng buộc nếu có: loại sản phẩm (gọng/kính mát/tròng), ngân sách, giới tính, màu, dáng, thương hiệu, nhu cầu chức năng.',
-            '- Nếu người dùng hỏi mơ hồ, làm rõ thành truy vấn mua hàng hợp lý nhưng không bịa thông tin cụ thể.',
-            '- Nếu có yêu cầu về tròng kính thì giữ lại thông tin spec/feature/material (ví dụ chống ánh sáng xanh, đổi màu, polycarbonate...).',
-            '- Trả về duy nhất 1 câu plain text để đem đi embed.',
+            'You are a normalization system for eyewear product search queries.',
+            'Task: rewrite the user query into a concise sentence for more effective semantic search.',
+            'Mandatory requirements:',
+            '- Do not change the user\'s original intent.',
+            '- Keep all constraints if present: product type (frame/sunglass/lens), budget, gender, color, shape, brand, functional needs.',
+            '- If the user\'s query is vague, clarify it into a reasonable purchase query without inventing specific information.',
+            '- If there are lens requirements, retain spec/feature/material information (e.g., blue light blocking, photochromic, polycarbonate...).',
+            '- Return only a single plain text sentence for embedding.',
             '',
-            `Truy vấn hiện tại: ${queryText}`,
-            'Hội thoại gần nhất:',
+            `Current query: ${queryText}`,
+            'Recent conversation:',
             historyText,
         ].join('\n');
 
@@ -422,7 +422,7 @@ class ProductService {
             try {
                 const rewritten = await callAishopTextCompletion(
                     prompt,
-                    'Bạn tối ưu truy vấn retrieval cho sản phẩm kính mắt.',
+                    'You optimize retrieval queries for eyewear products.',
                     0.2
                 );
 
@@ -495,25 +495,25 @@ Summary:`;
             return products;
         }
 
-        const prompt = `Bạn là chuyên gia tư vấn kính mắt. Dựa trên yêu cầu người dùng và dữ liệu JSON sản phẩm, hãy đánh giá mức độ phù hợp của từng sản phẩm.
+        const prompt = `You are an eyewear consultant. Based on user requirements and product JSON data, evaluate the suitability of each product.
 
-Yêu cầu người dùng:
+User requirements:
 ${userQuery}
 
-Danh sách sản phẩm JSON:
+Product JSON list:
 ${JSON.stringify(products, null, 2)}
 
-Quy tắc:
-- Chỉ đánh giá dựa trên dữ liệu có trong JSON.
-- Không bịa thêm thông tin.
-- BẮT BUỘC kiểm tra tồn kho theo variant. Nếu variant phù hợp nhất có stock > 0 và mode AVAILABLE thì inStock=true.
-- Nếu không có variant nào phù hợp và còn hàng thì inStock=false.
-- Nếu thiếu dữ liệu để kết luận mạnh, vẫn chấm điểm thận trọng và ghi lý do thiếu dữ liệu.
-- Trả về DUY NHẤT JSON array theo format:
+Rules:
+- Evaluate only based on the data provided in the JSON.
+- Do not invent information.
+- MANDATORY: check inventory by variant. If the most suitable variant has stock > 0 and mode AVAILABLE, then inStock=true.
+- If no suitable variant is in stock, then inStock=false.
+- If data is insufficient for a strong conclusion, still score cautiously and note the reason for the data gap.
+- Return ONLY a JSON array in the following format:
 [
-  {"id":"productId","matchedVariantSku":"SKU nếu có","inStock":true|false,"score":0-100,"reason":"..."}
+  {"id":"productId","matchedVariantSku":"SKU if available","inStock":true|false,"score":0-100,"reason":"..."}
 ]
-- Sắp xếp theo score giảm dần.`;
+- Sort by score in descending order.`;
 
         try {
             let text = '';
@@ -537,7 +537,7 @@ Quy tắc:
                                 {
                                     role: 'system',
                                     content:
-                                        'Bạn chấm độ phù hợp sản phẩm và xác nhận tồn kho theo dữ liệu variant.',
+                                        'You evaluate product suitability and confirm inventory based on variant data.',
                                 },
                                 {
                                     role: 'user',

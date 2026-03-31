@@ -17,7 +17,7 @@ class InvoiceController {
             payload
         );
 
-        res.json(ApiResponse.success('Tạo hóa đơn thành công!', data));
+        res.json(ApiResponse.success('Invoice created successfully!', data));
 
         // Notify customer via email (asynchronous queue-based)
         // data contains { invoice, payment }
@@ -46,7 +46,7 @@ class InvoiceController {
         );
 
         res.json(
-            ApiResponse.success('Lấy danh sách hóa đơn thành công!', result)
+            ApiResponse.success('Get invoice list successfully!', result)
         );
     };
 
@@ -63,7 +63,7 @@ class InvoiceController {
         );
 
         res.json(
-            ApiResponse.success('Lấy chi tiết hóa đơn thành công!', {
+            ApiResponse.success('Get invoice details successfully!', {
                 ...data,
             })
         );

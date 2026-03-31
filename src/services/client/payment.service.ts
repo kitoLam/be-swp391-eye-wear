@@ -220,7 +220,7 @@ class PaymentClientService {
             owner: customerId,
         });
         if (!invoiceDetail)
-            throw new NotFoundRequestError('Đơn hàng không tồn tại');
+            throw new NotFoundRequestError('Order does not exist');
 
         let date = new Date();
         let createDate = moment(date).format('YYYYMMDDHHmmss');
@@ -245,7 +245,7 @@ class PaymentClientService {
         vnp_Params['vnp_Locale'] = locale;
         vnp_Params['vnp_CurrCode'] = currCode;
         vnp_Params['vnp_TxnRef'] = vnPayOrderId;
-        vnp_Params['vnp_OrderInfo'] = 'Thanh toan cho ma GD:' + vnPayOrderId;
+        vnp_Params['vnp_OrderInfo'] = 'Payment for transaction ID:' + vnPayOrderId;
         vnp_Params['vnp_OrderType'] = 'other';
         vnp_Params['vnp_Amount'] = amount;
         vnp_Params['vnp_ReturnUrl'] = returnUrl;
@@ -288,7 +288,7 @@ class PaymentClientService {
                 .digest('hex');
             if (secureHash != signed) {
                 // chữ kí không hợp lệ
-                throw new ForbiddenRequestError('Chữ kí không hợp lệ');
+                throw new ForbiddenRequestError('Invalid signature');
             }
             if (
                 vnp_Params.vnp_ResponseCode == '00' &&
@@ -332,7 +332,7 @@ class PaymentClientService {
                 }
             }
             else {
-                throw new ForbiddenRequestError('Thanh toán khỏng thành công');
+                throw new ForbiddenRequestError('Payment failed');
             }
         } catch (error) {
             console.log(error);
@@ -354,7 +354,7 @@ class PaymentClientService {
             deletedAt: null,
         });
         if (!existInvoice) {
-            throw new NotFoundRequestError('Đơn hàng không tồn tại');
+            throw new NotFoundRequestError('Order does not exist');
         }
 
         // app info
@@ -378,7 +378,7 @@ class PaymentClientService {
             embed_data: JSON.stringify(embed_data),
             // amount: Math.round(Number(existOrder.payment.finalPrice)),
             amount: existInvoice.totalPrice - existInvoice.totalDiscount, // Placeholder
-            description: `Thanh toán hóa đơn #${invoiceId}`,
+            description: `Payment for invoice #${invoiceId}`,
             bank_code: '', // zalopayapp -> scan QR
             mac: '',
             callback_url: `${process.env.APP_API}/payments/zalopay/result-callback`, // sau khi zalo pay thực hiện xong việc thanh toán thu tiền, sẽ chạy vào callback_url để xử lí tiếp
@@ -415,7 +415,7 @@ class PaymentClientService {
             deletedAt: null,
         });
         if (!existInvoice) {
-            throw new NotFoundRequestError('Đơn hàng không tồn tại');
+            throw new NotFoundRequestError('Order does not exist');
         }
 
         const orderForPayos = {
@@ -444,7 +444,7 @@ class PaymentClientService {
             deletedAt: null,
         });
         if (!foundPayment) {
-            throw new NotFoundRequestError('Thanh toán không thông tin');
+            throw new NotFoundRequestError('Payment information not found');
         } else {
             await this.handlePaymentFailCallback(
                 foundPayment.invoiceId,
@@ -458,7 +458,7 @@ class PaymentClientService {
             deletedAt: null,
         });
         if (!foundPayment) {
-            throw new NotFoundRequestError('Không tìm thấy thông tin thanh toán');
+            throw new NotFoundRequestError('Payment information not found');
         } else {
             await this.handlePaymentCallback(
                 foundPayment.invoiceId,

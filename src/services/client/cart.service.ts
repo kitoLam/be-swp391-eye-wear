@@ -23,7 +23,7 @@ class CartService {
         } as any);
 
         if (!cart) {
-            throw new NotFoundRequestError('Giỏ hàng không tồn tại!');
+            throw new NotFoundRequestError('Cart does not exist!');
         }
 
         return cart;
@@ -112,7 +112,7 @@ class CartService {
         } as any);
 
         if (!cart) {
-            throw new NotFoundRequestError('Giỏ hàng không tồn tại!');
+            throw new NotFoundRequestError('Cart does not exist!');
         }
 
         await productService.ensureBoughtProductIsValidToBuy(
@@ -135,7 +135,7 @@ class CartService {
                 payload.item
             )) == false
         ){
-            throw new NotFoundRequestError('Sản phẩm không có trong giỏ hàng!');
+            throw new NotFoundRequestError('Product not found in cart!');
         }
         // Update quantity
         await cartRepository.updateProductQuantity(
@@ -155,7 +155,7 @@ class CartService {
         } as any);
 
         if (!cart) {
-            throw new NotFoundRequestError('Giỏ hàng không tồn tại!');
+            throw new NotFoundRequestError('Cart does not exist!');
         }
 
         // Check if product exists in cart
@@ -165,7 +165,7 @@ class CartService {
         );
 
         if (!productExists) {
-            throw new NotFoundRequestError('Sản phẩm không có trong giỏ hàng!');
+            throw new NotFoundRequestError('Product not found in cart!');
         }
         // Update prescription
         await cartRepository.updateProductPrescription(
@@ -182,7 +182,7 @@ class CartService {
         } as any);
 
         if (!cart) {
-            throw new NotFoundRequestError('Giỏ hàng không tồn tại!');
+            throw new NotFoundRequestError('Cart does not exist!');
         }
 
         // Check if product exists in cart
@@ -192,7 +192,7 @@ class CartService {
         );
 
         if (!productExists) {
-            throw new NotFoundRequestError('Sản phẩm không có trong giỏ hàng!');
+            throw new NotFoundRequestError('Product not found in cart!');
         }
 
         // Remove product
@@ -211,14 +211,14 @@ class CartService {
         } as any);
 
         if (!cart) {
-            throw new NotFoundRequestError('Giỏ hàng không tồn tại!');
+            throw new NotFoundRequestError('Cart does not exist!');
         }
 
         // Clear cart
         const updatedCart = await cartRepository.clearCart(customerId);
 
         if (!updatedCart) {
-            throw new NotFoundRequestError('Không thể xóa giỏ hàng!');
+            throw new NotFoundRequestError('Could not clear cart!');
         }
 
         return updatedCart;
