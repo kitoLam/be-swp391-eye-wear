@@ -60,7 +60,7 @@ class InvoiceClientService {
 
         if (!globalFeeConfig || typeof globalFeeConfig.fee !== 'number') {
             throw new BadRequestError(
-                'Không tìm thấy cấu hình phí ship GLOBAL trong DB'
+                'Global ship fee configuration not found in database'
             );
         }
 
@@ -87,7 +87,7 @@ class InvoiceClientService {
             await redisService.incrKeyBy(key, -qty);
 
             // Ném lỗi ngay lập tức - User này sẽ nhận lỗi 400 và dừng lại
-            throw new BadRequestError('Sản phẩm đã hết hàng!');
+            throw new BadRequestError('Product out of stock!');
         }
 
         // Nếu chạy xuống đến đây nghĩa là User đã "giữ chỗ" thành công
@@ -150,7 +150,7 @@ class InvoiceClientService {
 
         if (!voucher) {
             throw new NotFoundRequestError(
-                `Voucher code "${voucherCode}" không tồn tại`
+                `Voucher code "${voucherCode}" does not exist`
             );
         }
 
@@ -164,7 +164,7 @@ class InvoiceClientService {
 
         if (voucherUserRecordsError) {
             throw new BadRequestError(
-                'Không thể kiểm tra lịch sử sử dụng voucher: ' +
+                'Cannot check voucher usage history: ' +
                     voucherUserRecordsError.message
             );
         }
@@ -175,7 +175,7 @@ class InvoiceClientService {
         );
 
         if (hasUsedRecord) {
-            throw new BadRequestError('Voucher này đã được sử dụng');
+            throw new BadRequestError('This voucher has already been used');
         }
 
         // 3. Check voucher ownership/update voucher_user status in Supabase
@@ -192,7 +192,7 @@ class InvoiceClientService {
 
             if (fetchError || !voucherUser) {
                 throw new BadRequestError(
-                    'Bạn không có quyền sử dụng voucher này hoặc voucher không thuộc về bạn'
+                    'You are not authorized to use this voucher or it does not belong to you'
                 );
             }
 
@@ -202,7 +202,7 @@ class InvoiceClientService {
             }
             if (currentStatus !== VoucherClaimStatus.CLAIMED) {
                 throw new BadRequestError(
-                    'Voucher chưa được claim. Vui lòng claim voucher trước khi sử dụng'
+                    'Voucher not claimed. Please claim the voucher before using it'
                 );
             }
 
@@ -224,7 +224,7 @@ class InvoiceClientService {
 
             if (updateError) {
                 throw new BadRequestError(
-                    'Không thể áp dụng voucher: ' + updateError.message
+                    'Cannot apply voucher: ' + updateError.message
                 );
             }
         }
@@ -242,7 +242,7 @@ class InvoiceClientService {
 
             if (existingError) {
                 throw new BadRequestError(
-                    'Không thể kiểm tra trạng thái voucher: ' +
+                    'Cannot check voucher status: ' +
                         existingError.message
                 );
             }
@@ -250,7 +250,7 @@ class InvoiceClientService {
             if (existingVoucherUser) {
                 const currentStatus = existingVoucherUser.metadata?.status;
                 if (currentStatus === VoucherClaimStatus.USED) {
-                    throw new BadRequestError('Voucher này đã được sử dụng');
+                    throw new BadRequestError('This voucher has already been used');
                 }
 
                 const updatedMetadata = {
@@ -285,7 +285,7 @@ class InvoiceClientService {
 
                 if (customerFetchError) {
                     throw new BadRequestError(
-                        'Không thể kiểm tra customer trong Supabase: ' +
+                        'Cannot check customer in Supabase: ' +
                             customerFetchError.message
                     );
                 }
@@ -297,7 +297,7 @@ class InvoiceClientService {
 
                     if (customerInsertError) {
                         throw new BadRequestError(
-                            'Không thể đồng bộ customer sang Supabase: ' +
+                            'Cannot sync customer to Supabase: ' +
                                 customerInsertError.message
                         );
                     }
@@ -322,7 +322,7 @@ class InvoiceClientService {
 
                 if (insertError) {
                     throw new BadRequestError(
-                        'Không thể áp dụng voucher: ' + insertError.message
+                        'Cannot apply voucher: ' + insertError.message
                     );
                 }
                 voucherRecordCreated = true;
@@ -332,19 +332,19 @@ class InvoiceClientService {
         // 3. Validate voucher conditions (Date, Status, Usage, MinOrder)
         const now = new Date();
         if (voucher.status !== VoucherStatus.ACTIVE) {
-            throw new BadRequestError('Voucher hiện không khả dụng');
+            throw new BadRequestError('Voucher is currently unavailable');
         }
         if (now < voucher.startedDate || now > voucher.endedDate) {
             throw new BadRequestError(
-                'Voucher đã hết hạn hoặc chưa đến thời gian sử dụng'
+                'Voucher has expired or is not yet available for use'
             );
         }
         if (voucher.usageCount >= voucher.usageLimit) {
-            throw new BadRequestError('Voucher đã hết lượt sử dụng tổng thể');
+            throw new BadRequestError('Voucher total usage limit reached');
         }
         if (totalPrice < voucher.minOrderValue) {
             throw new BadRequestError(
-                `Đơn hàng tối thiểu ${voucher.minOrderValue.toLocaleString()}đ để áp dụng voucher này`
+                `Minimum order of ${voucher.minOrderValue.toLocaleString()} VND is required to apply this voucher`
             );
         }
 
@@ -961,6 +961,9 @@ class InvoiceClientService {
                 const productVariant = product!.variants.find(
                     variant => variant.sku === curItem.product.sku
                 );
+                if(!productVariant){
+                    throw new NotFoundRequestError("Variant does not exist");
+                }
                 item.product = {
                     product_id: curItem.product.product_id,
                     sku: curItem.product.sku,

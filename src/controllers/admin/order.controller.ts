@@ -53,7 +53,7 @@ class OrderController {
         const orders = await orderService.getOrdersList(adminContext, query);
 
         res.json(
-            ApiResponse.success('Lấy danh sách order thành công!', {
+            ApiResponse.success('Get order list successfully!', {
                 orders,
             })
         );
@@ -62,7 +62,7 @@ class OrderController {
     getOrderDetail = async (req: Request, res: Response) => {
         const orderId = req.params.id as string;
         const order = await orderService.getOrderDetail(orderId);
-        res.json(ApiResponse.success('Lấy chi tiết đơn hàng!', { order }));
+        res.json(ApiResponse.success('Get order details successfully!', { order }));
     }
 
     getOrderSummary = async (req: Request, res: Response) => {

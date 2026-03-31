@@ -10,7 +10,7 @@ class CartController {
         const customerId = req.customer!.id;
         const cart = await cartService.getCart(customerId);
         res.json(
-            ApiResponse.success('Lấy giỏ hàng thành công!', {
+            ApiResponse.success('Get cart successfully!', {
                 cart,
             })
         );
@@ -24,7 +24,7 @@ class CartController {
         const payload = req.body as AddItemToCart;
         await cartService.addToCart(customerId, payload);
         res.json(
-            ApiResponse.success('Thêm sản phẩm vào giỏ hàng thành công!', null)
+            ApiResponse.success('Added product to cart successfully!', null)
         );
     };
 
@@ -36,7 +36,7 @@ class CartController {
         const payload = req.body as UpdateCartItemQuantity;
         await cartService.updateCartItemQuantity(customerId, payload);
         res.json(
-            ApiResponse.success('Cập nhật số lượng thành công!', null)
+            ApiResponse.success('Updated quantity successfully!', null)
         );
     };
     /**
@@ -49,7 +49,7 @@ class CartController {
         const payload = req.body as UpdateCartItemPrescription;
         await cartService.updateCartItemPrescription(customerId, payload);
         res.json(
-            ApiResponse.success('Cập nhật số lượng thành công!', null)
+            ApiResponse.success('Updated prescription successfully!', null)
         );
     };
 
@@ -60,7 +60,7 @@ class CartController {
         const customerId = req.customer!.id;
         await cartService.removeFromCart(customerId, req.body);
         res.json(
-            ApiResponse.success('Xóa sản phẩm khỏi giỏ hàng thành công!', null)
+            ApiResponse.success('Removed product from cart successfully!', null)
         );
     };
 
@@ -71,7 +71,7 @@ class CartController {
         const customerId = req.customer!.id;
         await cartService.clearCart(customerId);
         res.json(
-            ApiResponse.success('Xóa toàn bộ giỏ hàng thành công!', null)
+            ApiResponse.success('Cleared cart successfully!', null)
         );
     };
 }

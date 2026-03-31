@@ -14,7 +14,7 @@ class VoucherAdminController {
     createVoucher = async (req: Request, res: Response) => {
         const payload = req.body as CreateVoucher;
         const voucher = await voucherAdminService.createVoucher(payload);
-        res.json(ApiResponse.success('Tạo voucher thành công!', { voucher }));
+        res.json(ApiResponse.success('Voucher created successfully!', { voucher }));
     };
 
     /**
@@ -34,7 +34,7 @@ class VoucherAdminController {
             code
         );
         res.json(
-            ApiResponse.success('Lấy danh sách voucher thành công!', result)
+            ApiResponse.success('Get voucher list successfully!', result)
         );
     };
 
@@ -45,7 +45,7 @@ class VoucherAdminController {
         const voucherId = req.params.id as string;
         const voucher = await voucherAdminService.getVoucherDetail(voucherId);
         res.json(
-            ApiResponse.success('Lấy chi tiết voucher thành công!', { voucher })
+            ApiResponse.success('Get voucher details successfully!', { voucher })
         );
     };
 
@@ -60,7 +60,7 @@ class VoucherAdminController {
             payload
         );
         res.json(
-            ApiResponse.success('Cập nhật voucher thành công!', { voucher })
+            ApiResponse.success('Update voucher successfully!', { voucher })
         );
     };
 
@@ -88,7 +88,7 @@ class VoucherAdminController {
         );
         res.json(
             ApiResponse.success(
-                `Đã cấp voucher ${result.voucherCode} cho ${result.grantedCount} users`,
+                `Voucher ${result.voucherCode} granted to ${result.grantedCount} users`,
                 result
             )
         );
@@ -107,7 +107,7 @@ class VoucherAdminController {
         );
         res.json(
             ApiResponse.success(
-                `Đã thu hồi voucher ${result.voucherCode} từ ${result.revokedCount} users`,
+                `Voucher ${result.voucherCode} revoked from ${result.revokedCount} users`,
                 result
             )
         );
@@ -120,7 +120,7 @@ class VoucherAdminController {
         const voucherId = req.params.id as string;
         const result = await voucherAdminService.getVoucherUsers(voucherId);
         res.json(
-            ApiResponse.success('Lấy danh sách users thành công!', result)
+            ApiResponse.success('Get user list successfully!', result)
         );
     };
 
@@ -132,7 +132,7 @@ class VoucherAdminController {
         const result = await voucherAdminService.getUserVouchers(userId);
         res.json(
             ApiResponse.success(
-                'Lấy danh sách vouchers của user thành công!',
+                "Get user's voucher list successfully!",
                 result
             )
         );
@@ -143,7 +143,7 @@ class VoucherAdminController {
      */
     getStatistics = async (req: Request, res: Response) => {
         const stats = await voucherAdminService.getStatistics();
-        res.json(ApiResponse.success('Lấy thống kê thành công!', stats));
+        res.json(ApiResponse.success('Get statistics successfully!', stats));
     };
 }
 

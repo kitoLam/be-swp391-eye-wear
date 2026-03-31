@@ -12,7 +12,7 @@ class OrderController {
             invoiceId
         );
         res.json(
-            ApiResponse.success('Lấy đơn hàng theo mã hóa đơn thành công!', data)
+            ApiResponse.success('Get orders by invoice ID successfully!', data)
         );
     };
 
@@ -24,7 +24,7 @@ class OrderController {
             orderId as string
         );
         res.json(
-            ApiResponse.success('Lấy chi tiết đơn hàng thành công!', { order })
+            ApiResponse.success('Get order details successfully!', { order })
         );
     };
 
@@ -38,7 +38,7 @@ class OrderController {
             payload
         );
         res.json(
-            ApiResponse.success('Cập nhật đơn hàng thành công!', { order })
+            ApiResponse.success('Update order successfully!', { order })
         );
     };
 }
