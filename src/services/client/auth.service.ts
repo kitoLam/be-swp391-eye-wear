@@ -333,11 +333,18 @@ class AuthService {
     ) => {
         // Hash password
         const hashedPassword = hashPassword(passwordRaw);
-
-        // Update in MongoDB
-        await customerRepository.update(customer.id, {
-            hashedPassword: hashedPassword,
+        const foundCustomer = await customerRepository.findOne({
+            _id: customer.id
         });
+        if(!foundCustomer){
+            throw new NotFoundRequestError("Not found customer");
+        }
+        if( !foundCustomer.providers.includes("local")){
+            foundCustomer.providers.push("local");
+        }
+        // Update in MongoDB
+        foundCustomer.hashedPassword = hashedPassword;
+        await foundCustomer.save();
     };
 
     handleRequestMergeAccount = async (payload: LoginCustomerDTO) => {
