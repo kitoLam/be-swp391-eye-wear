@@ -3,6 +3,8 @@ import {
     IOrderDocument,
 } from '../../models/order/order.model.mongo';
 import { BaseRepository } from '../base.repository';
+import mongoose from 'mongoose';
+import { OrderType } from '../../config/enums/order.enum';
 
 export class OrderRepository extends BaseRepository<IOrderDocument> {
     constructor() {
@@ -35,6 +37,74 @@ export class OrderRepository extends BaseRepository<IOrderDocument> {
         const totalRevenue = financial[0]?.totalRevenue || 0;
 
         return { total, byType, totalRevenue };
+    }
+
+    /**
+     * Get counts of order types within an invoice
+     * @param invoiceId 
+     * @returns 
+     */
+    async getOrderTypeCountsByInvoiceId(invoiceId: string) {
+        const mongoInvoiceId = new mongoose.Types.ObjectId(invoiceId);
+        const result = await OrderModel.aggregate([
+            {
+                $match: {
+                    invoiceId: mongoInvoiceId,
+                    deletedAt: null,
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: 1 },
+                    totalManu: {
+                        $sum: {
+                            $cond: [
+                                { $in: [OrderType.MANUFACTURING, '$type'] },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
+                    totalNormal: {
+                        $sum: {
+                            $cond: [
+                                { $in: [OrderType.NORMAL, '$type'] },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
+                    totalPreOrder: {
+                        $sum: {
+                            $cond: [
+                                { $in: [OrderType.PRE_ORDER, '$type'] },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    total: 1,
+                    totalManu: 1,
+                    totalNormal: 1,
+                    totalPreOrder: 1,
+                },
+            },
+        ]);
+
+        return (
+            result[0] || {
+                total: 0,
+                totalManu: 0,
+                totalNormal: 0,
+                totalPreOrder: 0,
+            }
+        );
     }
 }
 

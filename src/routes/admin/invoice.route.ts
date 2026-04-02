@@ -67,6 +67,11 @@ router.get(
     validateParams(ObjectIdSchema),
     invoiceController.getInvoiceDetail
 );
+router.get(
+    '/:id/stats-order-type',
+    validateParams(ObjectIdSchema),
+    invoiceController.getOrderTypeStats
+);
 // api lấy danh sách hóa đơn theo staffHandleDelivery của staff đang đăng nhập
 // =============== MANAGER ROLE =============
 router.get(

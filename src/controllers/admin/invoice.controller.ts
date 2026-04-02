@@ -215,5 +215,17 @@ class InvoiceController {
         const data = await invoiceService.getTopSalesDashboard(query);
         res.json(ApiResponse.success('Get top sales dashboard success', data));
     };
+
+    /**
+     * Get order type statistics within an invoice
+     * Endpoint: GET /admin/invoices/:id/stats-order-type
+     */
+    getOrderTypeStats = async (req: Request, res: Response) => {
+        const invoiceId = req.params.id as string;
+        const stats = await invoiceService.getOrderTypeStatsByInvoiceId(
+            invoiceId
+        );
+        res.json(ApiResponse.success('Get order type stats success', stats));
+    };
 }
 export default new InvoiceController();

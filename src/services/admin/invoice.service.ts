@@ -722,6 +722,15 @@ class InvoiceService {
             topProducts,
         };
     };
+
+    /**
+     * Get order type statistics within an invoice
+     * @param invoiceId
+     * @returns
+     */
+    getOrderTypeStatsByInvoiceId = async (invoiceId: string) => {
+        return await orderRepository.getOrderTypeCountsByInvoiceId(invoiceId);
+    };
 }
 
 export default new InvoiceService();
