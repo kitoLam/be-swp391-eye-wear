@@ -106,6 +106,71 @@ export class OrderRepository extends BaseRepository<IOrderDocument> {
             }
         );
     }
+
+    /**
+     * Get counts of all order types across all orders
+     * @returns 
+     */
+    async getAllOrderTypeCounts() {
+        const result = await OrderModel.aggregate([
+            {
+                $match: {
+                    deletedAt: null,
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: 1 },
+                    totalManu: {
+                        $sum: {
+                            $cond: [
+                                { $in: [OrderType.MANUFACTURING, '$type'] },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
+                    totalNormal: {
+                        $sum: {
+                            $cond: [
+                                { $in: [OrderType.NORMAL, '$type'] },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
+                    totalPreOrder: {
+                        $sum: {
+                            $cond: [
+                                { $in: [OrderType.PRE_ORDER, '$type'] },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    total: 1,
+                    totalManu: 1,
+                    totalNormal: 1,
+                    totalPreOrder: 1,
+                },
+            },
+        ]);
+
+        return (
+            result[0] || {
+                total: 0,
+                totalManu: 0,
+                totalNormal: 0,
+                totalPreOrder: 0,
+            }
+        );
+    }
 }
 
 export const orderRepository = new OrderRepository();

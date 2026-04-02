@@ -227,5 +227,14 @@ class InvoiceController {
         );
         res.json(ApiResponse.success('Get order type stats success', stats));
     };
+
+    /**
+     * Get order type statistics cross all orders
+     * Endpoint: GET /admin/invoices/stats/order-type-total
+     */
+    getAllOrderTypeStats = async (req: Request, res: Response) => {
+        const stats = await invoiceService.getAllOrderTypeStats();
+        res.json(ApiResponse.success('Get all order type stats success', stats));
+    };
 }
 export default new InvoiceController();

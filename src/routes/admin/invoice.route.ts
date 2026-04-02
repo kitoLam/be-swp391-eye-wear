@@ -63,6 +63,11 @@ router.get(
 );
 
 router.get(
+    '/stats/order-type-total',
+    invoiceController.getAllOrderTypeStats
+);
+
+router.get(
     '/:id',
     validateParams(ObjectIdSchema),
     invoiceController.getInvoiceDetail
