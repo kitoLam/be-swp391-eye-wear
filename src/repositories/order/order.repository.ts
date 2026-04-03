@@ -5,6 +5,7 @@ import {
 import { BaseRepository } from '../base.repository';
 import mongoose from 'mongoose';
 import { OrderType } from '../../config/enums/order.enum';
+import { InvoiceStatus } from '../../config/enums/invoice.enum';
 
 export class OrderRepository extends BaseRepository<IOrderDocument> {
     constructor() {
@@ -116,6 +117,29 @@ export class OrderRepository extends BaseRepository<IOrderDocument> {
             {
                 $match: {
                     deletedAt: null,
+                },
+            },
+            {
+                $lookup: {
+                    from: 'invoices',
+                    localField: 'invoiceId',
+                    foreignField: '_id',
+                    as: 'invoice',
+                },
+            },
+            {
+                $unwind: '$invoice',
+            },
+            {
+                $match: {
+                    'invoice.status': {
+                        $in: [
+                            InvoiceStatus.PENDING,
+                            InvoiceStatus.DEPOSITED,
+                            InvoiceStatus.APPROVED,
+                            InvoiceStatus.ONBOARD,
+                        ],
+                    },
                 },
             },
             {
