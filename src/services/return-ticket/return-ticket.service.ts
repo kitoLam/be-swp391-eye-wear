@@ -107,29 +107,14 @@ class ReturnTicketService {
         }
 
         // Trả hàng theo toàn bộ order với quantity cụ thể.
-        // Doanh thu tính theo tiền hàng sau giảm giá, KHÔNG tính phí ship.
-        // Phân bổ discount theo tỷ trọng giá order trong tổng tiền hàng của invoice.
-        const allOrdersInInvoice = await orderRepository.findAllNoPagination({
-            invoiceId: invoice._id,
-            deletedAt: null,
-        });
-
-        const grossItemsAmount = allOrdersInInvoice.reduce(
-            (sum, currentOrder) => sum + (currentOrder.price || 0),
-            0
-        );
-
+        // money = (total trong invoice - totalDiscount) * (total price trong order / total price trong invoice)
         const orderGrossAmount = order.price || 0;
+        const invoiceTotalPrice = invoice.totalPrice || 0;
+        const invoiceTotalDiscount = invoice.totalDiscount || 0;
 
-        const discountAllocatedToOrder =
-            grossItemsAmount > 0
-                ? (invoice.totalDiscount * orderGrossAmount) / grossItemsAmount
-                : 0;
-
-        const netOrderAmount = Math.max(
-            0,
-            orderGrossAmount - discountAllocatedToOrder
-        );
+        const netOrderAmount = invoiceTotalPrice > 0
+            ? Math.max(0, (invoiceTotalPrice - invoiceTotalDiscount) * (orderGrossAmount / invoiceTotalPrice))
+            : 0;
 
         const returnTicket = new ReturnTicketModel({
             orderId: requestBody.orderId,
