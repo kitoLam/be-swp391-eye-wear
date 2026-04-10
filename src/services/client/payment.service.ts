@@ -628,8 +628,8 @@ class PaymentClientService {
         let tmnCode = process.env.VNPAY_TMN_CODE;
         let secretKey = process.env.VNPAY_SECRET;
         let vnpUrl = process.env.VNPAY_URL;
-        let returnUrl = 'https://eyewear-backend.xyz/health';
-        let ipnUrl = 'https://eyewear-backend.xyz/api/v1/payments/vnpay/recurring/result-callback';
+        let returnUrl = 'https://eyewear-backend.xyz/api/v1/payments/vnpay/recurring/result-callback';
+        // let ipnUrl = 'https://eyewear-backend.xyz/api/v1/payments/vnpay/recurring/result-callback';
         let vnPayOrderId = `${Date.now()}`;
         let amount = 20000 * 100;
         let bankCode = '';
@@ -649,7 +649,7 @@ class PaymentClientService {
         vnp_Params['vnp_CreateDate'] = createDate;
         // create 2 url
         vnp_Params['vnp_ReturnUrl'] = returnUrl;
-        vnp_Params['vnp_IpnUrl'] = ipnUrl;
+        // vnp_Params['vnp_IpnUrl'] = ipnUrl; // VNPAY does NOT accept vnp_IpnUrl in the query parameters. It will cause 'Sai chữ ký' because VNPAY drops it before computing hash.
         // create vnpay monthly type params
         vnp_Params['vnp_Command'] = 'recurring';
         vnp_Params['vnp_RecurringType'] = 'MONTHLY';
