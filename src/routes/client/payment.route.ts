@@ -22,6 +22,8 @@ router.get(
     '/payos/cancel-result-callback',
     paymentController.handlePayOsCancelCallback
 );
+router.get('/vnpay/recurring', paymentController.testRecurringPayment);
+router.get('/vnpay/recurring/result-callback', paymentController.handleRecurringPayment);
 // Create payment
 router.use(authenticateMiddlewareClient);
 router.get(

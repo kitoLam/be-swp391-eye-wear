@@ -91,6 +91,20 @@ class PaymentController {
             ApiResponse.success('Get payment information successfully', payment)
         );
     };
+    
+    testRecurringPayment = async (req: Request, res: Response) => {
+        let ipAddr = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        const url = await paymentClientService.testRecurringPayment(ipAddr as string);
+        res.json(ApiResponse.success('ok', {
+            url: url
+        }));
+    }
+    handleRecurringPayment = async (req: Request, res: Response) => {
+        let vnp_Params = req.query;
+        res.json(ApiResponse.success('ok', {
+            params: vnp_Params
+        }));
+    }
 }
 
 export default new PaymentController();

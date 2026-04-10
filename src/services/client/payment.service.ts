@@ -617,6 +617,52 @@ class PaymentClientService {
 
         return payment;
     };
+    testRecurringPayment = async (
+        // customerId: string,
+        // invoiceId: string,
+        ipAddr: string
+    ) => {
+
+        let date = new Date();
+        let createDate = moment(date).format('YYYYMMDDHHmmss');
+        let tmnCode = process.env.VNPAY_TMN_CODE;
+        let secretKey = process.env.VNPAY_SECRET;
+        let vnpUrl = process.env.VNPAY_URL;
+        let returnUrl = 'https://eyewear-backend.xyz/api/v1/payments/vnpay/recurring/result-callback';
+        let vnPayOrderId = `${Date.now()}`;
+        let amount = 20000 * 100;
+        let bankCode = '';
+
+        let locale = 'vi';
+        let currCode = 'VND';
+        let vnp_Params: any = {};
+        vnp_Params['vnp_Version'] = '2.1.0';
+        vnp_Params['vnp_Command'] = 'pay';
+        vnp_Params['vnp_TmnCode'] = tmnCode;
+        vnp_Params['vnp_Locale'] = locale;
+        vnp_Params['vnp_CurrCode'] = currCode;
+        vnp_Params['vnp_TxnRef'] = vnPayOrderId;
+        vnp_Params['vnp_OrderInfo'] = 'Payment for transaction ID:' + vnPayOrderId;
+        vnp_Params['vnp_OrderType'] = 'other';
+        vnp_Params['vnp_Amount'] = amount;
+        vnp_Params['vnp_ReturnUrl'] = returnUrl;
+        vnp_Params['vnp_IpAddr'] = ipAddr;
+        vnp_Params['vnp_CreateDate'] = createDate;
+        if (bankCode !== null && bankCode !== '') {
+            vnp_Params['vnp_BankCode'] = bankCode;
+        }
+
+        vnp_Params = objectUtil.sortObject(vnp_Params);
+        const querystring = require('qs');
+        let signData = querystring.stringify(vnp_Params, { encode: false });
+        let crypto = require('crypto');
+        let hmac = crypto.createHmac('sha512', secretKey);
+        let signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+        vnp_Params['vnp_SecureHash'] = signed;
+        vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
+        console.log(">>> vnUrl::", vnpUrl);
+        return vnpUrl;
+    }
 }
 
 export default new PaymentClientService();
