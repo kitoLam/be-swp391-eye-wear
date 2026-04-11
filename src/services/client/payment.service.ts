@@ -627,7 +627,7 @@ class PaymentClientService {
         let createDate = moment(date).format('YYYYMMDDHHmmss');
         let tmnCode = process.env.VNPAY_TMN_CODE;
         let secretKey = process.env.VNPAY_SECRET;
-        let vnpUrl = process.env.VNPAY_URL;
+        let vnpUrl = 'https://sandbox.vnpayment.vn/token_ui/pay-create-token.html';
         let returnUrl = 'https://eyewear-backend.xyz/api/v1/payments/vnpay/recurring/result-callback';
         // let ipnUrl = 'https://eyewear-backend.xyz/api/v1/payments/vnpay/recurring/result-callback';
         let vnPayOrderId = `${Date.now()}`;
@@ -637,26 +637,28 @@ class PaymentClientService {
         let locale = 'vi';
         let currCode = 'VND';
         let vnp_Params: any = {};
-        vnp_Params['vnp_Version'] = '2.1.0';
-        vnp_Params['vnp_TmnCode'] = tmnCode;
-        vnp_Params['vnp_Locale'] = locale;
-        vnp_Params['vnp_CurrCode'] = currCode;
-        vnp_Params['vnp_TxnRef'] = vnPayOrderId;
-        vnp_Params['vnp_OrderInfo'] = 'Payment for transaction ID:' + vnPayOrderId;
-        vnp_Params['vnp_OrderType'] = 'other';
-        vnp_Params['vnp_Amount'] = amount;
-        vnp_Params['vnp_IpAddr'] = ipAddr;
-        vnp_Params['vnp_CreateDate'] = createDate;
+        vnp_Params['vnp_version'] = '2.1.0';
+        vnp_Params['vnp_tmn_code'] = tmnCode;
+        vnp_Params['vnp_locale'] = locale;
+        vnp_Params['vnp_curr_code'] = currCode;
+        vnp_Params['vnp_txn_ref'] = vnPayOrderId;
+        vnp_Params['vnp_txn_desc'] = 'Payment for transaction ID:' + vnPayOrderId;
+        vnp_Params['vnp_card_type'] = '01';
+        vnp_Params['vnp_amount'] = amount;
+        vnp_Params['vnp_ip_addr'] = ipAddr;
+        vnp_Params['vnp_create_date'] = createDate;
         // create 2 url
-        vnp_Params['vnp_ReturnUrl'] = returnUrl;
+        vnp_Params['vnp_return_url'] = returnUrl;
         // vnp_Params['vnp_IpnUrl'] = ipnUrl; // VNPAY does NOT accept vnp_IpnUrl in the query parameters. It will cause 'Sai chữ ký' because VNPAY drops it before computing hash.
         // create vnpay monthly type params
-        vnp_Params['vnp_Command'] = 'recurring';
-        vnp_Params['vnp_RecurringType'] = 'MONTHLY';
-        vnp_Params['vnp_RecurringInterval'] = '1';
-        vnp_Params['vnp_SubscriptionId'] = vnPayOrderId;
+        vnp_Params['vnp_command'] = 'pay_and_create';
+        vnp_Params['vnp_app_user_id']= "my_app_client_id"
+        // vnp_Params['vnp_Subscribe'] = 1;
+        // vnp_Params['vnp_RecurringType'] = 'MONTHLY';
+        // vnp_Params['vnp_RecurringInterval'] = '1';
+        // vnp_Params['vnp_SubscriptionId'] = vnPayOrderId;
         if (bankCode !== null && bankCode !== '') {
-            vnp_Params['vnp_BankCode'] = bankCode;
+            vnp_Params['vnp_bank_code'] = bankCode;
         }
 
         vnp_Params = objectUtil.sortObject(vnp_Params);
@@ -665,7 +667,7 @@ class PaymentClientService {
         let crypto = require('crypto');
         let hmac = crypto.createHmac('sha512', secretKey);
         let signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
-        vnp_Params['vnp_SecureHash'] = signed;
+        vnp_Params['vnp_secure_hash'] = signed;
         vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
         console.log(">>> vnUrl::", vnpUrl);
         return vnpUrl;
